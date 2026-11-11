@@ -1,0 +1,423 @@
+/* 3Deep-Widget, Adapter Version 2.
+   Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
+   und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
+   Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
+   im Format der echten Schnittstellen-Antworten. */
+(function () {
+  'use strict';
+  var BKS = '/resources/v1/modeler/dsbks/dsbks:Bookmark';
+  var ENG = '/resources/v1/modeler/dseng/dseng:EngItem';
+  var DOC = '/resources/v1/modeler/documents';
+  var PNO = '/resources/modeler/pno/person';
+  var SEITE = 50, PARALLEL = 6, MAXTIEFE = 12;
+  var S = { live: false, WAF: null, space: '', tenant: '', ctx: '', root: null, log: [], roh: {}, bereit: false, wartend: null,
+    frame: null, viewerUrl: '', max: 1500, laeuft: false, treffer: [] };
+
+  // ---------- kleine Helfer ----------
+  function q(sel) { return S.root.querySelector(sel); }
+  function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function status(t, fehler) { var e = q('.td-st'); if (e) { e.textContent = t; e.style.color = fehler ? '#ff8a8a' : '#c9d4e8'; } }
+  function mitglieder(r) { if (Array.isArray(r)) return r; if (r && Array.isArray(r.member)) return r.member; if (r && Array.isArray(r.data)) return r.data; return []; }
+  function datum(t) { if (!t) return ''; var d = new Date(t); return isNaN(d) ? String(t) : d.toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' }); }
+  function pool(liste, n, fn) {
+    var i = 0, erg = [];
+    function weiter() { if (i >= liste.length) return Promise.resolve(); var k = i++; return fn(liste[k], k).then(function (r) { erg[k] = r; }, function (e) { erg[k] = { fehler: e }; }).then(weiter); }
+    var w = []; for (var j = 0; j < Math.min(n, liste.length); j++) w.push(weiter());
+    return Promise.all(w).then(function () { return erg; });
+  }
+
+  // ---------- Zugriff auf die Plattform ----------
+  function muster(pfad) { return pfad.replace(/\/[0-9A-Fa-f]{16,}(?=\/|$)/g, '/{ID}'); }
+  function protokoll(pfad, params, ok, antwort, ms) {
+    var m = muster(pfad) + (params && params.$mask ? ' [' + params.$mask + ']' : '');
+    S.log.push({ zeit: new Date().toLocaleTimeString('de-DE'), aufruf: m, ok: ok, info: ok ? mitglieder(antwort).length + ' Einträge' : String(antwort), ms: ms });
+    if (S.log.length > 400) S.log.shift();
+    if (ok && !S.roh[m]) { var t = ''; try { t = JSON.stringify(antwort, null, 1); } catch (e) { t = String(antwort); } S.roh[m] = t.length > 6000 ? t.slice(0, 6000) + '\n… (gekürzt)' : t; }
+    if (!ok && !S.roh['FEHLER ' + m]) S.roh['FEHLER ' + m] = String(antwort);
+  }
+  function liveGet(pfad, params, ohneKontext) {
+    var qs = Object.keys(params).map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]); }).join('&');
+    var kopf = { Accept: 'application/json' };
+    if (!ohneKontext && S.ctx) kopf.SecurityContext = S.ctx;
+    return new Promise(function (ja, nein) {
+      var fertig = false;
+      function fehler(e, d) { if (fertig) return; fertig = true; var t = (d && (d.message || d.error)) || (e && e.message) || String(e); nein(new Error(t)); }
+      try {
+        S.WAF.authenticatedRequest(S.space + pfad + (qs ? '?' + qs : ''), {
+          method: 'GET', type: 'json', headers: kopf, timeout: 30000,
+          onComplete: function (d) { if (fertig) return; fertig = true; if (typeof d === 'string') { try { d = d ? JSON.parse(d) : {}; } catch (e) { } } ja(d || {}); },
+          onFailure: fehler, onPassportError: function (e) { fehler(e || new Error('Anmeldung (3DPassport) fehlgeschlagen')); },
+          onTimeout: function () { fehler(new Error('keine Antwort nach 30 s')); }
+        });
+      } catch (e) { fehler(e); }
+    });
+  }
+  function hole(pfad, params, ohneKontext) {
+    var p = {}; Object.keys(params || {}).forEach(function (k) { p[k] = params[k]; });
+    if (S.tenant) p.tenant = S.tenant;
+    var t0 = Date.now(), anfrage = S.live ? liveGet(pfad, p, ohneKontext) : testGet(pfad, p);
+    return anfrage.then(function (d) { protokoll(pfad, p, true, d, Date.now() - t0); return d; },
+      function (e) { protokoll(pfad, p, false, e.message || e, Date.now() - t0); throw new Error(muster(pfad).split('/').slice(-2).join('/') + ': ' + (e.message || e)); });
+  }
+  function alleSeiten(pfad, params, lies) {
+    var alles = [];
+    function seite(skip) {
+      var p = {}; Object.keys(params).forEach(function (k) { p[k] = params[k]; }); p.$top = SEITE; p.$skip = skip;
+      return hole(pfad, p).then(function (r) {
+        var m = lies ? lies(r) : mitglieder(r); alles = alles.concat(m);
+        return (m.length < SEITE || alles.length > 20000) ? alles : seite(skip + m.length);
+      });
+    }
+    return seite(0);
+  }
+
+  // ---------- die einzelnen Abfragen ----------
+  function kontexte() {
+    return hole(PNO, { current: 'true', select: 'collabspaces' }, true).then(function (r) {
+      var liste = [], bevorzugt = '';
+      var pc = r && r.preferredcredentials;
+      if (pc && pc.role && pc.organization && pc.collabspace) bevorzugt = pc.role.name + '.' + pc.organization.name + '.' + pc.collabspace.name;
+      ((r && r.collabspaces) || []).forEach(function (cs) {
+        (cs.couples || []).forEach(function (c) { if (c.role && c.organization) liste.push(c.role.name + '.' + c.organization.name + '.' + cs.name); });
+      });
+      if (bevorzugt && liste.indexOf(bevorzugt) < 0) liste.unshift(bevorzugt);
+      return { liste: liste, bevorzugt: bevorzugt || liste[0] || '' };
+    });
+  }
+  function sucheBookmarks(text) {
+    return hole(BKS + '/search', { $searchStr: text || '*', $mask: 'dsbks:BksMask.Details', $top: 100, $skip: 0 }).then(mitglieder);
+  }
+  function bookmarkInhalt(id) {
+    var kopf = null;
+    return alleSeiten(BKS + '/' + encodeURIComponent(id), { $mask: 'dsbks:BksMask.Items2' }, function (r) {
+      var b = mitglieder(r), bm = b.filter(function (x) { return x.id === id; })[0] || b[0] || {};
+      if (!kopf) kopf = bm;
+      var it = bm.items; if (Array.isArray(it) && it.length && it[0] && it[0].member) it = it[0];
+      return mitglieder(it);
+    }).then(function (items) { return { kopf: kopf || {}, items: items }; });
+  }
+  function engItem(id) {
+    return hole(ENG + '/' + encodeURIComponent(id), { $mask: 'dsmveng:EngItemMask.Details' }).then(function (r) { return mitglieder(r)[0] || null; });
+  }
+  function instanzen(id) {
+    return alleSeiten(ENG + '/' + encodeURIComponent(id) + '/dseng:EngInstance', { $mask: 'dsmveng:EngInstanceMask.Details' }).then(function (m) {
+      var zahl = {}, folge = [];
+      m.forEach(function (inst) { var k = (inst.referencedObject || {}).identifier; if (!k) return; if (!zahl[k]) { zahl[k] = 0; folge.push(k); } zahl[k]++; });
+      return folge.map(function (k) { return { id: k, n: zahl[k] }; });
+    });
+  }
+  function dokument(id) {
+    return hole(DOC + '/' + encodeURIComponent(id), {}).then(function (r) { var d = mitglieder(r)[0]; return d ? (d.dataelements || d) : null; });
+  }
+
+  // ---------- Bookmark + Struktur lesen und in das 3Deep-JSON umsetzen ----------
+  var ZUSTAND = { IN_WORK: 'In Work', FROZEN: 'Frozen', RELEASED: 'Released', OBSOLETE: 'Obsolete', PRIVATE: 'In Work' };
+  function istProdukt(t) { return /VPMReference|EngItem|Physical ?Product/i.test(t || ''); }
+  function istOrdner(t) { return /Workspace ?Vault|Bookmark|Workspace/i.test(t || ''); }
+
+  async function leseBookmark(bmId, bmTitel) {
+    var nodes = [], edges = [], gesehen = {}, hinweise = [];
+    var types = {
+      folder: { color: '#f5b942', size: 3, shape: 'box', label: 'Bookmark-Folder' },
+      asm: { color: '#4f8cff', size: 3.36, label: 'Baugruppe' },
+      part: { color: '#2fc4ad', size: 1.96, label: 'Einzelteil' }
+    };
+    var relTypes = {
+      struktur: { label: 'Strukturlink (enthält)', color: '#2f3f5c', directed: false },
+      bookmark: { label: 'liegt im Bookmark', color: '#b98a2a', directed: true }
+    };
+    var palette = ['#e5534b', '#d67bd9', '#f08a3c', '#5fcf3f', '#ff4d6d', '#9aa5b1', '#7c6cf0'], pi = 0;
+    function typFuer(name) {
+      var key = 't_' + String(name || 'Objekt').replace(/[^A-Za-z0-9]+/g, '_');
+      if (!types[key]) {
+        if (/Document/i.test(name)) types[key] = { color: '#e5534b', size: 1.3, shape: 'book', label: 'Dokument' };
+        else if (/Drawing/i.test(name)) types[key] = { color: '#9aa5b1', size: 0.9, label: 'Zeichnung' };
+        else if (/Issue/i.test(name)) types[key] = { color: '#ff4d6d', size: 2.2, shape: 'torus', label: 'Issue' };
+        else types[key] = { color: palette[pi++ % palette.length], size: 1.3, label: String(name || 'Objekt') };
+      }
+      return key;
+    }
+
+    // 1. Bookmark-Ordner (samt Unterordnern, soweit sie als Inhalt geliefert werden)
+    var startProdukte = [], ordner = [{ id: bmId, titel: bmTitel, eltern: null }], oi = 0, andere = [];
+    while (oi < ordner.length && ordner.length < 200) {
+      var o = ordner[oi++];
+      status('Lese Bookmark „' + (o.titel || o.id) + '“ …');
+      var inh = await bookmarkInhalt(o.id);
+      var k = inh.kopf || {};
+      nodes.push({ id: 'bm:' + o.id, type: 'folder', name: k.title || k.name || o.titel || 'Bookmark',
+        meta: { Titel: k.title || o.titel || '', Beschreibung: k.description || '', Besitzer: k.owner || '', Erstellt: datum(k.created), 'Geändert': datum(k.modified), 'Collaborative Space': k.collabspace || '', 'Objekte im Ordner': String(inh.items.length), ID: o.id } });
+      if (o.eltern) edges.push({ from: 'bm:' + o.id, to: 'bm:' + o.eltern, type: 'bookmark' });
+      inh.items.forEach(function (it) {
+        var ro = (it && it.referencedObject) || it || {}, id = ro.identifier || ro.id, typ = ro.type || it.type || '';
+        if (!id) return;
+        if (istProdukt(typ)) { startProdukte.push({ id: id, bm: o.id }); }
+        else if (istOrdner(typ)) { if (!ordner.some(function (x) { return x.id === id; })) ordner.push({ id: id, titel: ro.title || it.title || '', eltern: o.id }); }
+        else andere.push({ id: id, typ: typ, bm: o.id, titel: ro.title || it.title || ro.name || it.name || '' });
+      });
+    }
+
+    // 2. Produktstruktur abwärts, Ebene für Ebene
+    var items = {}, anzahl = 0, grenze = false;
+    var front = []; startProdukte.forEach(function (p) { if (front.indexOf(p.id) < 0) front.push(p.id); });
+    for (var tiefe = 0; front.length && tiefe <= MAXTIEFE; tiefe++) {
+      var frei = S.max - anzahl - nodes.length - andere.length;
+      if (front.length > frei) { front = front.slice(0, Math.max(0, frei)); grenze = true; }
+      front.forEach(function (id) { items[id] = { id: id, kinder: [], det: null, tiefe: tiefe }; });
+      anzahl += front.length;
+      status('Lese Produktstruktur: Ebene ' + (tiefe + 1) + ', bisher ' + anzahl + ' Objekte …');
+      await pool(front, PARALLEL, async function (id) {
+        try { items[id].det = await engItem(id); } catch (e) { items[id].fehler = e.message; }
+        try { items[id].kinder = await instanzen(id); } catch (e) { items[id].kinder = []; if (!items[id].fehler) items[id].fehler = e.message; }
+      });
+      var naechste = [];
+      front.forEach(function (id) { items[id].kinder.forEach(function (c) { if (!items[c.id] && naechste.indexOf(c.id) < 0) naechste.push(c.id); }); });
+      front = naechste;
+      if (grenze) break;
+    }
+    if (grenze || front.length) hinweise.push('Höchstzahl von ' + S.max + ' Objekten erreicht, die Struktur ist unvollständig.');
+
+    // 3. übrige Bookmark-Inhalte (Dokumente usw.)
+    await pool(andere, PARALLEL, async function (a) {
+      if (/Document/i.test(a.typ)) { try { a.det = await dokument(a.id); } catch (e) { } }
+    });
+
+    // 4. Knoten und Beziehungen
+    var verwendet = {}; Object.keys(items).forEach(function (id) { items[id].kinder.forEach(function (c) { verwendet[c.id] = (verwendet[c.id] || 0) + 1; }); });
+    var fehlend = 0;
+    Object.keys(items).forEach(function (id) {
+      var it = items[id], d = it.det || {}, er = d['dseng:EnterpriseReference'] || {};
+      if (!it.det) fehlend++;
+      var kinder = it.kinder.filter(function (c) { return items[c.id]; });
+      var meta = { Titel: d.title || '', Name: d.name || '', Revision: d.revision || '', Reifegrad: d.state || '', Beschreibung: d.description || '', Teilenummer: er.partNumber || '',
+        Besitzer: d.owner || '', Organisation: d.organization || '', 'Collaborative Space': d.collabspace || '', Erstellt: datum(d.created), 'Geändert': datum(d.modified), Typ: d.type || 'VPMReference',
+        'Direkte Kinder': String(it.kinder.length), Verwendungen: String(verwendet[id] || 0), ID: id };
+      Object.keys(meta).forEach(function (k) { if (meta[k] === '') delete meta[k]; });
+      var n = { id: id, type: it.kinder.length ? 'asm' : 'part', name: d.title || d.name || ('Objekt ' + id.slice(-6)), meta: meta };
+      if (d.state) n.state = ZUSTAND[d.state] || d.state;
+      nodes.push(n);
+      kinder.forEach(function (c) { var e = { from: c.id, to: id, type: 'struktur' }; if (c.n > 1) { e.label = '×' + c.n; e.meta = { Instanzen: String(c.n) }; } edges.push(e); });
+    });
+    startProdukte.forEach(function (p) { if (items[p.id]) { var key = p.id + '>' + p.bm; if (!gesehen[key]) { gesehen[key] = 1; edges.push({ from: p.id, to: 'bm:' + p.bm, type: 'bookmark' }); } } });
+    andere.forEach(function (a) {
+      var d = a.det || {}, id = 'o:' + a.id;
+      if (!gesehen[id]) {
+        gesehen[id] = 1;
+        var meta = { Titel: d.title || a.titel || '', Name: d.name || '', Revision: d.revision || '', Reifegrad: d.stateNLS || d.state || '', Beschreibung: d.description || '', Typ: a.typ, ID: a.id };
+        Object.keys(meta).forEach(function (k) { if (meta[k] === '') delete meta[k]; });
+        var n = { id: id, type: typFuer(a.typ), name: d.title || a.titel || d.name || (a.typ + ' ' + a.id.slice(-6)), meta: meta };
+        if (d.state) n.state = ZUSTAND[d.state] || d.state;
+        nodes.push(n);
+      }
+      edges.push({ from: id, to: 'bm:' + a.bm, type: 'bookmark' });
+    });
+    if (fehlend) hinweise.push(fehlend + ' Objekte ohne Detaildaten (keine Leserechte oder kein Engineering Item).');
+    return { daten: { types: types, relTypes: relTypes, nodes: nodes, edges: edges, maxObjects: Math.max(500, nodes.length) }, hinweise: hinweise };
+  }
+
+  // ---------- Darstellung (iframe) ----------
+  function sende(nachricht) {
+    S.wartend = nachricht;
+    if (S.bereit && S.frame && S.frame.contentWindow) { S.frame.contentWindow.postMessage(nachricht, '*'); S.wartend = null; }
+  }
+  window.addEventListener('message', function (e) {
+    var m = e.data; if (!m || m.quelle !== '3deep' || !S.frame || e.source !== S.frame.contentWindow) return;
+    if (m.bereit) { S.bereit = true; if (S.wartend) sende(S.wartend); else sende({ quelle: '3deep-adapter', steuerung: 'game' }); }
+  });
+
+  // ---------- Bedienung ----------
+  async function suchen() {
+    if (S.laeuft) return;
+    var text = q('.td-su').value.trim(), sel = q('.td-tr');
+    try {
+      S.laeuft = true; status('Suche Bookmarks …');
+      if (/^[0-9A-Fa-f]{20,}$/.test(text)) S.treffer = [{ id: text, title: 'ID ' + text }];
+      else S.treffer = await sucheBookmarks(text);
+      sel.innerHTML = S.treffer.map(function (b, i) { return '<option value="' + i + '">' + esc(b.title || b.name || b.id) + (b.owner ? ' (' + esc(b.owner) + ')' : '') + '</option>'; }).join('');
+      sel.style.display = S.treffer.length ? '' : 'none'; q('.td-la').style.display = S.treffer.length ? '' : 'none';
+      status(S.treffer.length ? S.treffer.length + ' Bookmark(s) gefunden. Auswählen und „Laden“ drücken.' : 'Kein Bookmark gefunden.', !S.treffer.length);
+    } catch (e) { status('Suche fehlgeschlagen: ' + e.message, true); } finally { S.laeuft = false; diagnose(); }
+  }
+  async function laden() {
+    if (S.laeuft) return;
+    var b = S.treffer[+q('.td-tr').value]; if (!b) return;
+    try {
+      S.laeuft = true; S.max = Math.max(10, parseInt(S.maxText, 10) || 1500);
+      var t0 = Date.now(), erg = await leseBookmark(b.id, b.title || b.name || '');
+      sende({ quelle: '3deep-adapter', daten: erg.daten, name: b.title || 'Bookmark', steuerung: 'game' });
+      status(erg.daten.nodes.length + ' Objekte, ' + erg.daten.edges.length + ' Beziehungen aus „' + (b.title || b.id) + '“ in ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s.' + (erg.hinweise.length ? ' Hinweis: ' + erg.hinweise.join(' ') : ''), erg.hinweise.length > 0);
+    } catch (e) { status('Laden fehlgeschlagen: ' + e.message + ' (Details unter „Diagnose“)', true); } finally { S.laeuft = false; diagnose(); }
+  }
+  function diagnoseText() {
+    var z = ['3Deep-Widget Diagnose, ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
+      '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-'), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), '', 'Aufrufe:'];
+    S.log.forEach(function (l) { z.push(l.zeit + '  ' + (l.ok ? 'ok    ' : 'FEHLER') + '  ' + l.aufruf + '  ' + l.info + '  ' + l.ms + ' ms'); });
+    z.push('', 'Erste Antwort je Aufrufart (gekürzt):');
+    Object.keys(S.roh).forEach(function (k) { z.push('--- ' + k, S.roh[k]); });
+    return z.join('\n');
+  }
+  function diagnose() { var d = q('.td-dx'); if (d && d.style.display !== 'none') d.value = diagnoseText(); }
+
+  function baueOberflaeche(root) {
+    S.root = root;
+    var knopf = 'background:#2b3d63;color:#e8eefc;border:0;border-radius:6px;padding:5px 10px;cursor:pointer;font:inherit';
+    var feld = 'background:#0d1526;color:#e8eefc;border:1px solid #3a4a68;border-radius:6px;padding:5px 8px;font:inherit';
+    root.innerHTML =
+      '<div class="td-w" style="position:fixed;left:0;top:0;right:0;bottom:0;display:flex;flex-direction:column;background:#0b1220;color:#e8eefc;font:13px/1.35 system-ui,Segoe UI,Arial,sans-serif">' +
+      '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 8px;background:#121c30;border-bottom:1px solid #26344f">' +
+      '<b style="margin-right:4px">3Deep</b>' +
+      '<input class="td-su" type="text" placeholder="Bookmark-Name oder ID" style="' + feld + ';width:190px" />' +
+      '<button class="td-sb" style="' + knopf + '">Suchen</button>' +
+      '<select class="td-tr" style="' + feld + ';max-width:260px;display:none"></select>' +
+      '<button class="td-la" style="' + knopf + ';background:#2563d6;display:none">Laden</button>' +
+      '<select class="td-cx" title="Security Context" style="' + feld + ';max-width:240px;display:none"></select>' +
+      '<button class="td-db" style="' + knopf + '">Diagnose</button>' +
+      '<span class="td-mo" style="padding:2px 8px;border-radius:10px;background:#5a4410;color:#ffd98a;display:none">Testmodus: Beispieldaten</span>' +
+      '<span class="td-st" style="flex:1;min-width:200px;color:#c9d4e8">Starte …</span></div>' +
+      '<div class="td-dp" style="display:none;padding:6px 8px;background:#121c30;border-bottom:1px solid #26344f">' +
+      '<div style="margin-bottom:4px">Protokoll aller Abfragen. Zum Weitergeben: „Kopieren“ drücken, vorher Vertrauliches prüfen. <button class="td-dc" style="' + knopf + '">Kopieren</button></div>' +
+      '<textarea class="td-dx" readonly="readonly" style="' + feld + ';width:100%;height:180px;box-sizing:border-box;font:12px monospace;display:none"></textarea></div>' +
+      '<iframe class="td-fr" title="3Deep Darstellung" allow="fullscreen" style="flex:1;width:100%;border:0;background:#0b1220"></iframe></div>';
+    q('.td-sb').onclick = suchen; q('.td-la').onclick = laden;
+    q('.td-su').addEventListener('keydown', function (e) { if (e.key === 'Enter') suchen(); });
+    q('.td-db').onclick = function () { var p = q('.td-dp'), d = q('.td-dx'), auf = p.style.display === 'none'; p.style.display = auf ? '' : 'none'; d.style.display = auf ? '' : 'none'; diagnose(); };
+    q('.td-dc').onclick = function () { var d = q('.td-dx'); d.value = diagnoseText(); d.select(); try { document.execCommand('copy'); } catch (e) { } if (navigator.clipboard) navigator.clipboard.writeText(d.value).catch(function () { }); };
+    q('.td-cx').onchange = function (e) { S.ctx = e.target.value; };
+    S.frame = q('.td-fr');
+  }
+  function ladeDarstellung() {
+    S.frame.src = S.viewerUrl;
+    setTimeout(function () { if (!S.bereit) status('Die Darstellung meldet sich nicht (' + S.viewerUrl + '). Adresse in den Widget-Einstellungen unter „Adresse von datenraum3d.html“ prüfen.', true); }, 12000);
+  }
+
+  // ---------- Start im 3DDashboard ----------
+  function tenantAus(url) { var h = (String(url).match(/^https?:\/\/([^\/]+)/) || [])[1] || ''; return h.split('-')[0].toUpperCase(); }
+  function spaceAusRahmen() {
+    var kandidaten = [];
+    try { kandidaten.push(new URLSearchParams(window.location.search).get('widgetDomain') || ''); } catch (e) { }
+    try { kandidaten.push(document.referrer || ''); } catch (e) { }
+    try { kandidaten.push(window.location.href); } catch (e) { }
+    for (var i = 0; i < kandidaten.length; i++) {
+      var m = String(kandidaten[i]).match(/^(https:\/\/[A-Za-z0-9]+-[A-Za-z0-9-]*?)-ifwe\.([A-Za-z0-9.-]+)/);
+      if (m) return m[1] + '-space.' + m[2] + '/enovia';
+    }
+    return '';
+  }
+  function startLive() {
+    var w = window.widget;
+    baueOberflaeche(w.body || document.body);
+    S.live = true;
+    S.maxText = w.getValue('MaxObjekte');
+    var basis = w.getValue('ViewerUrl') || '';
+    if (!basis) basis = window.__3deep.basis + 'datenraum3d.html?v=65';
+    S.viewerUrl = basis; ladeDarstellung();
+    status('Lade Plattform-Module …');
+    window.require(['DS/WAFData/WAFData', 'DS/i3DXCompassServices/i3DXCompassServices'], function (WAFData, Compass) {
+      S.WAF = WAFData;
+      var plattform = w.getValue('x3dPlatformId') || '';
+      status('Ermittle 3DSpace-Adresse …');
+      var erledigt = false;
+      function nutze(url, quelle) {
+        if (erledigt) return; erledigt = true;
+        S.space = String(url).replace(/\/$/, ''); S.tenant = plattform || tenantAus(S.space); S.spaceQuelle = quelle;
+        var fest = (w.getValue('SecurityContext') || '').trim();
+        if (fest) { S.ctx = fest; status('Bereit. Bookmark-Namen eingeben und „Suchen“ drücken.'); return; }
+        kontexte().then(function (k) {
+          var sel = q('.td-cx'); S.ctx = k.bevorzugt;
+          sel.innerHTML = k.liste.map(function (c) { return '<option' + (c === k.bevorzugt ? ' selected="selected"' : '') + '>' + esc(c) + '</option>'; }).join('');
+          if (k.liste.length > 1) sel.style.display = '';
+          status(S.ctx ? 'Bereit. Bookmark-Namen eingeben und „Suchen“ drücken.' : 'Kein Security Context gefunden. Bitte in den Widget-Einstellungen eintragen.', !S.ctx);
+        }, function (e) { status('Security Context nicht ermittelbar (' + e.message + '). Bitte in den Widget-Einstellungen eintragen.', true); }).then(diagnose);
+      }
+      function rueckfall(grund) {
+        if (erledigt) return;
+        var u = spaceAusRahmen();
+        if (u) nutze(u, 'aus der Dashboard-Adresse abgeleitet (' + grund + ')');
+        else { erledigt = true; status('Die 3DSpace-Adresse konnte nicht ermittelt werden (' + grund + ').', true); }
+      }
+      setTimeout(function () { rueckfall('Plattform antwortet nicht'); }, 8000);
+      try {
+        Compass.getServiceUrl({
+          serviceName: '3DSpace', platformId: plattform || undefined,
+          onComplete: function (r) {
+            var url = '';
+            if (typeof r === 'string') url = r;
+            else if (Array.isArray(r) && r.length) { var m = r.filter(function (x) { return !plattform || x.platformId === plattform; })[0] || r[0]; url = m.url || ''; }
+            else if (r && r.url) url = r.url;
+            if (url && url !== 'undefined') nutze(url, 'von der Plattform'); else rueckfall('keine Adresse geliefert');
+          },
+          onFailure: function () { rueckfall('Abfrage fehlgeschlagen'); }
+        });
+      } catch (e) { rueckfall(e.message); }
+    }, function (e) { status('Plattform-Module nicht ladbar: ' + (e && e.message || e), true); });
+  }
+
+  // ---------- Testmodus: Beispieldaten im Format der echten Antworten ----------
+  var TEST = null;
+  function testDaten() {
+    var n = 0; function id() { n++; return ('A1B2C3D4E5F6' + ('00000000000000000000' + n.toString(16).toUpperCase()).slice(-20)); }
+    var T = { bm: {}, it: {}, kids: {}, doc: {} };
+    function item(titel, state, kinder) {
+      var i = id(); T.it[i] = { id: i, name: 'prd-R1132100000000-' + ('00000000' + n).slice(-8), title: titel, description: 'Beispielobjekt ' + titel, type: 'VPMReference', revision: 'A.1', state: state || 'IN_WORK',
+        owner: 'A. Bauer', organization: 'Company Name', collabspace: 'Common Space', created: '2026-09-14T08:12:00Z', modified: '2026-10-21T15:40:00Z', cestamp: 'C0FFEE' + n, isManufacturable: true,
+        'dseng:EnterpriseReference': { partNumber: 'P-' + (1000 + n) } };
+      T.kids[i] = (kinder || []).map(function (k, j) { return { id: id(), name: titel + '.' + (j + 1), type: 'VPMInstance', referencedObject: { source: '$3DSpace', type: 'VPMReference', identifier: k, relativePath: ENG + '/' + k } }; });
+      return i;
+    }
+    var sensor = item('Temperatursensor', 'RELEASED');
+    var schraube = item('Schraube M6x20', 'RELEASED');
+    var bremse = item('Bremsanlage vorn', 'IN_WORK', [item('Bremsscheibe', 'RELEASED'), item('Bremssattel', 'FROZEN'), sensor, schraube, schraube, schraube, schraube]);
+    var vorder = item('Vorderachse', 'IN_WORK', [bremse, item('Querlenker', 'IN_WORK'), item('Radlager', 'RELEASED')]);
+    var fahrwerk = item('Fahrwerk', 'IN_WORK', [vorder, item('Hinterachse', 'FROZEN', [item('Achsträger', 'FROZEN'), item('Stoßdämpfer', 'RELEASED')]), item('Lenkung', 'IN_WORK', [item('Lenkgetriebe', 'IN_WORK')])]);
+    var le = item('Leistungselektronik', 'IN_WORK', [item('Wechselrichter-Modul', 'IN_WORK', [item('Leiterplatte', 'IN_WORK'), item('Kühlkörper', 'RELEASED')]), sensor, schraube, schraube]);
+    var antrieb = item('Elektroantrieb', 'IN_WORK', [item('E-Motor', 'FROZEN', [le, item('Rotor', 'RELEASED'), item('Stator', 'RELEASED')]), item('Thermomanagement', 'IN_WORK', [item('Kühlmittelpumpe', 'OBSOLETE')])]);
+    var lose = item('Ladekabel Typ 2', 'RELEASED');
+    var d1 = id(); T.doc[d1] = { id: d1, type: 'Document', dataelements: { title: 'Lastenheft Elektroantrieb.pdf', name: 'DOC-0001', revision: '1.1', state: 'RELEASED', stateNLS: 'Released', description: 'Spezifikation' } };
+    function ref(typ, i) { return { referencedObject: { source: '$3DSpace', type: typ, identifier: i, relativePath: '/…/' + i } }; }
+    var unter = id(), haupt = id();
+    T.bm[unter] = { id: unter, title: 'Dokumente', description: 'Unterordner', owner: 'A. Bauer', created: '2026-09-14T08:00:00Z', modified: '2026-10-01T09:00:00Z', collabspace: 'Common Space', type: 'Workspace Vault', items: [ref('Document', d1)] };
+    T.bm[haupt] = { id: haupt, title: 'E-Fahrzeug-Review', description: 'Review-Ordner (Beispiel)', owner: 'A. Bauer', created: '2026-09-14T08:00:00Z', modified: '2026-10-21T15:40:00Z', collabspace: 'Common Space', type: 'Workspace Vault',
+      items: [ref('VPMReference', fahrwerk), ref('VPMReference', antrieb), ref('VPMReference', lose), ref('Workspace Vault', unter)] };
+    return T;
+  }
+  function testGet(pfad, p) {
+    if (!TEST) TEST = testDaten();
+    return new Promise(function (ja, nein) {
+      setTimeout(function () {
+        var skip = +p.$skip || 0, anz = +p.$top || 50, m;
+        function seite(a) { return a.slice(skip, skip + anz); }
+        if (pfad === BKS + '/search') {
+          var s = String(p.$searchStr || '*').toLowerCase().replace(/\*/g, '');
+          var alle = Object.keys(TEST.bm).map(function (k) { var b = TEST.bm[k]; return { id: b.id, title: b.title, description: b.description, owner: b.owner, type: b.type }; }).filter(function (b) { return !s || b.title.toLowerCase().indexOf(s) >= 0; });
+          return ja({ totalItems: alle.length, member: seite(alle) });
+        }
+        if ((m = pfad.match(/dsbks:Bookmark\/([^\/]+)$/))) {
+          var b = TEST.bm[m[1]]; if (!b) return nein(new Error('404 Bookmark nicht gefunden'));
+          var kopie = {}; Object.keys(b).forEach(function (k) { kopie[k] = b[k]; }); kopie.items = { totalItems: b.items.length, member: seite(b.items) };
+          return ja({ totalItems: 1, member: [kopie] });
+        }
+        if ((m = pfad.match(/dseng:EngItem\/([^\/]+)\/dseng:EngInstance$/))) { var kk = TEST.kids[m[1]] || []; return ja({ totalItems: kk.length, member: seite(kk) }); }
+        if ((m = pfad.match(/dseng:EngItem\/([^\/]+)$/))) { var it = TEST.it[m[1]]; return it ? ja({ totalItems: 1, member: [it] }) : nein(new Error('404 Objekt nicht gefunden')); }
+        if ((m = pfad.match(/documents\/([^\/]+)$/))) { var d = TEST.doc[m[1]]; return d ? ja({ success: true, data: [d] }) : nein(new Error('404')); }
+        if (pfad === PNO) return ja({ name: 'abauer', preferredcredentials: { role: { name: 'VPLMProjectLeader' }, organization: { name: 'Company Name' }, collabspace: { name: 'Common Space' } },
+          collabspaces: [{ name: 'Common Space', couples: [{ role: { name: 'VPLMProjectLeader' }, organization: { name: 'Company Name' } }, { role: { name: 'VPLMCreator' }, organization: { name: 'Company Name' } }] }] });
+        nein(new Error('Testmodus kennt diesen Aufruf nicht: ' + pfad));
+      }, 15);
+    });
+  }
+  function startTest() {
+    baueOberflaeche(document.body);
+    S.live = false; S.maxText = '1500'; S.viewerUrl = window.__3deep.basis + 'datenraum3d.html?v=65';
+    q('.td-mo').style.display = ''; q('.td-su').value = 'E-Fahrzeug';
+    ladeDarstellung();
+    kontexte().then(function (k) { S.ctx = k.bevorzugt; status('Testmodus (nicht im 3DDashboard). „Suchen“ und dann „Laden“ drücken.'); });
+  }
+
+  // ---------- Einstieg (vom Lader index.html aufgerufen) ----------
+  window.__3deep = { S: S, testGet: testGet, leseBookmark: leseBookmark, basis: '',
+    start: function (live, basis) {
+      if (S.root) return; this.basis = basis || '';
+      try { if (live) startLive(); else startTest(); }
+      catch (e) { var z = (window.widget && window.widget.body) || document.body; z.innerHTML = '<p style="padding:10px">3Deep konnte nicht starten: ' + esc(e.message) + '</p>'; }
+    } };
+})();
