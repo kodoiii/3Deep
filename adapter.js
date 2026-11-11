@@ -1,4 +1,4 @@
-/* 3Deep-Widget, Adapter Version 3.
+/* 3Deep-Widget, Adapter Version 4.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
@@ -9,7 +9,9 @@
   var ENG = '/resources/v1/modeler/dseng/dseng:EngItem';
   var DOC = '/resources/v1/modeler/documents';
   var PNO = '/resources/modeler/pno/person';
-  var SEITE = 50, PARALLEL = 6, MAXTIEFE = 12;
+  var SEITE = 50, PARALLEL = 8, MAXTIEFE = 12;
+  // Dokument-Beziehungen eines Objekts: Name der Beziehung -> Art in der Darstellung
+  var DOKREL = [{ rel: 'SpecificationDocument', art: 'spec' }, { rel: 'PLMDocConnection', art: 'praes' }, { rel: 'Reference Document', art: 'praes' }];
   var S = { live: false, WAF: null, space: '', tenant: '', ctx: '', root: null, log: [], roh: {}, bereit: false, wartend: null,
     frame: null, viewerUrl: '', max: 1500, laeuft: false, treffer: [] };
 
@@ -29,7 +31,7 @@
   // ---------- Zugriff auf die Plattform ----------
   function muster(pfad) { return pfad.replace(/\/[0-9A-Fa-f]{16,}(?=\/|$)/g, '/{ID}'); }
   function protokoll(pfad, params, ok, antwort, ms) {
-    var m = muster(pfad) + (params && params.$mask ? ' [' + params.$mask + ']' : '');
+    var m = muster(pfad) + (params && params.$mask ? ' [' + params.$mask + ']' : '') + (params && params.parentRelName ? ' [' + params.parentRelName + ']' : '');
     S.log.push({ zeit: new Date().toLocaleTimeString('de-DE'), aufruf: m, ok: ok, info: ok ? mitglieder(antwort).length + ' Einträge' : String(antwort), ms: ms });
     if (S.log.length > 400) S.log.shift();
     if (ok && !S.roh[m]) { var t = ''; try { t = JSON.stringify(antwort, null, 1); } catch (e) { t = String(antwort); } S.roh[m] = t.length > 6000 ? t.slice(0, 6000) + '\n… (gekürzt)' : t; }
@@ -110,6 +112,18 @@
     return hole(DOC + '/' + encodeURIComponent(id), {}).then(function (r) { var d = mitglieder(r)[0]; return d ? (d.dataelements || d) : null; });
   }
 
+  function dokumenteZu(id, rel) {
+    return hole(DOC + '/parentId/' + encodeURIComponent(id), { parentRelName: rel, parentDirection: 'from', $include: 'files' }).then(mitglieder);
+  }
+  function dokMeta(d, typ, id) {
+    var e = (d && d.dataelements) || d || {}, dateien = [];
+    try { (((d && d.relateddata) || {}).files || []).forEach(function (f) { var t = (f.dataelements || {}).title || f.title; if (t) dateien.push(t); }); } catch (x) { }
+    var meta = { Titel: e.title || '', Name: e.name || '', Revision: e.revision || '', Reifegrad: e.stateNLS || e.state || '', Beschreibung: e.description || '', Dateien: dateien.join(', '),
+      Besitzer: e.owner || '', Erstellt: datum(e.originated || e.created), 'Geändert': datum(e.modified), 'Collaborative Space': e.collabspace || '', Typ: e.typeNLS || (d && d.type) || typ || 'Document', ID: id };
+    Object.keys(meta).forEach(function (k) { if (meta[k] === '') delete meta[k]; });
+    return { meta: meta, name: e.title || dateien[0] || e.name || ((typ || 'Dokument') + ' ' + String(id).slice(-6)), state: e.state || e.stateNLS || '' };
+  }
+
   // ---------- Bookmark + Struktur lesen und in das 3Deep-JSON umsetzen ----------
   var ZUSTAND = { IN_WORK: 'In Work', FROZEN: 'Frozen', RELEASED: 'Released', OBSOLETE: 'Obsolete', PRIVATE: 'In Work' };
   function istProdukt(t) { return /VPMReference|EngItem|Physical ?Product/i.test(t || ''); }
@@ -120,17 +134,21 @@
     var types = {
       folder: { color: '#f5b942', size: 3, shape: 'box', label: 'Bookmark-Folder' },
       asm: { color: '#4f8cff', size: 3.36, label: 'Baugruppe' },
-      part: { color: '#2fc4ad', size: 1.96, label: 'Einzelteil' }
+      part: { color: '#2fc4ad', size: 1.96, label: 'Einzelteil' },
+      spec: { color: '#e5534b', size: 1.3, shape: 'book', label: 'Spezifikation' },
+      praes: { color: '#f08a3c', size: 0.9, label: 'Attachment' }
     };
     var relTypes = {
       struktur: { label: 'Strukturlink (enthält)', color: '#2f3f5c', directed: false },
-      bookmark: { label: 'liegt im Bookmark', color: '#b98a2a', directed: true }
+      inhalt: { label: 'Enthalten in Bookmark', color: '#b07a10', directed: true },
+      spec: { label: 'Spezifikationslink', color: '#b8403a', directed: true },
+      praes: { label: 'Attachment-Link', color: '#c76a1c', directed: true }
     };
     var palette = ['#e5534b', '#d67bd9', '#f08a3c', '#5fcf3f', '#ff4d6d', '#9aa5b1', '#7c6cf0'], pi = 0;
     function typFuer(name) {
       var key = 't_' + String(name || 'Objekt').replace(/[^A-Za-z0-9]+/g, '_');
       if (!types[key]) {
-        if (/Document/i.test(name)) types[key] = { color: '#e5534b', size: 1.3, shape: 'book', label: 'Dokument' };
+        if (/Document/i.test(name)) types[key] = { color: '#c9a227', size: 1.3, shape: 'book', label: 'Dokument (im Bookmark)' };
         else if (/Drawing/i.test(name)) types[key] = { color: '#9aa5b1', size: 0.9, label: 'Zeichnung' };
         else if (/Issue/i.test(name)) types[key] = { color: '#ff4d6d', size: 2.2, shape: 'torus', label: 'Issue' };
         else types[key] = { color: palette[pi++ % palette.length], size: 1.3, label: String(name || 'Objekt') };
@@ -147,7 +165,7 @@
       var k = inh.kopf || {};
       nodes.push({ id: 'bm:' + o.id, type: 'folder', name: k.title || k.name || o.titel || 'Bookmark',
         meta: { Titel: k.title || o.titel || '', Beschreibung: k.description || '', Besitzer: k.owner || '', Erstellt: datum(k.created), 'Geändert': datum(k.modified), 'Collaborative Space': k.collabspace || '', 'Objekte im Ordner': String(inh.items.length), ID: o.id } });
-      if (o.eltern) edges.push({ from: 'bm:' + o.id, to: 'bm:' + o.eltern, type: 'bookmark' });
+      if (o.eltern) edges.push({ from: 'bm:' + o.id, to: 'bm:' + o.eltern, type: 'inhalt' });
       inh.items.forEach(function (it) {
         var ro = (it && it.referencedObject) || it || {}, id = ro.identifier || ro.id, typ = ro.type || it.type || '';
         if (!id) return;
@@ -177,8 +195,36 @@
     }
     if (grenze || front.length) hinweise.push('Höchstzahl von ' + S.max + ' Objekten erreicht, die Struktur ist unvollständig.');
 
+    // 2b. Spezifikationen und Attachments der Objekte
+    var doks = {}, dokKanten = [], dokZahl = 0, dokGrenze = false;
+    if (S.mitDok) {
+      var ids = Object.keys(items), erledigt = 0, zaehler = {};
+      DOKREL.forEach(function (r) { zaehler[r.rel] = { ok: 0, fehler: 0 }; });
+      await pool(ids, PARALLEL, async function (id) {
+        for (var ri = 0; ri < DOKREL.length; ri++) {
+          var r = DOKREL[ri], z = zaehler[r.rel];
+          if (z.fehler >= 3 && !z.ok) continue;   // diese Beziehung kennt die Plattform nicht
+          var liste;
+          try { liste = await dokumenteZu(id, r.rel); z.ok++; } catch (e) { z.fehler++; continue; }
+          liste.forEach(function (d) {
+            var did = d && (d.id || d.identifier); if (!did) return;
+            if (!doks[did]) {
+              if (nodes.length + anzahl + andere.length + dokZahl >= S.max) { dokGrenze = true; return; }
+              doks[did] = { d: d, art: r.art }; dokZahl++;
+            } else if (r.art === 'spec') doks[did].art = 'spec';
+            dokKanten.push({ from: 'o:' + did, to: id, type: r.art, meta: { Beziehung: r.rel } });
+          });
+        }
+        erledigt++;
+        if (erledigt % 10 === 0 || erledigt === ids.length) status('Lese Spezifikationen und Attachments: ' + erledigt + ' von ' + ids.length + ' Objekten, ' + dokZahl + ' Dokumente …');
+      });
+      DOKREL.forEach(function (r) { var z = zaehler[r.rel]; if (z.fehler && !z.ok) hinweise.push('Beziehung „' + r.rel + '“ nicht lesbar.'); });
+      if (dokGrenze) hinweise.push('Höchstzahl von ' + S.max + ' Objekten erreicht, nicht alle Dokumente gezeigt.');
+    }
+
     // 3. übrige Bookmark-Inhalte (Dokumente usw.)
     await pool(andere, PARALLEL, async function (a) {
+      if (doks[a.id]) return;
       if (/Document/i.test(a.typ)) { try { a.det = await dokument(a.id); } catch (e) { } }
     });
 
@@ -198,7 +244,13 @@
       nodes.push(n);
       kinder.forEach(function (c) { var e = { from: c.id, to: id, type: 'struktur' }; if (c.n > 1) { e.label = '×' + c.n; e.meta = { Instanzen: String(c.n) }; } edges.push(e); });
     });
-    startProdukte.forEach(function (p) { if (items[p.id]) { var key = p.id + '>' + p.bm; if (!gesehen[key]) { gesehen[key] = 1; edges.push({ from: p.id, to: 'bm:' + p.bm, type: 'bookmark' }); } } });
+    startProdukte.forEach(function (p) { if (items[p.id]) { var key = p.id + '>' + p.bm; if (!gesehen[key]) { gesehen[key] = 1; edges.push({ from: p.id, to: 'bm:' + p.bm, type: 'inhalt' }); } } });
+    Object.keys(doks).forEach(function (did) {
+      var x = dokMeta(doks[did].d, 'Document', did), n = { id: 'o:' + did, type: doks[did].art, name: x.name, meta: x.meta };
+      if (x.state) n.state = ZUSTAND[String(x.state).toUpperCase().replace(/ /g, '_')] || x.state;
+      gesehen['o:' + did] = 1; nodes.push(n);
+    });
+    var kg = {}; dokKanten.forEach(function (k) { var s = k.from + '>' + k.to + '>' + k.type; if (doks[k.from.slice(2)] && !kg[s]) { kg[s] = 1; edges.push(k); } });
     andere.forEach(function (a) {
       var d = a.det || {}, id = 'o:' + a.id;
       if (!gesehen[id]) {
@@ -209,7 +261,7 @@
         if (d.state) n.state = ZUSTAND[d.state] || d.state;
         nodes.push(n);
       }
-      edges.push({ from: id, to: 'bm:' + a.bm, type: 'bookmark' });
+      edges.push({ from: id, to: 'bm:' + a.bm, type: 'inhalt' });
     });
     if (fehlend) hinweise.push(fehlend + ' Objekte ohne Detaildaten (keine Leserechte oder kein Engineering Item).');
     return { daten: { types: types, relTypes: relTypes, nodes: nodes, edges: edges, maxObjects: Math.max(500, nodes.length) }, hinweise: hinweise };
@@ -242,7 +294,7 @@
     if (S.laeuft) return;
     var b = S.treffer[+q('.td-tr').value]; if (!b) return;
     try {
-      S.laeuft = true; S.max = Math.max(10, parseInt(S.maxText, 10) || 1500);
+      S.laeuft = true; S.max = Math.max(10, parseInt(S.maxText, 10) || 1500); S.mitDok = q('.td-dk').checked;
       var t0 = Date.now(), erg = await leseBookmark(b.id, b.title || b.name || '');
       sende({ quelle: '3deep-adapter', daten: erg.daten, name: b.title || 'Bookmark', steuerung: 'game' });
       status(erg.daten.nodes.length + ' Objekte, ' + erg.daten.edges.length + ' Beziehungen aus „' + (b.title || b.id) + '“ in ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s.' + (erg.hinweise.length ? ' Hinweis: ' + erg.hinweise.join(' ') : ''), erg.hinweise.length > 0);
@@ -270,6 +322,7 @@
       '<button class="td-sb" style="' + knopf + '">Suchen</button>' +
       '<select class="td-tr" style="' + feld + ';max-width:260px;display:none"></select>' +
       '<button class="td-la" style="' + knopf + ';background:#2563d6;display:none">Laden</button>' +
+      '<label title="Spezifikationen und Attachments der Objekte mitlesen" style="display:flex;align-items:center;gap:4px"><input class="td-dk" type="checkbox" checked="checked" />Dokumente</label>' +
       '<select class="td-cx" title="Security Context" style="' + feld + ';max-width:240px;display:none"></select>' +
       '<input class="td-ci" type="text" placeholder="Security Context: Rolle.Organisation.Collaborative Space" title="Security Context von Hand" style="' + feld + ';width:330px;display:none" />' +
       '<button class="td-db" style="' + knopf + '">Diagnose</button>' +
@@ -379,6 +432,12 @@
     var le = item('Leistungselektronik', 'IN_WORK', [item('Wechselrichter-Modul', 'IN_WORK', [item('Leiterplatte', 'IN_WORK'), item('Kühlkörper', 'RELEASED')]), sensor, schraube, schraube]);
     var antrieb = item('Elektroantrieb', 'IN_WORK', [item('E-Motor', 'FROZEN', [le, item('Rotor', 'RELEASED'), item('Stator', 'RELEASED')]), item('Thermomanagement', 'IN_WORK', [item('Kühlmittelpumpe', 'OBSOLETE')])]);
     var lose = item('Ladekabel Typ 2', 'RELEASED');
+    T.rel = {};
+    function dok(titel, datei, state) { var i = id(); T.doc[i] = { id: i, type: 'Document', dataelements: { title: titel, name: 'DOC-' + n, revision: 'A.1', state: state || 'RELEASED', stateNLS: state === 'IN_WORK' ? 'In Work' : 'Released', description: 'Beispieldokument', owner: 'A. Bauer', modified: '2026-10-21T15:40:00Z' }, relateddata: { files: [{ id: id(), dataelements: { title: datei } }] } }; return i; }
+    function haenge(item, rel, d) { var k = item + '|' + rel; (T.rel[k] = T.rel[k] || []).push(d); }
+    var sp1 = dok('Spezifikation Leistungselektronik', 'Spez_LE.pdf'), sp2 = dok('Lastenheft Bremsanlage', 'LH_Bremse.pdf', 'IN_WORK'), sp3 = dok('Prüfvorschrift Temperatursensor', 'PV_Sensor.pdf');
+    haenge(le, 'SpecificationDocument', sp1); haenge(antrieb, 'SpecificationDocument', sp1); haenge(bremse, 'SpecificationDocument', sp2); haenge(sensor, 'SpecificationDocument', sp3);
+    haenge(fahrwerk, 'PLMDocConnection', dok('Präsentation Fahrwerk', 'Fahrwerk.pptx')); haenge(sensor, 'PLMDocConnection', dok('Datenblatt Sensor', 'Datenblatt.pdf')); haenge(le, 'PLMDocConnection', dok('Messprotokoll', 'Messung.xlsx'));
     var d1 = id(); T.doc[d1] = { id: d1, type: 'Document', dataelements: { title: 'Lastenheft Elektroantrieb.pdf', name: 'DOC-0001', revision: '1.1', state: 'RELEASED', stateNLS: 'Released', description: 'Spezifikation' } };
     function ref(typ, i) { return { referencedObject: { source: '$3DSpace', type: typ, identifier: i, relativePath: '/…/' + i } }; }
     var unter = id(), haupt = id();
@@ -405,6 +464,10 @@
         }
         if ((m = pfad.match(/dseng:EngItem\/([^\/]+)\/dseng:EngInstance$/))) { var kk = TEST.kids[m[1]] || []; return ja({ totalItems: kk.length, member: seite(kk) }); }
         if ((m = pfad.match(/dseng:EngItem\/([^\/]+)$/))) { var it = TEST.it[m[1]]; return it ? ja({ totalItems: 1, member: [it] }) : nein(new Error('404 Objekt nicht gefunden')); }
+        if ((m = pfad.match(/documents\/parentId\/([^\/]+)$/))) {
+          if (p.parentRelName === 'Reference Document') return nein(new Error('400 Relationship not supported'));
+          return ja({ success: true, data: (TEST.rel[m[1] + '|' + p.parentRelName] || []).map(function (i) { return TEST.doc[i]; }) });
+        }
         if ((m = pfad.match(/documents\/([^\/]+)$/))) { var d = TEST.doc[m[1]]; return d ? ja({ success: true, data: [d] }) : nein(new Error('404')); }
         if (pfad === PNO) return ja({ name: 'abauer', preferredcredentials: { role: { name: 'VPLMProjectLeader' }, organization: { name: 'Company Name' }, collabspace: { name: 'Common Space' } },
           collabspaces: [{ name: 'Common Space', couples: [{ role: { name: 'VPLMProjectLeader' }, organization: { name: 'Company Name' } }, { role: { name: 'VPLMCreator' }, organization: { name: 'Company Name' } }] }] });
