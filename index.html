@@ -1,56 +1,13 @@
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:widget="http://www.netvibes.com/ns/">
+<html lang="de">
 <head>
-  <title>3Deep</title>
-  <meta name="author" content="3Deep" />
-  <meta name="description" content="3Deep: Bookmark und Produktstruktur als 3D-Datenraum" />
-  <meta name="autoRefresh" content="0" />
-  <widget:preferences>
-    <widget:preference type="text" name="SecurityContext" label="Security Context (Rolle.Organisation.Collaborative Space), leer = automatisch" defaultValue="" />
-    <widget:preference type="text" name="MaxObjekte" label="Hoechstzahl Objekte" defaultValue="1500" />
-    <widget:preference type="text" name="ViewerUrl" label="Adresse von datenraum3d.html (leer = Standard)" defaultValue="" />
-  </widget:preferences>
-  <script type="text/javascript">//<![CDATA[
-    var DreiDeepLader = {
-      base: 'https://kodoiii.github.io/3Deep/',
-      version: '2',
-      fertig: false,
-      versuche: 0,
-      ziel: function () { return (typeof widget !== 'undefined' && widget.body) || document.body; },
-      lade: function (live) {
-        if (DreiDeepLader.fertig) { return; }
-        DreiDeepLader.fertig = true;
-        var basis = live ? DreiDeepLader.base : '';
-        var z = DreiDeepLader.ziel();
-        if (z) { z.innerHTML = '<p style="padding:10px;font:13px Arial,sans-serif">3Deep wird geladen ...</p>'; }
-        var s = document.createElement('script');
-        s.charset = 'utf-8';
-        s.src = basis + 'adapter.js?v=' + DreiDeepLader.version;
-        s.onload = function () { window.__3deep.start(live, basis); };
-        s.onerror = function () {
-          var z2 = DreiDeepLader.ziel();
-          if (z2) { z2.innerHTML = '<p style="padding:10px;font:13px Arial,sans-serif">adapter.js konnte nicht geladen werden von ' + (basis || 'diesem Ordner') + '</p>'; }
-        };
-        document.getElementsByTagName('head')[0].appendChild(s);
-      },
-      warte: function () {
-        if (DreiDeepLader.fertig) { return; }
-        if (typeof widget !== 'undefined' && widget.addEvent) {
-          widget.addEvent('onLoad', function () { DreiDeepLader.lade(true); });
-          setTimeout(function () { DreiDeepLader.lade(true); }, 3000);
-          return;
-        }
-        DreiDeepLader.versuche += 1;
-        var oben = false;
-        try { oben = window.top === window; } catch (e) { oben = false; }
-        if (oben && DreiDeepLader.versuche > 8 && document.body) { DreiDeepLader.lade(false); return; }
-        setTimeout(DreiDeepLader.warte, 150);
-      }
-    };
-    DreiDeepLader.warte();
-  //]]></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3Deep (Testmodus)</title>
 </head>
 <body>
-  <p>3Deep</p>
+<p style="padding:10px;font:13px Arial,sans-serif">3Deep wird geladen ...</p>
+<script src="adapter.js?v=3" charset="utf-8"></script>
+<script>window.__3deep.start(false, '');</script>
 </body>
 </html>

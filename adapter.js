@@ -1,4 +1,4 @@
-/* 3Deep-Widget, Adapter Version 2.
+/* 3Deep-Widget, Adapter Version 3.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
@@ -271,6 +271,7 @@
       '<select class="td-tr" style="' + feld + ';max-width:260px;display:none"></select>' +
       '<button class="td-la" style="' + knopf + ';background:#2563d6;display:none">Laden</button>' +
       '<select class="td-cx" title="Security Context" style="' + feld + ';max-width:240px;display:none"></select>' +
+      '<input class="td-ci" type="text" placeholder="Security Context: Rolle.Organisation.Collaborative Space" title="Security Context von Hand" style="' + feld + ';width:330px;display:none" />' +
       '<button class="td-db" style="' + knopf + '">Diagnose</button>' +
       '<span class="td-mo" style="padding:2px 8px;border-radius:10px;background:#5a4410;color:#ffd98a;display:none">Testmodus: Beispieldaten</span>' +
       '<span class="td-st" style="flex:1;min-width:200px;color:#c9d4e8">Starte …</span></div>' +
@@ -283,6 +284,7 @@
     q('.td-db').onclick = function () { var p = q('.td-dp'), d = q('.td-dx'), auf = p.style.display === 'none'; p.style.display = auf ? '' : 'none'; d.style.display = auf ? '' : 'none'; diagnose(); };
     q('.td-dc').onclick = function () { var d = q('.td-dx'); d.value = diagnoseText(); d.select(); try { document.execCommand('copy'); } catch (e) { } if (navigator.clipboard) navigator.clipboard.writeText(d.value).catch(function () { }); };
     q('.td-cx').onchange = function (e) { S.ctx = e.target.value; };
+    q('.td-ci').onchange = function (e) { S.ctx = e.target.value.trim(); try { localStorage.setItem('3deep_ctx', S.ctx); } catch (x) { } if (S.ctx) status('Security Context gesetzt. Bookmark-Namen eingeben und „Suchen“ drücken.'); };
     S.frame = q('.td-fr');
   }
   function ladeDarstellung() {
@@ -326,8 +328,13 @@
           var sel = q('.td-cx'); S.ctx = k.bevorzugt;
           sel.innerHTML = k.liste.map(function (c) { return '<option' + (c === k.bevorzugt ? ' selected="selected"' : '') + '>' + esc(c) + '</option>'; }).join('');
           if (k.liste.length > 1) sel.style.display = '';
-          status(S.ctx ? 'Bereit. Bookmark-Namen eingeben und „Suchen“ drücken.' : 'Kein Security Context gefunden. Bitte in den Widget-Einstellungen eintragen.', !S.ctx);
-        }, function (e) { status('Security Context nicht ermittelbar (' + e.message + '). Bitte in den Widget-Einstellungen eintragen.', true); }).then(diagnose);
+          if (!S.ctx) ctxVonHand('Kein Security Context gefunden.'); else status('Bereit. Bookmark-Namen eingeben und „Suchen“ drücken.');
+        }, function (e) { ctxVonHand('Security Context nicht ermittelbar (' + e.message + ').'); }).then(diagnose);
+      }
+      function ctxVonHand(grund) {
+        var f = q('.td-ci'), alt = ''; try { alt = localStorage.getItem('3deep_ctx') || ''; } catch (x) { }
+        f.style.display = ''; f.value = alt; S.ctx = alt;
+        status(alt ? 'Bereit (Security Context aus der letzten Sitzung). Bookmark-Namen eingeben und „Suchen“ drücken.' : grund + ' Bitte oben im Feld „Security Context“ eintragen (Rolle.Organisation.Collaborative Space), dann suchen.', !alt);
       }
       function rueckfall(grund) {
         if (erledigt) return;
