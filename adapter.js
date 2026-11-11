@@ -1,4 +1,4 @@
-/* 3Deep-Widget, Adapter Version 4.
+/* 3Deep-Widget, Adapter Version 5.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
@@ -9,6 +9,9 @@
   var ENG = '/resources/v1/modeler/dseng/dseng:EngItem';
   var DOC = '/resources/v1/modeler/documents';
   var PNO = '/resources/modeler/pno/person';
+  var ISS = '/resources/v1/modeler/dsiss/issue';
+  var TSK = '/resources/v1/modeler/tasks';
+  var MAXISSUES = 400;
   var SEITE = 50, PARALLEL = 8, MAXTIEFE = 12;
   // Dokument-Beziehungen eines Objekts: Name der Beziehung -> Art in der Darstellung
   var DOKREL = [{ rel: 'SpecificationDocument', art: 'spec' }, { rel: 'PLMDocConnection', art: 'praes' }, { rel: 'Reference Document', art: 'praes' }];
@@ -115,6 +118,33 @@
   function dokumenteZu(id, rel) {
     return hole(DOC + '/parentId/' + encodeURIComponent(id), { parentRelName: rel, parentDirection: 'from', $include: 'files' }).then(mitglieder);
   }
+  function issueIds() {
+    var alles = [];
+    function seite(skip) {
+      return hole(ISS + '/search', { $searchStr: '*', $top: 100, $skip: skip }).then(function (r) {
+        var m = mitglieder(r).map(function (x) { return x.identifier || x.id; }).filter(Boolean); alles = alles.concat(m);
+        return (m.length < 100 || alles.length >= MAXISSUES) ? alles.slice(0, MAXISSUES) : seite(skip + m.length);
+      });
+    }
+    return seite(0);
+  }
+  function issueDetail(id) { return hole(ISS + '/' + encodeURIComponent(id), {}).then(function (r) { return mitglieder(r)[0] || (r && r.id ? r : null); }); }
+  var taskInclude = true;
+  function taskAufruf(pfad, params) {
+    var p = {}; Object.keys(params || {}).forEach(function (k) { p[k] = params[k]; });
+    if (!taskInclude) return hole(pfad, p).then(mitglieder);
+    var mit = {}; Object.keys(p).forEach(function (k) { mit[k] = p[k]; }); mit.$include = 'all';
+    return hole(pfad, mit).then(mitglieder, function () { taskInclude = false; return hole(pfad, p).then(mitglieder); });
+  }
+  function refIds(liste) {
+    var ids = [];
+    (Array.isArray(liste) ? liste : []).forEach(function (x) {
+      if (!x) return;
+      if (Array.isArray(x.elements)) { ids = ids.concat(refIds(x.elements)); return; }
+      var i = x.identifier || x.id || (x.dataelements || {}).objectId; if (i) ids.push(i);
+    });
+    return ids;
+  }
   function dokMeta(d, typ, id) {
     var e = (d && d.dataelements) || d || {}, dateien = [];
     try { (((d && d.relateddata) || {}).files || []).forEach(function (f) { var t = (f.dataelements || {}).title || f.title; if (t) dateien.push(t); }); } catch (x) { }
@@ -135,12 +165,18 @@
       folder: { color: '#f5b942', size: 3, shape: 'box', label: 'Bookmark-Folder' },
       asm: { color: '#4f8cff', size: 3.36, label: 'Baugruppe' },
       part: { color: '#2fc4ad', size: 1.96, label: 'Einzelteil' },
+      issue: { color: '#ff4d6d', size: 2.2, shape: 'torus', label: 'Issue' },
+      task: { color: '#f2c400', size: 1.4, shape: 'dodecahedron', label: 'Aufgabe' },
+      person: { color: '#5fcf3f', size: 2.2, shape: 'bust', label: 'Person' },
       spec: { color: '#e5534b', size: 1.3, shape: 'book', label: 'Spezifikation' },
       praes: { color: '#f08a3c', size: 0.9, label: 'Attachment' }
     };
     var relTypes = {
       struktur: { label: 'Strukturlink (enthält)', color: '#2f3f5c', directed: false },
       inhalt: { label: 'Enthalten in Bookmark', color: '#b07a10', directed: true },
+      betrifft: { label: 'Issue betrifft', color: '#c2255c', directed: true },
+      aufgabe: { label: 'Aufgabe für', color: '#b59500', directed: true },
+      zuweisung: { label: 'Zugewiesen an', color: '#3a8f2f', directed: true },
       spec: { label: 'Spezifikationslink', color: '#b8403a', directed: true },
       praes: { label: 'Attachment-Link', color: '#c76a1c', directed: true }
     };
@@ -222,6 +258,81 @@
       if (dokGrenze) hinweise.push('Höchstzahl von ' + S.max + ' Objekten erreicht, nicht alle Dokumente gezeigt.');
     }
 
+    // 2c. Issues, Aufgaben und Personen
+    var exKnoten = [], exKanten = [], pers = {}, issues = {}, tasks = {};
+    if (S.mitIssues) {
+      var ziel = {};   // Plattform-ID -> Knoten-ID in der Darstellung
+      ordner.forEach(function (o) { ziel[o.id] = 'bm:' + o.id; });
+      Object.keys(items).forEach(function (id) { ziel[id] = id; });
+      Object.keys(doks).forEach(function (id) { ziel[id] = 'o:' + id; });
+      andere.forEach(function (a) { if (!ziel[a.id]) ziel[a.id] = 'o:' + a.id; });
+      var frei2 = function () { return nodes.length + anzahl + andere.length + dokZahl + exKnoten.length < S.max; }, exGrenze = false;
+      var person = function (login, voll, mail) {
+        login = String(login || '').trim(); if (!login) return null;
+        if (!pers[login]) {
+          if (!frei2()) { exGrenze = true; return null; }
+          pers[login] = { id: 'p:' + login, type: 'person', name: voll || login, meta: { Benutzername: login } }; exKnoten.push(pers[login]);
+        }
+        if (voll && pers[login].name === login) pers[login].name = voll;
+        if (mail) pers[login].meta['E-Mail'] = mail;
+        return pers[login].id;
+      };
+      var IZ = { CREATE: 'To do', DRAFT: 'To do', ASSIGN: 'To do', 'TO DO': 'To do', ACTIVE: 'In Work', 'IN WORK': 'In Work', 'IN PROGRESS': 'In Work', REVIEW: 'Frozen', 'IN APPROVAL': 'Frozen', 'IN REVIEW': 'Frozen', APPROVED: 'Released', CLOSE: 'Released', CLOSED: 'Released', COMPLETE: 'Released', COMPLETED: 'Released', REJECTED: 'Obsolete' };
+      var zustand = function (s) { return IZ[String(s || '').toUpperCase().replace(/_/g, ' ')] || s || ''; };
+      // Issues: alle sichtbaren Issues lesen und die behalten, die ein geladenes Objekt betreffen
+      try {
+        status('Suche Issues …');
+        var iIds = await issueIds(), iFertig = 0;
+        await pool(iIds, PARALLEL, async function (iid) {
+          var d = null; try { d = await issueDetail(iid); } catch (e) { }
+          iFertig++; if (iFertig % 10 === 0 || iFertig === iIds.length) status('Prüfe Issues: ' + iFertig + ' von ' + iIds.length + ' …');
+          if (!d) return;
+          var bez = refIds(d.affectedItems).concat(refIds(d.contexts)).filter(function (x) { return ziel[x]; });
+          if (!bez.length || issues[iid]) return;
+          if (!frei2()) { exGrenze = true; return; }
+          var m = d.members || {}, meta = { Titel: d.title || '', Name: d.name || '', Status: d.state || '', 'Priorität': d.Priority || d.priority || '', Beschreibung: d.description || '', Besitzer: d.owner || '',
+            Zugewiesen: (m.assignees || []).join(', '), 'Geplantes Ende': datum(d['Estimated End Date']), 'Tatsächliches Ende': datum(d['Actual End Date']), 'Collaborative Space': d.collabSpace || d.collabspace || '', Typ: d.type || 'Issue', ID: iid };
+          Object.keys(meta).forEach(function (k) { if (meta[k] === '') delete meta[k]; });
+          var n = { id: 'i:' + iid, type: 'issue', name: d.title || d.name || ('Issue ' + iid.slice(-6)), meta: meta }; if (d.state) n.state = zustand(d.state);
+          issues[iid] = n; exKnoten.push(n); ziel[iid] = n.id;
+          var doppelt = {}; bez.forEach(function (x) { if (!doppelt[x]) { doppelt[x] = 1; exKanten.push({ from: n.id, to: ziel[x], type: 'betrifft' }); } });
+          (m.assignees || []).forEach(function (a) { var p = person(a); if (p) exKanten.push({ from: n.id, to: p, type: 'zuweisung' }); });
+        });
+        if (iIds.length >= MAXISSUES) hinweise.push('Nur die ersten ' + MAXISSUES + ' Issues der Plattform geprüft.');
+      } catch (e) { hinweise.push('Issues nicht lesbar (' + e.message + ').'); }
+      // Aufgaben: eigene Aufgaben des Benutzers und Aufgaben mit einem geladenen Objekt als Kontext
+      var nimmTask = function (t) {
+        if (!t) return;
+        var tid = t.id || t.identifier, e = t.dataelements || {}, rd = t.relateddata || {}; if (!tid) return;
+        var bez = refIds(rd.scopes).concat(refIds(rd.references)).concat(refIds(rd.deliverables)).concat(refIds(rd.contents)).filter(function (x) { return ziel[x]; });
+        if (t._scope && ziel[t._scope]) bez.push(t._scope);
+        if (!bez.length) return;
+        if (!tasks[tid]) {
+          if (!frei2()) { exGrenze = true; return; }
+          var meta = { Titel: e.title || '', Status: e.state || e.status || '', Beschreibung: e.description || '', 'Fällig am': datum(e.dueDate), 'Geplanter Start': datum(e.estimatedStartDate), 'Fertig in %': e.percentComplete != null && e.percentComplete !== '' ? e.percentComplete + ' %' : '',
+            Projekt: e.project || '', Erstellt: datum(e.originated), 'Geändert': datum(e.modified), Typ: e.nlsType || t.type || 'Task', ID: tid };
+          Object.keys(meta).forEach(function (k) { if (meta[k] === '') delete meta[k]; });
+          var n = { id: 't:' + tid, type: 'task', name: e.title || ('Aufgabe ' + String(tid).slice(-6)), meta: meta, _k: {} }; if (e.state) n.state = zustand(e.state);
+          tasks[tid] = n; exKnoten.push(n);
+          (Array.isArray(rd.assignees) ? rd.assignees : []).forEach(function (a) {
+            var ad = (a && a.dataelements) || {}, voll = ad.fullname || [ad.firstname, ad.lastname].filter(Boolean).join(' ');
+            var p = person(ad.name || a.name || voll, voll, ad.email); if (p) exKanten.push({ from: n.id, to: p, type: 'zuweisung' });
+          });
+        }
+        bez.forEach(function (x) { if (!tasks[tid]._k[x]) { tasks[tid]._k[x] = 1; exKanten.push({ from: tasks[tid].id, to: ziel[x], type: 'aufgabe' }); } });
+      };
+      try { status('Lese Aufgaben …'); (await taskAufruf(TSK, { showProjectTasks: 'true' })).forEach(nimmTask); } catch (e) { hinweise.push('Eigene Aufgaben nicht lesbar (' + e.message + ').'); }
+      var sIds = ordner.map(function (o) { return o.id; }).concat(Object.keys(items)).concat(Object.keys(issues)), sOk = 0, sFehler = 0, sFertig = 0;
+      await pool(sIds, PARALLEL, async function (sid) {
+        if (sFehler >= 3 && !sOk) return;
+        try { var l = await taskAufruf(TSK + '/scopeId/' + encodeURIComponent(sid), {}); sOk++; l.forEach(function (t) { if (t) { t._scope = sid; nimmTask(t); } }); } catch (e) { sFehler++; }
+        sFertig++; if (sFertig % 10 === 0 || sFertig === sIds.length) status('Lese Aufgaben: ' + sFertig + ' von ' + sIds.length + ' Objekten, ' + Object.keys(tasks).length + ' Aufgaben …');
+      });
+      if (sFehler && !sOk) hinweise.push('Aufgaben je Objekt nicht lesbar.');
+      if (exGrenze) hinweise.push('Höchstzahl von ' + S.max + ' Objekten erreicht, nicht alle Issues/Aufgaben gezeigt.');
+      exKnoten.forEach(function (n) { delete n._k; });
+    }
+
     // 3. übrige Bookmark-Inhalte (Dokumente usw.)
     await pool(andere, PARALLEL, async function (a) {
       if (doks[a.id]) return;
@@ -263,6 +374,9 @@
       }
       edges.push({ from: id, to: 'bm:' + a.bm, type: 'inhalt' });
     });
+    exKnoten.forEach(function (n) { nodes.push(n); });
+    var vorhanden = {}; nodes.forEach(function (n) { vorhanden[n.id] = 1; });
+    exKanten.forEach(function (k) { if (vorhanden[k.from] && vorhanden[k.to]) edges.push(k); });
     if (fehlend) hinweise.push(fehlend + ' Objekte ohne Detaildaten (keine Leserechte oder kein Engineering Item).');
     return { daten: { types: types, relTypes: relTypes, nodes: nodes, edges: edges, maxObjects: Math.max(500, nodes.length) }, hinweise: hinweise };
   }
@@ -294,7 +408,7 @@
     if (S.laeuft) return;
     var b = S.treffer[+q('.td-tr').value]; if (!b) return;
     try {
-      S.laeuft = true; S.max = Math.max(10, parseInt(S.maxText, 10) || 1500); S.mitDok = q('.td-dk').checked;
+      S.laeuft = true; S.max = Math.max(10, parseInt(S.maxText, 10) || 1500); S.mitDok = q('.td-dk').checked; S.mitIssues = q('.td-ia').checked;
       var t0 = Date.now(), erg = await leseBookmark(b.id, b.title || b.name || '');
       sende({ quelle: '3deep-adapter', daten: erg.daten, name: b.title || 'Bookmark', steuerung: 'game' });
       status(erg.daten.nodes.length + ' Objekte, ' + erg.daten.edges.length + ' Beziehungen aus „' + (b.title || b.id) + '“ in ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s.' + (erg.hinweise.length ? ' Hinweis: ' + erg.hinweise.join(' ') : ''), erg.hinweise.length > 0);
@@ -323,6 +437,7 @@
       '<select class="td-tr" style="' + feld + ';max-width:260px;display:none"></select>' +
       '<button class="td-la" style="' + knopf + ';background:#2563d6;display:none">Laden</button>' +
       '<label title="Spezifikationen und Attachments der Objekte mitlesen" style="display:flex;align-items:center;gap:4px"><input class="td-dk" type="checkbox" checked="checked" />Dokumente</label>' +
+      '<label title="Issues, Aufgaben und Personen zu den Objekten mitlesen" style="display:flex;align-items:center;gap:4px"><input class="td-ia" type="checkbox" checked="checked" />Issues/Aufgaben</label>' +
       '<select class="td-cx" title="Security Context" style="' + feld + ';max-width:240px;display:none"></select>' +
       '<input class="td-ci" type="text" placeholder="Security Context: Rolle.Organisation.Collaborative Space" title="Security Context von Hand" style="' + feld + ';width:330px;display:none" />' +
       '<button class="td-db" style="' + knopf + '">Diagnose</button>' +
@@ -439,6 +554,19 @@
     haenge(le, 'SpecificationDocument', sp1); haenge(antrieb, 'SpecificationDocument', sp1); haenge(bremse, 'SpecificationDocument', sp2); haenge(sensor, 'SpecificationDocument', sp3);
     haenge(fahrwerk, 'PLMDocConnection', dok('Präsentation Fahrwerk', 'Fahrwerk.pptx')); haenge(sensor, 'PLMDocConnection', dok('Datenblatt Sensor', 'Datenblatt.pdf')); haenge(le, 'PLMDocConnection', dok('Messprotokoll', 'Messung.xlsx'));
     var d1 = id(); T.doc[d1] = { id: d1, type: 'Document', dataelements: { title: 'Lastenheft Elektroantrieb.pdf', name: 'DOC-0001', revision: '1.1', state: 'RELEASED', stateNLS: 'Released', description: 'Spezifikation' } };
+    T.iss = {}; T.tsk = {}; T.scope = {};
+    function eref(typ, i) { return { source: '$3DSpace', type: typ, identifier: i, relativePath: '/…/' + i }; }
+    function issue(titel, state, betrifft, wer) { var i = id(); T.iss[i] = { id: i, type: 'Issue', name: 'ISS-' + n, title: titel, description: 'Beispiel-Issue', state: state, owner: 'abauer', organization: 'Company Name', collabSpace: 'Common Space', Priority: 'High', 'Estimated End Date': '2026-12-01T00:00:00Z',
+      members: { coowners: [], assignees: wer, contributors: [] }, affectedItems: [{ elements: betrifft.map(function (b) { return eref('VPMReference', b); }) }], contexts: [] }; return i; }
+    function aufgabe(titel, state, scope, wer, refs) { var i = id(); T.tsk[i] = { id: i, type: 'Task', identifier: i, dataelements: { title: titel, state: state, description: 'Beispielaufgabe', dueDate: '2026-11-30T00:00:00Z', percentComplete: '40', originated: '2026-10-01T08:00:00Z' },
+      relateddata: { assignees: wer.map(function (w) { return { id: id(), type: 'Person', dataelements: { name: w[0], fullname: w[1], email: w[0] + '@example.com' } }; }), scopes: scope ? [{ id: scope, type: 'x', identifier: scope }] : [], references: (refs || []).map(function (r) { return { id: r, identifier: r }; }), deliverables: [] } };
+      if (scope) (T.scope[scope] = T.scope[scope] || []).push(i); return i; }
+    var is1 = issue('Sensor liefert bei Kälte falsche Werte', 'In Work', [sensor, le], ['cmeier']);
+    issue('Issue ohne Bezug zum Bookmark', 'Create', ['FFFF0000FFFF0000FFFF0000FFFF0000'], ['cmeier']);
+    aufgabe('Sensor neu qualifizieren', 'Active', is1, [['abauer', 'A. Bauer']]);
+    aufgabe('Bremssattel-Zeichnung prüfen', 'Create', bremse, [['cmeier', 'C. Meier'], ['abauer', 'A. Bauer']]);
+    T.meine = aufgabe('Lastenheft überarbeiten', 'Review', null, [['abauer', 'A. Bauer']], [sp2]);
+    aufgabe('Aufgabe ohne Bezug', 'Create', null, [['abauer', 'A. Bauer']]);
     function ref(typ, i) { return { referencedObject: { source: '$3DSpace', type: typ, identifier: i, relativePath: '/…/' + i } }; }
     var unter = id(), haupt = id();
     T.bm[unter] = { id: unter, title: 'Dokumente', description: 'Unterordner', owner: 'A. Bauer', created: '2026-09-14T08:00:00Z', modified: '2026-10-01T09:00:00Z', collabspace: 'Common Space', type: 'Workspace Vault', items: [ref('Document', d1)] };
@@ -446,6 +574,7 @@
       items: [ref('VPMReference', fahrwerk), ref('VPMReference', antrieb), ref('VPMReference', lose), ref('Workspace Vault', unter)] };
     return T;
   }
+  function eref2(typ, i) { return { source: '$3DSpace', type: typ, identifier: i, relativePath: '/…/' + i }; }
   function testGet(pfad, p) {
     if (!TEST) TEST = testDaten();
     return new Promise(function (ja, nein) {
@@ -464,6 +593,10 @@
         }
         if ((m = pfad.match(/dseng:EngItem\/([^\/]+)\/dseng:EngInstance$/))) { var kk = TEST.kids[m[1]] || []; return ja({ totalItems: kk.length, member: seite(kk) }); }
         if ((m = pfad.match(/dseng:EngItem\/([^\/]+)$/))) { var it = TEST.it[m[1]]; return it ? ja({ totalItems: 1, member: [it] }) : nein(new Error('404 Objekt nicht gefunden')); }
+        if (pfad === ISS + '/search') { var ii = Object.keys(TEST.iss).map(function (k) { return eref2('Issue', k); }); return ja({ totalItems: ii.length, member: seite(ii) }); }
+        if ((m = pfad.match(/dsiss\/issue\/([^\/]+)$/))) { return TEST.iss[m[1]] ? ja({ totalItems: 1, member: [TEST.iss[m[1]]] }) : nein(new Error('404')); }
+        if (pfad === TSK) { return ja({ success: true, data: Object.keys(TEST.tsk).filter(function (k) { return !(TEST.tsk[k].relateddata.scopes || []).length; }).map(function (k) { return TEST.tsk[k]; }) }); }
+        if ((m = pfad.match(/tasks\/scopeId\/([^\/]+)$/))) { return ja({ success: true, data: (TEST.scope[m[1]] || []).map(function (k) { return TEST.tsk[k]; }) }); }
         if ((m = pfad.match(/documents\/parentId\/([^\/]+)$/))) {
           if (p.parentRelName === 'Reference Document') return nein(new Error('400 Relationship not supported'));
           return ja({ success: true, data: (TEST.rel[m[1] + '|' + p.parentRelName] || []).map(function (i) { return TEST.doc[i]; }) });
