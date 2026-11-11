@@ -1,4 +1,4 @@
-/* 3Deep-Widget, Adapter Version 5.
+/* 3Deep-Widget, Adapter Version 6.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
@@ -16,7 +16,7 @@
   // Dokument-Beziehungen eines Objekts: Name der Beziehung -> Art in der Darstellung
   var DOKREL = [{ rel: 'SpecificationDocument', art: 'spec' }, { rel: 'PLMDocConnection', art: 'praes' }, { rel: 'Reference Document', art: 'praes' }];
   var S = { live: false, WAF: null, space: '', tenant: '', ctx: '', root: null, log: [], roh: {}, bereit: false, wartend: null,
-    frame: null, viewerUrl: '', max: 1500, laeuft: false, treffer: [] };
+    frame: null, viewerUrl: '', max: 1500, laeuft: false, treffer: [], dateien: {}, csrf: '' };
 
   // ---------- kleine Helfer ----------
   function q(sel) { return S.root.querySelector(sel); }
@@ -40,16 +40,17 @@
     if (ok && !S.roh[m]) { var t = ''; try { t = JSON.stringify(antwort, null, 1); } catch (e) { t = String(antwort); } S.roh[m] = t.length > 6000 ? t.slice(0, 6000) + '\n… (gekürzt)' : t; }
     if (!ok && !S.roh['FEHLER ' + m]) S.roh['FEHLER ' + m] = String(antwort);
   }
-  function liveGet(pfad, params, ohneKontext) {
+  function liveGet(pfad, params, ohneKontext, methode, kopfPlus) {
     var qs = Object.keys(params).map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]); }).join('&');
     var kopf = { Accept: 'application/json' };
     if (!ohneKontext && S.ctx) kopf.SecurityContext = S.ctx;
+    Object.keys(kopfPlus || {}).forEach(function (k) { kopf[k] = kopfPlus[k]; });
     return new Promise(function (ja, nein) {
       var fertig = false;
       function fehler(e, d) { if (fertig) return; fertig = true; var t = (d && (d.message || d.error)) || (e && e.message) || String(e); nein(new Error(t)); }
       try {
         S.WAF.authenticatedRequest(S.space + pfad + (qs ? '?' + qs : ''), {
-          method: 'GET', type: 'json', headers: kopf, timeout: 30000,
+          method: methode || 'GET', type: 'json', headers: kopf, timeout: 30000,
           onComplete: function (d) { if (fertig) return; fertig = true; if (typeof d === 'string') { try { d = d ? JSON.parse(d) : {}; } catch (e) { } } ja(d || {}); },
           onFailure: fehler, onPassportError: function (e) { fehler(e || new Error('Anmeldung (3DPassport) fehlgeschlagen')); },
           onTimeout: function () { fehler(new Error('keine Antwort nach 30 s')); }
@@ -57,10 +58,10 @@
       } catch (e) { fehler(e); }
     });
   }
-  function hole(pfad, params, ohneKontext) {
+  function hole(pfad, params, ohneKontext, methode, kopfPlus) {
     var p = {}; Object.keys(params || {}).forEach(function (k) { p[k] = params[k]; });
     if (S.tenant) p.tenant = S.tenant;
-    var t0 = Date.now(), anfrage = S.live ? liveGet(pfad, p, ohneKontext) : testGet(pfad, p);
+    var t0 = Date.now(), anfrage = S.live ? liveGet(pfad, p, ohneKontext, methode, kopfPlus) : testGet(pfad, p, methode);
     return anfrage.then(function (d) { protokoll(pfad, p, true, d, Date.now() - t0); return d; },
       function (e) { protokoll(pfad, p, false, e.message || e, Date.now() - t0); throw new Error(muster(pfad).split('/').slice(-2).join('/') + ': ' + (e.message || e)); });
   }
@@ -74,6 +75,37 @@
       });
     }
     return seite(0);
+  }
+
+  // ---------- Datei eines Dokuments herunterladen ----------
+  function csrf(neu) {
+    if (S.csrf && !neu) return Promise.resolve(S.csrf);
+    return hole('/resources/v1/application/CSRF', {}, true).then(function (r) {
+      S.csrf = (r && r.csrf && r.csrf.value) || ''; if (!S.csrf) throw new Error('kein CSRF-Token erhalten'); return S.csrf;
+    });
+  }
+  function ticket(docId, mehrere, zipName, zweiter) {
+    return csrf(zweiter).then(function (tok) {
+      var p = mehrere ? { zipFiles: 'true', zipName: zipName } : {};
+      return hole(DOC + '/' + encodeURIComponent(docId) + '/files/DownloadTicket', p, false, 'PUT', { ENO_CSRF_TOKEN: tok, 'Content-Type': 'application/json' });
+    }).then(function (r) {
+      var d = mitglieder(r)[0] || {}, e = d.dataelements || d;
+      if (!e.ticketURL) throw new Error('keine Download-Adresse erhalten');
+      return { url: e.ticketURL, name: e.fileName || (mehrere ? zipName : '') };
+    }, function (e) { if (!zweiter) return ticket(docId, mehrere, zipName, true); throw e; });
+  }
+  async function download(knotenId, name) {
+    var docId = String(knotenId || '').replace(/^o:/, ''), info = S.dateien[docId];
+    if (!docId || !info) { status('Zu diesem Objekt ist keine Datei bekannt.', true); return; }
+    if (!info.n) { status('„' + (name || docId) + '“ enthält keine Datei.', true); return; }
+    try {
+      status('Fordere Download für „' + (name || docId) + '“ an …');
+      var t = await ticket(docId, info.n > 1, String(name || 'Dokument').replace(/[^A-Za-z0-9._ -]+/g, '_').slice(0, 60) + '.zip');
+      var st = q('.td-st'); st.style.color = '#c9d4e8'; st.innerHTML = 'Datei bereit: <a class="td-dl" target="_blank" rel="noopener" style="color:#8ec1ff">' + esc(t.name || 'herunterladen') + '</a> (startet der Download nicht von selbst, hier klicken)';
+      var a = q('.td-dl'); a.href = t.url; if (t.name) a.setAttribute('download', t.name);
+      try { a.click(); } catch (e) { }
+    } catch (e) { status('Download fehlgeschlagen: ' + e.message, true); }
+    diagnose();
   }
 
   // ---------- die einzelnen Abfragen ----------
@@ -146,8 +178,9 @@
     return ids;
   }
   function dokMeta(d, typ, id) {
-    var e = (d && d.dataelements) || d || {}, dateien = [];
-    try { (((d && d.relateddata) || {}).files || []).forEach(function (f) { var t = (f.dataelements || {}).title || f.title; if (t) dateien.push(t); }); } catch (x) { }
+    var e = (d && d.dataelements) || d || {}, dateien = [], anz = 0;
+    try { (((d && d.relateddata) || {}).files || []).forEach(function (f) { anz++; var t = (f.dataelements || {}).title || f.title; if (t) dateien.push(t); }); } catch (x) { }
+    S.dateien[id] = { n: (d && d.relateddata && d.relateddata.files) ? anz : 1 };
     var meta = { Titel: e.title || '', Name: e.name || '', Revision: e.revision || '', Reifegrad: e.stateNLS || e.state || '', Beschreibung: e.description || '', Dateien: dateien.join(', '),
       Besitzer: e.owner || '', Erstellt: datum(e.originated || e.created), 'Geändert': datum(e.modified), 'Collaborative Space': e.collabspace || '', Typ: e.typeNLS || (d && d.type) || typ || 'Document', ID: id };
     Object.keys(meta).forEach(function (k) { if (meta[k] === '') delete meta[k]; });
@@ -357,7 +390,7 @@
     });
     startProdukte.forEach(function (p) { if (items[p.id]) { var key = p.id + '>' + p.bm; if (!gesehen[key]) { gesehen[key] = 1; edges.push({ from: p.id, to: 'bm:' + p.bm, type: 'inhalt' }); } } });
     Object.keys(doks).forEach(function (did) {
-      var x = dokMeta(doks[did].d, 'Document', did), n = { id: 'o:' + did, type: doks[did].art, name: x.name, meta: x.meta };
+      var x = dokMeta(doks[did].d, 'Document', did), n = { id: 'o:' + did, type: doks[did].art, name: x.name, meta: x.meta, dl: true };
       if (x.state) n.state = ZUSTAND[String(x.state).toUpperCase().replace(/ /g, '_')] || x.state;
       gesehen['o:' + did] = 1; nodes.push(n);
     });
@@ -369,6 +402,7 @@
         var meta = { Titel: d.title || a.titel || '', Name: d.name || '', Revision: d.revision || '', Reifegrad: d.stateNLS || d.state || '', Beschreibung: d.description || '', Typ: a.typ, ID: a.id };
         Object.keys(meta).forEach(function (k) { if (meta[k] === '') delete meta[k]; });
         var n = { id: id, type: typFuer(a.typ), name: d.title || a.titel || d.name || (a.typ + ' ' + a.id.slice(-6)), meta: meta };
+        if (/Document/i.test(a.typ)) { n.dl = true; if (!S.dateien[a.id]) S.dateien[a.id] = { n: 1 }; }
         if (d.state) n.state = ZUSTAND[d.state] || d.state;
         nodes.push(n);
       }
@@ -388,6 +422,7 @@
   }
   window.addEventListener('message', function (e) {
     var m = e.data; if (!m || m.quelle !== '3deep' || !S.frame || e.source !== S.frame.contentWindow) return;
+    if (m.download) { download(m.download, m.name); return; }
     if (m.bereit) { S.bereit = true; if (S.wartend) sende(S.wartend); else sende({ quelle: '3deep-adapter', steuerung: 'game' }); }
   });
 
@@ -479,7 +514,7 @@
     S.live = true;
     S.maxText = w.getValue('MaxObjekte');
     var basis = w.getValue('ViewerUrl') || '';
-    if (!basis) basis = window.__3deep.basis + 'datenraum3d.html?v=65';
+    if (!basis) basis = window.__3deep.basis + 'datenraum3d.html?v=66';
     S.viewerUrl = basis; ladeDarstellung();
     status('Lade Plattform-Module …');
     window.require(['DS/WAFData/WAFData', 'DS/i3DXCompassServices/i3DXCompassServices'], function (WAFData, Compass) {
@@ -575,7 +610,7 @@
     return T;
   }
   function eref2(typ, i) { return { source: '$3DSpace', type: typ, identifier: i, relativePath: '/…/' + i }; }
-  function testGet(pfad, p) {
+  function testGet(pfad, p, methode) {
     if (!TEST) TEST = testDaten();
     return new Promise(function (ja, nein) {
       setTimeout(function () {
@@ -593,6 +628,12 @@
         }
         if ((m = pfad.match(/dseng:EngItem\/([^\/]+)\/dseng:EngInstance$/))) { var kk = TEST.kids[m[1]] || []; return ja({ totalItems: kk.length, member: seite(kk) }); }
         if ((m = pfad.match(/dseng:EngItem\/([^\/]+)$/))) { var it = TEST.it[m[1]]; return it ? ja({ totalItems: 1, member: [it] }) : nein(new Error('404 Objekt nicht gefunden')); }
+        if (pfad === '/resources/v1/application/CSRF') return ja({ success: true, csrf: { name: 'ENO_CSRF_TOKEN', value: 'TEST-TOKEN' } });
+        if ((m = pfad.match(/documents\/([^\/]+)\/files\/DownloadTicket$/))) {
+          if (methode !== 'PUT') return nein(new Error('405'));
+          var dd = TEST.doc[m[1]], fn = (((dd || {}).relateddata || {}).files || [{}])[0].dataelements; fn = (fn && fn.title) || 'Beispiel.txt';
+          return ja({ success: true, data: [{ id: m[1], dataelements: { ticketURL: 'data:text/plain;charset=utf-8,' + encodeURIComponent('Beispieldatei aus dem 3Deep-Testmodus: ' + fn), fileName: fn + '.txt' } }] });
+        }
         if (pfad === ISS + '/search') { var ii = Object.keys(TEST.iss).map(function (k) { return eref2('Issue', k); }); return ja({ totalItems: ii.length, member: seite(ii) }); }
         if ((m = pfad.match(/dsiss\/issue\/([^\/]+)$/))) { return TEST.iss[m[1]] ? ja({ totalItems: 1, member: [TEST.iss[m[1]]] }) : nein(new Error('404')); }
         if (pfad === TSK) { return ja({ success: true, data: Object.keys(TEST.tsk).filter(function (k) { return !(TEST.tsk[k].relateddata.scopes || []).length; }).map(function (k) { return TEST.tsk[k]; }) }); }
@@ -610,7 +651,7 @@
   }
   function startTest() {
     baueOberflaeche(document.body);
-    S.live = false; S.maxText = '1500'; S.viewerUrl = window.__3deep.basis + 'datenraum3d.html?v=65';
+    S.live = false; S.maxText = '1500'; S.viewerUrl = window.__3deep.basis + 'datenraum3d.html?v=66';
     q('.td-mo').style.display = ''; q('.td-su').value = 'E-Fahrzeug';
     ladeDarstellung();
     kontexte().then(function (k) { S.ctx = k.bevorzugt; status('Testmodus (nicht im 3DDashboard). „Suchen“ und dann „Laden“ drücken.'); });
