@@ -1,4 +1,4 @@
-/* 3Deep-Widget, Adapter Version 20.
+/* 3Deep-Widget, Adapter Version 21.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
@@ -30,7 +30,7 @@
   var zqVar = 0;
   var DOKREL = [{ rel: 'SpecificationDocument', art: 'spec' }, { rel: 'PLMDocConnection', art: 'praes' }, { rel: 'Reference Document', art: 'praes' }];
   var S = { live: false, WAF: null, space: '', tenant: '', ctx: '', root: null, log: [], roh: {}, bereit: false, wartend: null,
-    frame: null, viewerUrl: '', max: 1500, issCache: {}, issCacheZ: { treffer: 0, neu: 0 }, issCacheMs: 10 * 60 * 1000, laeuft: false, treffer: [], dateien: {}, csrf: '', cad: {}, cadTyp: {}, cadInfo: [] };
+    frame: null, viewerUrl: '', max: 1500, issCache: {}, issCacheZ: { treffer: 0, neu: 0 }, issCacheMs: 10 * 60 * 1000, zuletzt: null, nachladen: false, neuVerzug: 500, neuLaden: 0, laeuft: false, treffer: [], dateien: {}, csrf: '', cad: {}, cadTyp: {}, cadInfo: [] };
 
   // ---------- kleine Helfer ----------
   function q(sel) { return S.root.querySelector(sel); }
@@ -950,6 +950,7 @@
   async function laden(sonder) {
     if (S.laeuft) return;
     var b = sonder ? sonder.drop : S.treffer[+q('.td-tr').value]; if (!b) return;
+    S.zuletzt = b; S.nachladen = false;
     try {
       S.laeuft = true; S.max = Math.max(10, parseInt(S.maxText, 10) || 1500); S.mitDok = q('.td-dk').checked; S.mitIssues = q('.td-ia').checked; S.mitExpand = q('.td-ex').checked; S.mitZone = q('.td-zq').checked; S.mitZeich = q('.td-zg').checked;
       S.aufrufe = 0; S.issCacheZ = { treffer: 0, neu: 0 };
@@ -960,10 +961,19 @@
       else erg = await leseBookmark(b.id, b.title || b.name || '');
       sende({ quelle: '3deep-adapter', daten: erg.daten, name: b.title || 'Daten', steuerung: 'game' });
       status(erg.daten.nodes.length + ' Objekte, ' + erg.daten.edges.length + ' Beziehungen aus „' + (b.title || b.id) + '“ in ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s, ' + S.aufrufe + ' Abfragen.' + (erg.hinweise.length ? ' Hinweis: ' + erg.hinweise.join(' ') : ''), erg.hinweise.length > 0);
-    } catch (e) { status('Laden fehlgeschlagen: ' + e.message + ' (Details unter „Diagnose“)', true); } finally { S.laeuft = false; diagnose(); }
+    } catch (e) { status('Laden fehlgeschlagen: ' + e.message + ' (Details unter „Diagnose“)', true); } finally { S.laeuft = false; diagnose(); if (S.nachladen) haekchenGeaendert(); }
+  }
+  // Häkchen nach dem Laden geändert: zuletzt geladenes Objekt (Drop oder Bookmark) mit den neuen Einstellungen neu laden.
+  // Mehrere Häkchen kurz hintereinander = ein Ladevorgang; während eines Ladevorgangs wird danach einmal nachgeladen.
+  function haekchenGeaendert() {
+    if (!S.zuletzt) return;
+    if (S.laeuft) { S.nachladen = true; status('Einstellung geändert – wird nach dem laufenden Laden neu geladen …'); return; }
+    S.nachladen = false; clearTimeout(S.neuUhr);
+    status('Einstellung geändert – lade „' + (S.zuletzt.title || S.zuletzt.id) + '“ neu …');
+    S.neuUhr = setTimeout(function () { if (S.laeuft) { S.nachladen = true; return; } S.neuLaden = (S.neuLaden || 0) + 1; laden({ drop: S.zuletzt }); }, S.neuVerzug);
   }
   function diagnoseText() {
-    var z = ['3Deep-Widget Diagnose (Adapter 20, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
+    var z = ['3Deep-Widget Diagnose (Adapter 21, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
       '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-') + (S.ctxZahl ? ' (automatisch gewählt, ' + S.ctxZahl + ' verfügbar)' : ''), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), ''];
     if (S.wurzelInfo) { z.push('', 'Produkte im Bookmark:'); S.wurzelInfo.forEach(function (w) { z.push('  ' + w); }); }
     if (S.issueInfo) {
@@ -1025,6 +1035,7 @@
     q('.td-ir').onclick = function () { var n = Object.keys(S.issCache).length; issueCacheLeeren(); status('Issue-Zwischenspeicher geleert (' + n + ' Issues). Beim nächsten Laden werden alle Issues neu gelesen.'); diagnose(); };
     q('.td-dc').onclick = function () { var d = q('.td-dx'); d.value = diagnoseText(); d.select(); try { document.execCommand('copy'); } catch (e) { } if (navigator.clipboard) navigator.clipboard.writeText(d.value).catch(function () { }); };
     q('.td-ci').onchange = function (e) { S.ctx = e.target.value.trim(); try { localStorage.setItem('3deep_ctx', S.ctx); } catch (x) { } if (S.ctx) status('Security Context gesetzt. Bookmark-Namen eingeben und „Suchen“ drücken.'); };
+    ['.td-ex', '.td-zq', '.td-dk', '.td-zg', '.td-ia'].forEach(function (k) { q(k).addEventListener('change', haekchenGeaendert); });
     S.frame = q('.td-fr');
     dropEinrichten(q('.td-dz'));
   }
