@@ -1,45 +1,43 @@
-# 3Deep-Widget: Einrichtung
+# 3Deep-Widget: Einrichtung und Bedienung (Stand Adapter Version 10)
 
-Diese Dateien gehören zusammen und müssen im selben Ordner liegen:
+## Dateien (alle im selben Ordner auf GitHub Pages)
+- `widget.html` – kleiner Lader für das 3DDashboard. **Diese Adresse** trägt man im Dashboard ein.
+- `adapter.js` – Suchleiste und Adapter für die 3DEXPERIENCE-Schnittstellen.
+- `datenraum3d.html` – die 3D-Darstellung (Version 66, auch lokal per Doppelklick nutzbar).
+- `index.html` – Testseite für den Browser mit Beispieldaten (nicht fürs Dashboard).
 
-- `index.html` – Testseite für den Browser (Beispieldaten)
-- `widget.html` und `widget2.html` – zwei Varianten des kleinen Laders für das 3DDashboard (feste Adresse `https://kodoiii.github.io/3Deep/`)
-- `adapter.js` – Suchleiste und Adapter für die 3DEXPERIENCE-Schnittstellen
-- `datenraum3d.html` – die 3D-Darstellung (Version 65, unverändert auch lokal nutzbar)
+Hosting: Repository `kodoiii/3Deep` (öffentlich), Adresse `https://kodoiii.github.io/3Deep/`.
 
-## 1. Auf GitHub Pages legen
-1. Auf github.com ein neues **öffentliches** Repository anlegen, z. B. `3deep-widget`. (Die Dateien enthalten nur das Programm, keine Daten.)
-2. „Add file → Upload files“: alle Dateien hochladen, „Commit changes“.
-3. „Settings → Pages“: Source „Deploy from a branch“, Branch `main`, Ordner `/ (root)`, „Save“.
-4. Nach ein bis zwei Minuten ist das Widget unter `https://DEIN-NAME.github.io/3deep-widget/` erreichbar.
+## Neue Version einspielen
+1. Im Repository „Add file → Upload files“, geänderte Dateien hochladen, „Commit changes“.
+2. Zwei bis drei Minuten warten.
+3. `https://kodoiii.github.io/3Deep/` öffnen: Der Testmodus muss laufen.
+4. Im Dashboard das Widget mit dem Kreispfeil neu laden. Die erste Zeile der Diagnose nennt die Adapter-Version.
 
-## 2. Erst im Browser prüfen (Testmodus)
-Die Adresse direkt im Browser öffnen. Oben steht „Testmodus: Beispieldaten“. „Suchen“, dann „Laden“ drücken: Es erscheint ein kleiner Beispiel-Bookmark mit 28 Objekten. Damit ist klar, dass Hosting und Darstellung funktionieren.
+## Ins 3DDashboard aufnehmen
+- Schnell: App „Run your App“ auf ein Tab ziehen, `https://kodoiii.github.io/3Deep/widget.html` eintragen, „Run“.
+- Dauerhaft (Admin): Platform Management → Members → Additional Apps → Create Additional App, Typ Widget, Source code URL wie oben. (Noch nicht ausprobiert.)
 
-## 3. Ins 3DDashboard aufnehmen
-1. Im Dashboard die App **„Run Your App“** auf ein Tab ziehen.
-2. In den Einstellungen des Widgets die Adresse `https://kodoiii.github.io/3Deep/widget.html` eintragen (klappt das nicht: `widget2.html`) und speichern.
-3. Falls nach vertrauenswürdig gefragt wird: zustimmen. Falls „Run Your App“ fehlt, braucht es den Plattform-Administrator (Platform Management → Additional Apps bzw. Rolle für eigene Widgets).
+## Bedienung
+- Auswahl „Bookmark | Issue“: womit begonnen wird. Namen oder Titel eingeben, „Suchen“, Treffer wählen, „Laden“.
+- Häkchen „Dokumente“: Spezifikationen und Attachments mitlesen. „Issues/Aufgaben“: Issues, Aufgaben, Personen mitlesen.
+- Häkchen „Struktur“ (nur bei Start mit Issue): Produktstruktur der betroffenen Objekte abwärts.
+- Knopf „Alle Issues“: Entwicklerfunktion für Performancetests, Zeitlimit 180 s.
+- Dokument anklicken → „⬇ Datei herunterladen“.
+- In die 3D-Ansicht klicken, dann W A S D bewegen, Maus umsehen, Leertaste/E hoch, Q/C runter, Umschalt schneller, Esc gibt die Maus frei.
+- Auswahlfeld mit dem Security Context, falls mehrere vorhanden sind.
 
-## 4. Benutzen
-1. Bookmark-Namen (oder Teil davon) eingeben, „Suchen“.
-2. Treffer wählen, „Laden“. Gelesen werden der Ordnerinhalt und die Produktstruktur aller Produkte darin, abwärts.
-3. In die 3D-Ansicht klicken, dann **W A S D** bewegen, Maus umsehen, Leertaste/E hoch, Q/C runter, Umschalt schneller, Esc gibt die Maus frei.
-4. Das Auswahlfeld rechts neben „Laden“ wählt den Security Context, wenn du mehrere hast.
-
-Einstellungen des Widgets (Zahnrad/Preferences): Security Context fest vorgeben, Höchstzahl Objekte (Standard 1500), Adresse der Darstellung.
-
-## 5. Wenn etwas nicht geht
-Knopf **„Diagnose“** → „Kopieren“. Das Protokoll zeigt jeden Aufruf mit Ergebnis und die erste Antwort je Aufrufart. Vertrauliches prüfen und das Protokoll an Claude geben; damit lässt sich der Adapter gezielt anpassen.
+## Wenn etwas nicht geht
+„Diagnose“ → „Kopieren“. Oben steht die Zusammenfassung, darunter alle Aufrufe und die erste Antwort je Aufrufart. Vor dem Weitergeben auf Vertrauliches prüfen.
 
 ## Stand der Schnittstellen
 | Punkt | Stand |
 |---|---|
-| Anmeldung über `DS/WAFData`, 3DSpace-Adresse über `i3DXCompassServices`, Kopfzeile `SecurityContext`, Parameter `tenant` | von anderen Widgets auf Cloud-Tenants bestätigt, hier nur simuliert getestet |
-| Bookmark-Suche `dsbks:Bookmark/search`, Inhalt mit `$mask=dsbks:BksMask.Items2` | dokumentiert, Antwortformat aus fremdem Widget übernommen |
-| Engineering Item `dseng:EngItem/{ID}` (Maske `dsmveng:EngItemMask.Details`), Kinder über `dseng:EngInstance` (Maske `dsmveng:EngInstanceMask.Details`) | dokumentiert und von anderen auf einem Cloud-Tenant bestätigt |
-| Security Context automatisch aus `pno/person` | vermutet (Feldnamen können abweichen; sonst von Hand eintragen) |
-| Unterordner eines Bookmarks | vermutet: werden gelesen, wenn sie als Inhalt geliefert werden |
-| Dokumenttitel über `documents/{ID}` | vermutet, Fehler werden übergangen |
-| WASD-Maussteuerung (Mauszeiger einfangen) im Dashboard | offen; falls gesperrt: Maus ziehen zum Umsehen |
-| SpaceMouse im Dashboard | vermutlich gesperrt (wie im Artifact) |
+| Laden in „Run your App“, Anmeldung, Security Context automatisch | auf der Plattform bestätigt |
+| Bookmark, Produktstruktur | auf der Plattform bestätigt |
+| Spezifikationen und Attachments an Teilen, Download | auf der Plattform bestätigt |
+| Issues mit betroffenen Objekten (`$fields`), Personen aus Zuweisungen | auf der Plattform bestätigt |
+| Start bei einem Issue, Attachments direkt am Issue, „Alle Issues“ | nur mit Beispieldaten getestet |
+| Aufgaben mit Bezug zu einem Objekt | Abruf läuft, noch kein Treffer gesehen |
+| Unterordner eines Bookmarks | vermutet |
+| WASD mit eingefangener Maus, SpaceMouse im Dashboard | offen |
