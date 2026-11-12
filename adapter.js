@@ -1,4 +1,4 @@
-/* 3Deep-Widget, Adapter Version 26.
+/* 3Deep-Widget, Adapter Version 27.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
@@ -518,6 +518,45 @@
     });
     return gef;
   }
+  // Issues zu geladenen Objekten (Adapter 27): getecosystem eingehend statt alle Issues lesen. Gesichert per Mitschnitt (Relational Explorer am Issue):
+  // Links issue_to (Issue -> betroffenes Objekt), assignee_to/contributor_to (Personen), v6_annexdoc_to (Anhang); am Objekt eingehend issue_from und
+  // issue_context_from (Namen aus getrelationcount gesichert). Aufrufform direction "in" mit mehreren items wie bei den Zeichnungen (Adapter 26, bestätigt).
+  var ECOTAX_DOC = 'types/DOCUMENTS/Document', ECOTAX_DRW = 'types/PLMEntity/PLMReference/PLMCoreRepReference/VPMRepReference/Drawing';
+  async function issuesEco(objs, info) {
+    var tok = ''; try { tok = await csrf(); } catch (e) { }
+    var kopf = { 'Content-Type': 'application/json' }; if (tok) kopf.ENO_CSRF_TOKEN = tok;
+    var menge = {}, gef = {}; objs.forEach(function (o) { menge[o.id] = 1; });
+    function frage(paket) {
+      return hole(ECO, { xrequestedwith: 'xmlhttprequest' }, false, 'POST', kopf, { widgetId: '3Deep', label: '3Deep-' + Date.now(), relations: ['issue_from', 'issue_context_from', 'issue_to', 'issue_context_to'], lang: 'en',
+        computeWithInstances: false, allRelationsMode: true, publicationsMode: false, attributesForView: ['ds6w:label', 'ds6w:status', 'ds6w:type', 'ds6w:modified', 'ds6w:responsible', 'ds6w:identifier'],
+        ghostMode: false, excludedRelations: ['v6_structure_roots_from'], direction: 'in', restrictedMode: false, responseMode: 'ObjectsAndLinks', redirectQueryToSGI: true,
+        items: paket.map(function (o) { return { id: o.id, relTypesTaxonomies: o.tax, serviceId: '3DSpace', type: o.typ }; }) }).then(function (r) {
+        var obj = {}; ((r && r.objects) || []).forEach(function (x) { if (x && x.id) obj[x.id] = x; });
+        ((r && r.links) || []).forEach(function (l) {
+          if (!l || !/^issue(_context)?_(from|to)$/i.test(l.type || '')) return;
+          [[l.source, l.target], [l.target, l.source]].forEach(function (pq) {
+            var z = obj[pq[0]];
+            if (!menge[pq[1]] || menge[pq[0]] || !(z ? /Issue/i.test(z.type || '') : true)) return;
+            var g = gef[pq[0]] = gef[pq[0]] || { ids: [], kontext: [], titel: (z && (z['ds6w:label'] || z.name)) || '' };
+            var feld = /context/i.test(l.type) ? g.kontext : g.ids; if (feld.indexOf(pq[1]) < 0) feld.push(pq[1]);
+            info.links++;
+          });
+        });
+      });
+    }
+    var pakete = []; for (var i = 0; i < objs.length; i += 25) pakete.push(objs.slice(i, i + 25));
+    await pool(pakete, 3, async function (pk) {
+      if (info.fehler >= 3 && !info.ok) return;
+      try { await frage(pk); info.ok += pk.length; info.pakete++; }
+      catch (e) {
+        if (!info.fehlerText) info.fehlerText = e.message;
+        if (pk.length === 1) { info.fehler++; return; }
+        info.einzeln = true;
+        await pool(pk, PARALLEL, async function (o) { if (info.fehler >= 3 && !info.ok) return; try { await frage([o]); info.ok++; } catch (e2) { info.fehler++; } });
+      }
+    });
+    return gef;
+  }
   function zeichnungenXcad(id) {
     var art = /Product/i.test(S.cadTyp[id] || '') ? 'Product' : 'Part';
     return hole(XCAD + 'dsxcad:' + art + '/' + encodeURIComponent(id) + '/dsxcad:Drawing', {}).then(function (r) {
@@ -798,21 +837,34 @@
       var zustand = function (s) { return IZ[String(s || '').toUpperCase().replace(/_/g, ' ')] || s || ''; };
       // Issues: alle sichtbaren Issues lesen und die behalten, die ein geladenes Objekt betreffen
       try {
-        if (!qIss) status('Suche Issues …');
-        var iIds = qIss ? Object.keys(vorIssues) : await issueIds(), iFertig = 0;
-        S.issueInfo = { gefunden: iIds.length, gelesen: 0, mitBezug: [], alle: [] };
+        var iIds, iFertig = 0, ecoIss = null, ie = { ok: 0, fehler: 0, pakete: 0, einzeln: false, fehlerText: '', links: 0 }, iWeg = 'Start bei Issue/Person';
+        if (!qIss) {
+          status('Suche Issues zu den geladenen Objekten …');
+          var eObjs = [];
+          ordner.forEach(function (o) { if (ECOTAX[o.typ]) eObjs.push({ id: o.id, typ: o.typ, tax: ECOTAX[o.typ] }); });
+          Object.keys(items).forEach(function (id) { eObjs.push({ id: id, typ: (S.cadTyp[id] && !/dsxcad/i.test(S.cadTyp[id])) ? S.cadTyp[id] : 'VPMReference', tax: ECOTAX_PRD }); });
+          Object.keys(doks).forEach(function (id) { eObjs.push({ id: id, typ: 'Document', tax: ECOTAX_DOC }); });
+          Object.keys(zeich).forEach(function (id) { eObjs.push({ id: id, typ: 'Drawing', tax: ECOTAX_DRW }); });
+          if (!S.testOhneIssEco) { try { ecoIss = await issuesEco(eObjs, ie); } catch (e) { ie.fehler++; if (!ie.fehlerText) ie.fehlerText = e.message; ecoIss = null; } }
+          if (ecoIss && ie.ok && !ie.fehler) { iIds = Object.keys(ecoIss); iWeg = 'getecosystem (eingehend)'; }
+          else { status('Suche Issues …'); iIds = await issueIds(); iWeg = S.testOhneIssEco ? 'alle Issues (getecosystem abgeschaltet)' : 'alle Issues (Rückfall, getecosystem nicht vollständig)'; ecoIss = null; }
+        } else iIds = Object.keys(vorIssues);
+        S.issueInfo = { gefunden: iIds.length, gelesen: 0, mitBezug: [], alle: [], weg: iWeg, eco: (qIss || S.testOhneIssEco) ? '' : 'getecosystem (eingehend): ' + ie.ok + ' Objekte geprüft' + (ie.pakete ? ' in ' + ie.pakete + ' Paketen' : '') + (ie.einzeln ? ', teils einzeln' : '') + ', ' + ie.fehler + ' Fehler, ' + ie.links + ' Verweise' + (ie.fehlerText ? ' (erster Fehler: ' + ie.fehlerText + ')' : '') };
         await pool(iIds, PARALLEL, async function (iid) {
           var d = null; if (qIss) d = vorIssues[iid]; else { try { d = await issueDetail(iid); } catch (e) { } }
           iFertig++; if (!qIss && (iFertig % 10 === 0 || iFertig === iIds.length)) status('Prüfe Issues: ' + iFertig + ' von ' + iIds.length + ' …');
+          var eg = ecoIss && ecoIss[iid];
+          if (!d && eg) { d = { title: eg.titel || ('Issue ' + iid.slice(-6)), id: iid }; S.issueInfo.ohneDetail = (S.issueInfo.ohneDetail || 0) + 1; }   // Details nicht lesbar: Issue trotzdem zeigen (Angaben aus getecosystem)
           if (!d) return;
           S.issueInfo.gelesen++;
           var roh = refIds(d.affectedItems).concat(refIds(d.contexts));
+          if (eg) eg.ids.concat(eg.kontext).forEach(function (x) { if (roh.indexOf(x) < 0) roh.push(x); });
           S.issueInfo.alle.push({ t: d.title || d.name || iid, d: d['Creation Date'] || '' });
-          if (roh.length || d.affectedItems || d.contexts) {
+          if (roh.length) {
             S.issueInfo.mitBezug.push({ t: d.title || d.name || iid, d: d['Creation Date'] || '', ids: roh, treffer: roh.filter(function (x) { return ziel[x]; }).length });
             if (!S.roh['Beispiel: Issue mit betroffenen Objekten']) { var bt = JSON.stringify(d, sauber, 1); S.roh['Beispiel: Issue mit betroffenen Objekten'] = bt.length > 5000 ? bt.slice(0, 5000) + '\n… (gekürzt)' : bt; }
           }
-          var bez = refIds(d.affectedItems).concat(refIds(d.contexts)).filter(function (x) { return ziel[x]; });
+          var bez = roh.filter(function (x) { return ziel[x]; });
           if (!bez.length) bez = alleIds(d).filter(function (x) { return ziel[x] && x !== iid; });
           if ((!bez.length && !qIss) || issues[iid]) return;
           if (!frei2()) { exGrenze = true; return; }
@@ -826,7 +878,7 @@
           var ro = S.personRollen[iid] || [];
           if (pId && ro.length && ro.indexOf('Zugewiesen') < 0) exKanten.push({ from: n.id, to: pId, type: 'zuweisung', label: ro.join(', '), meta: { Rolle: ro.join(', ') } });
         });
-        if (iIds.length >= MAXISSUES) hinweise.push('Nur die ersten ' + iIds.length + ' Issues der Plattform gelesen.');
+        if (!ecoIss && !qIss && iIds.length >= MAXISSUES) hinweise.push('Nur die ersten ' + iIds.length + ' Issues der Plattform gelesen.');
         // Attachments direkt am Issue
         if (S.mitDok || qIss) {
           var aIds = Object.keys(issues), aFertig = 0, aOk = 0, aFehler = 0;
@@ -1045,7 +1097,7 @@
     S.zuletzt = b; S.nachladen = false;
     try {
       S.laeuft = true; S.max = Math.max(10, parseInt(S.maxText, 10) || 1500); S.mitDok = q('.td-dk').checked; S.mitIssues = q('.td-ia').checked; S.mitExpand = q('.td-ex').checked; S.mitZone = q('.td-zq').checked; S.mitZeich = q('.td-zg').checked;
-      S.aufrufe = 0; S.issCacheZ = { treffer: 0, neu: 0 };
+      S.aufrufe = 0; S.issCacheZ = { treffer: 0, neu: 0 }; S.issueInfo = null;   // Issue-Abschnitt der Diagnose gilt nur für dieses Laden (Adapter 27)
       var t0 = Date.now(), erg;
       if (b.art === 'issue') erg = await leseBookmark(null, null, { issues: [b.id], struktur: false });
       else if (b.art === 'produkt') erg = await leseBookmark(null, null, { produkte: [b.id], struktur: true });
@@ -1065,12 +1117,15 @@
     S.neuUhr = setTimeout(function () { if (S.laeuft) { S.nachladen = true; return; } S.neuLaden = (S.neuLaden || 0) + 1; laden({ drop: S.zuletzt }); }, S.neuVerzug);
   }
   function diagnoseText() {
-    var z = ['3Deep-Widget Diagnose (Adapter 26, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
+    var z = ['3Deep-Widget Diagnose (Adapter 27, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
       '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-') + (S.ctxZahl ? ' (automatisch gewählt, ' + S.ctxZahl + ' verfügbar)' : ''), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), ''];
     if (S.wurzelInfo) { z.push('', 'Produkte im Bookmark:'); S.wurzelInfo.forEach(function (w) { z.push('  ' + w); }); }
     if (S.issueInfo) {
       var ii = S.issueInfo, nachDatum = function (a, b) { return String(b.d).localeCompare(String(a.d)); };
-      z.push('', 'Issue-Abruf mit $fields=' + (ISSFELDER[issVar] || '(ohne)'), 'Issues: ' + ii.gefunden + ' gefunden, ' + ii.gelesen + ' gelesen, ' + ii.mitBezug.length + ' mit betroffenen Objekten');
+      var mitTreffer = ii.mitBezug.filter(function (x) { return x.treffer > 0; }).length;
+      z.push('', 'Issues (dieses Laden):', '  Weg: ' + (ii.weg || '-'));
+      if (ii.eco) z.push('  ' + ii.eco);
+      z.push('  Issue-Abruf mit $fields=' + (ISSFELDER[issVar] || '(ohne)'), '  Issues: ' + ii.gefunden + ' gefunden, ' + ii.gelesen + ' gelesen' + (ii.ohneDetail ? ' (' + ii.ohneDetail + ' ohne Details, nur aus getecosystem)' : '') + ', ' + ii.mitBezug.length + ' mit betroffenen Objekten, davon ' + mitTreffer + ' mit Treffer im Bookmark');
       z.push('Neueste Issues:'); ii.alle.slice().sort(nachDatum).slice(0, 8).forEach(function (x) { z.push('  ' + x.d + '  ' + x.t); });
       z.push('Issues mit betroffenen Objekten (neueste zuerst, höchstens 40):');
       ii.mitBezug.slice().sort(nachDatum).slice(0, 40).forEach(function (x) { z.push('  ' + x.d + '  ' + x.t + '  -> ' + (x.ids.join(', ') || '(keine ID erkannt)') + '  Treffer im Bookmark: ' + x.treffer); });
@@ -1274,6 +1329,15 @@
         var skip = +p.$skip || 0, anz = +p.$top || 50, m;
         function seite(a) { return a.slice(skip, skip + anz); }
         if (pfad === ECO) {   // Test (Adapter 25): getecosystem für Bookmark-Ordner; S.testEcoFehler = Fehler, S.testWieReal = Unter-Unterordner „Prüfberichte“ nur hier
+          if ((body || {}).direction === 'in' && ((body || {}).relations || []).indexOf('issue_from') >= 0) {   // Test (Adapter 27): Issues eingehend; S.testEcoIssFehler = Fehler
+            if (S.testEcoIssFehler) return nein(new Error('500 Internal Server Error'));
+            var io2 = [], il2 = [], inr = {}; ((body || {}).items || []).forEach(function (it) { io2.push({ id: it.id, type: it.type }); inr[it.id] = 1; });
+            Object.keys(TEST.iss).forEach(function (k) { var x = TEST.iss[k], drin = false;
+              refIds(x.affectedItems).forEach(function (b) { if (inr[b]) { drin = true; il2.push({ type: 'issue_to', source: k, target: b, direction: 'out' }); } });
+              refIds(x.contexts).forEach(function (b) { if (inr[b]) { drin = true; il2.push({ type: 'issue_context_to', source: k, target: b, direction: 'out' }); } });
+              if (drin) io2.push({ id: k, type: 'Issue', name: x.title, 'ds6w:label': x.title, 'ds6w:identifier': x.name }); });
+            return ja({ objects: io2, links: il2, info: [{ domain: '3DSpace', success: true }] });
+          }
           if ((body || {}).direction === 'in') {   // Test (Adapter 26): Zeichnungen per Zeigerbeziehung; S.testEcoZeichnung = Zeichnung „_Bremsanlage“ (V5) an Bremsanlage vorn
             if (S.testEcoZeichFehler) return nein(new Error('500 Internal Server Error'));
             var zo = [], zlk = [];
@@ -1381,7 +1445,7 @@
           return ja({ success: true, data: [{ id: m[1], dataelements: { ticketURL: 'data:text/plain;charset=utf-8,' + encodeURIComponent('Beispieldatei aus dem 3Deep-Testmodus: ' + fn), fileName: fn + '.txt' } }] });
         }
         if (pfad === ISS + '/search') { var st = String(p.$searchStr || '*').toLowerCase().replace(/\*/g, ''); var ii = Object.keys(TEST.iss).filter(function (k) { return !st || (TEST.iss[k].title + ' ' + TEST.iss[k].name).toLowerCase().indexOf(st) >= 0; }).map(function (k) { return eref2('Issue', k); }); return ja({ issue: seite(ii) }); }
-        if ((m = pfad.match(/dsiss\/issue\/([^\/]+)$/))) { var io = TEST.iss[m[1]]; if (!io) return nein(new Error('404'));
+        if ((m = pfad.match(/dsiss\/issue\/([^\/]+)$/))) { var io = TEST.iss[m[1]]; if (!io || S.testIssDetailFehler) return nein(new Error('404'));   // S.testIssDetailFehler (Adapter 27): Details nicht lesbar
           var flach = {}; Object.keys(io).forEach(function (k) { if (p.$fields || ['members', 'affectedItems', 'contexts'].indexOf(k) < 0) flach[k] = io[k]; });
           return ja(flach); }
         if (pfad === TSK) { return ja({ success: true, data: Object.keys(TEST.tsk).filter(function (k) { return !(TEST.tsk[k].relateddata.scopes || []).length; }).map(function (k) { return TEST.tsk[k]; }) }); }
