@@ -2,7 +2,7 @@
 <html lang="de"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>3Deep – Datenraum in 3D</title>
-<meta name="3deep-darstellung" content="68">
+<meta name="3deep-darstellung" content="69">
 <style>
 :root{--fg:#e6edf3;--panel:rgba(15,22,41,.86);--mut:#9fb0c4}
 html,body{margin:0;height:100%;background:linear-gradient(180deg,#d4ecff 0%,#93c3ea 55%,#5088c0 100%) fixed;color:var(--fg);font:13px/1.4 system-ui,sans-serif;overflow:hidden}
@@ -81,7 +81,7 @@ html{--lg:#0e2a4a;--lgh:rgba(255,255,255,.85)}html.space{--lg:#dbe7ff;--lgh:rgba
 <div id="err" style="color:#ff9aa8;margin-top:4px"></div>
 <div class="m" style="margin-top:6px">Format: <code>{types:{Typ:{color,size,shape,label}}, relTypes:{Typ:{color,directed}}, nodes:[{id,type,name,meta:{…}}], edges:[{from,to,type,directed}]}</code> – size = Kugeldurchmesser, shape = sphere (Standard), dodecahedron, torus, box, book, bust (Person), starfish (Seestern) oder octopus. Knoten optional mit state: In Work, Frozen, Released, Obsolete oder To do. Den Mindestabstand bestimmt der größte Durchmesser (oder optional spacing). Weitere optionale Felder: axes (Vorlagen fürs Wertediagramm: name, x, y, z, zinv, note), stateTitle und stateNames (eigene Statusnamen, z. B. Vertragsstatus), attr (bevorzugtes Gruppierungsattribut). Zahlen in meta (z. B. „12.500 €“, „34 %“) können im Wertediagramm auf Achsen gelegt werden. Am einfachsten: Demo-JSON speichern und anpassen. CSV: Der Export aus dem Bookmark-Editor (Spalten Level, Title, Type, Maturity State …) wird direkt eingelesen.</div>
 </details>
-<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 68</div>
+<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 69</div>
 </div>
 <div id="det" class="pn"></div></div>
 <div id="dcap"></div><div id="dfade" style="position:fixed;inset:0;background:#0b1424;opacity:0;pointer-events:none;transition:opacity .6s;z-index:14"></div><div id="cross"></div><div id="info"></div>
@@ -97,7 +97,7 @@ const mix=(c,t,a)=>'rgb('+hx(c).map(v=>Math.round(v+(t-v)*a)).join(',')+')';
 let s=7;const rnd=()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
 // ---------- Demo-Daten im Import-Format ----------
 function demoData(){s=7;
- const types={folder:{color:'#f5b942',size:3,shape:'box',label:'Bookmark-Folder'},asm:{color:'#4f8cff',size:3.36,label:'Baugruppe'},part:{color:'#2fc4ad',size:1.96,label:'Einzelteil (CAD)'},pdf:{color:'#e5534b',size:1.3,shape:'book',label:'Spezifikation (PDF)'},ppt:{color:'#f08a3c',size:.9,label:'Attachment'},dwg:{color:'#9aa5b1',size:.9,label:'Zeichnung'},mk:{color:'#d67bd9',size:.8,label:'Markup / Review'},issue:{color:'#ff4d6d',size:2.2,shape:'torus',label:'Issue'},person:{color:'#5fcf3f',size:2.2,shape:'bust',label:'Person'},task:{color:'#f2c400',size:1.4,shape:'dodecahedron',label:'Aufgabe'}};
+ const types={folder:{color:'#e6d2a6',size:3,shape:'folder',label:'Bookmark-Folder'},asm:{color:'#4f8cff',size:3.36,label:'Baugruppe'},part:{color:'#2fc4ad',size:1.96,label:'Einzelteil (CAD)'},pdf:{color:'#e5534b',size:1.3,shape:'book',label:'Spezifikation (PDF)'},ppt:{color:'#f08a3c',size:.9,label:'Attachment'},dwg:{color:'#9aa5b1',size:.9,label:'Zeichnung'},mk:{color:'#d67bd9',size:.8,label:'Markup / Review'},issue:{color:'#ff4d6d',size:2.2,shape:'torus',label:'Issue'},person:{color:'#5fcf3f',size:2.2,shape:'bust',label:'Person'},task:{color:'#f2c400',size:1.4,shape:'dodecahedron',label:'Aufgabe'}};
  const relTypes={struktur:{label:'Baugruppenlink (enthält)',color:'#2f3f5c',directed:false},inhalt:{label:'Enthalten in Bookmark',color:'#b07a10',directed:true},spec:{label:'Spezifikationslink',color:'#b8403a',directed:true},praes:{label:'Attachment-Link',color:'#c76a1c',directed:true},zeichnung:{label:'Zeichnungslink',color:'#5d6975',directed:true},markup:{label:'Markup/Review',color:'#a24fa6',directed:true},betrifft:{label:'Issue betrifft',color:'#c2255c',directed:true},aufgabe:{label:'Aufgabe für',color:'#b59500',directed:true},zuweisung:{label:'Zugewiesen an',color:'#3a8f2f',directed:true}};
  const nodes=[],edges=[];const add=(type,name,meta)=>{const id='n'+nodes.length;nodes.push({id,type,name,meta});return id};const link=(from,to,type)=>edges.push({from,to,type});
  const st=['In Arbeit','Freigegeben','In Prüfung'],ps=['A. Bauer','B. Keller','C. Weber','D. Hoffmann','E. Schulz','F. Wagner','G. Neumann','H. Krause'];
@@ -182,7 +182,7 @@ function ladeDaten(d){CUR=d;AX=null;AXO=null;ST_T=d.stateTitle||'Reifegrad';ST_N
  hidden.clear();hiddenR.clear();waehle(null);fuelleAttr();fuelleAchsen(d);zustLeg();fuelleRel();$('q').value='';$('res').innerHTML='';
  $('rm').max=Math.max(200,n_);$('rm').value=Math.min(d.maxObjects||200,n_);needHome=true;CH=(d.chains||[]).concat(GEN);LAYERS=d.layers||null;tr=null;$('kres').innerHTML='';$('klt').textContent=[...new Set(E.map(e=>e.type))].filter(Boolean).join(', ');fuelleChains(null);orient=d.orient||orient;$('or').value=orient;if(d.layout){$('lay').value=d.layout;setLayout(d.layout,false)}
  const cnt={};N.forEach(n=>cnt[n.t]=(cnt[n.t]||0)+1);
- $('leg').innerHTML=Object.keys(cnt).map(k=>`<label class="lg"><input type="checkbox" checked data-k="${esc(k)}"><span class="dot" style="background:${T[k].c}${T[k].shape==='dodecahedron'?';border-radius:0;clip-path:polygon(50% 0,100% 38%,82% 100%,18% 100%,0 38%)':''}${T[k].shape==='box'||T[k].shape==='book'?';border-radius:2px':''}${T[k].shape==='torus'?';background:radial-gradient(circle,transparent 28%,'+T[k].c+' 32%)':''}"></span>${esc(T[k].l)} (${cnt[k]})</label>`).join('')}
+ $('leg').innerHTML=Object.keys(cnt).map(k=>`<label class="lg"><input type="checkbox" checked data-k="${esc(k)}"><span class="dot" style="background:${T[k].c}${T[k].shape==='dodecahedron'?';border-radius:0;clip-path:polygon(50% 0,100% 38%,82% 100%,18% 100%,0 38%)':''}${T[k].shape==='box'||T[k].shape==='book'?';border-radius:2px':''}${T[k].shape==='folder'?';border-radius:1px 4px 2px 2px':''}${T[k].shape==='torus'?';background:radial-gradient(circle,transparent 28%,'+T[k].c+' 32%)':''}"></span>${esc(T[k].l)} (${cnt[k]})</label>`).join('')}
 // ---------- Dodekaeder + Layout-Varianten ----------
 const PHI=(1+Math.sqrt(5))/2,DV=[],DF=[];
 [-1,1].forEach(a=>[-1,1].forEach(b=>[-1,1].forEach(c=>DV.push([a,b,c]))));
@@ -303,6 +303,17 @@ const TORUS={V:TOR_V,Q:TOR_Q},BOOK={V:[],Q:[],two:true};
   BOOK.Q.push({ids:[add([0,-.14,-Lz-.04]),add([sg*(Wd+.05),SL*(Wd+.05)-.14,-Lz-.04]),add([sg*(Wd+.05),SL*(Wd+.05)-.14,Lz+.04]),add([0,-.14,Lz+.04])],lt:0,m:.6})});
  {const V=BOOK.V,c=[0,1,2].map(k=>V.reduce((t,v)=>t+v.p[k],0)/V.length),m=Math.max(...V.map(v=>Math.hypot(v.p[0]-c[0],v.p[1]-c[1],v.p[2]-c[2])));V.forEach(v=>{v.p=v.p.map((x,k)=>(x-c[k])/m*.98)})}
  BOOK.Q.forEach(q=>{const P=q.ids.map(i=>BOOK.V[i].p);q.p=[0,1,2].map(k=>(P[0][k]+P[1][k]+P[2][k]+P[3][k])/4);const a=[0,1,2].map(k=>P[2][k]-P[0][k]),b=[0,1,2].map(k=>P[3][k]-P[1][k]),c=[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],l=Math.hypot(...c)||1;q.n=c.map(x=>x/l)})}
+// Ordner (Bookmark-Folder): flache Rückwand mit Reiter, hell herausschauende Blätter, etwas niedrigere Vorderwand; geschlossene Quader, leicht gedreht.
+const FOLDER={V:[],Q:[]};
+{const rot=p=>{let[x,y,z]=p;const c1=Math.cos(.32),s1=Math.sin(.32);[y,z]=[y*c1-z*s1,y*s1+z*c1];const c2=Math.cos(.5),s2=Math.sin(.5);[x,z]=[x*c2+z*s2,-x*s2+z*c2];return[x,y,z]};
+ const quader=(x0,x1,y0,y1,z0,z1,lt,m)=>{const b=FOLDER.V.length,mc=[(x0+x1)/2,(y0+y1)/2,(z0+z1)/2];[x0,x1].forEach(x=>[y0,y1].forEach(y=>[z0,z1].forEach(z=>FOLDER.V.push({p:[x,y,z]}))));
+  [[0,1,3,2],[4,6,7,5],[0,4,5,1],[2,3,7,6],[0,2,6,4],[1,5,7,3]].forEach(f=>{let ids=f.map(i=>b+i);const P=ids.map(i=>FOLDER.V[i].p),c=[0,1,2].map(k=>(P[0][k]+P[1][k]+P[2][k]+P[3][k])/4),
+   a=[0,1,2].map(k=>P[2][k]-P[0][k]),d=[0,1,2].map(k=>P[3][k]-P[1][k]),nn=[a[1]*d[2]-a[2]*d[1],a[2]*d[0]-a[0]*d[2],a[0]*d[1]-a[1]*d[0]];
+   if(nn[0]*(c[0]-mc[0])+nn[1]*(c[1]-mc[1])+nn[2]*(c[2]-mc[2])<0)ids=ids.reverse();FOLDER.Q.push({ids,lt,m})})};
+ quader(-1,1,-.7,.6,-.15,-.06,0,.85);quader(-1,-.3,.6,.74,-.15,-.06,0,.85);quader(-.9,.9,-.62,.66,-.06,-.02,.75,1);quader(-1,1,-.7,.48,-.02,.07,.12,1);
+ FOLDER.V.forEach(v=>{v.p=rot(v.p)});
+ {const V=FOLDER.V,c=[0,1,2].map(k=>V.reduce((t,v)=>t+v.p[k],0)/V.length),m=Math.max(...V.map(v=>Math.hypot(v.p[0]-c[0],v.p[1]-c[1],v.p[2]-c[2])));V.forEach(v=>{v.p=v.p.map((x,k)=>(x-c[k])/m*.98)})}
+ FOLDER.Q.forEach(q=>{const P=q.ids.map(i=>FOLDER.V[i].p);q.p=[0,1,2].map(k=>(P[0][k]+P[1][k]+P[2][k]+P[3][k])/4);const a=[0,1,2].map(k=>P[2][k]-P[0][k]),b=[0,1,2].map(k=>P[3][k]-P[1][k]),c=[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],l=Math.hypot(...c)||1;q.n=c.map(x=>x/l)})}
 // Sternenhimmel nach Art einer Himmelsdurchmusterung (Gaia): Milchstraßenband mit Bulge, Staubbändern, Magellanschen Wolken und Andromeda.
 // Nur Hintergrund: winzige, unschattierte Punkte und weiche Nebel auf einer unendlich fernen Kugel.
 const STARS=[],BR=[],BLOBS=[],DUST=[],BKS=[],SC=['255,255,255','195,215,255','255,232,195','255,205,160'];let SPR=null;
@@ -407,7 +418,7 @@ function csvZuDaten(text,titel,quelle){
  if(rows.length<2)throw new Error('CSV enthält keine Datenzeilen');
  const hdr=rows[0].map(h=>h.trim()),col=n=>hdr.findIndex(h=>h.toLowerCase()===n.toLowerCase()),iT=col('Title'),iL=col('Level'),iTy=col('Type'),iM=col('Maturity State');
  if(iT<0)throw new Error('Spalte Title fehlt');
- const types={'Bookmark-Folder':{color:'#f5b942',size:3,shape:'box',label:'Bookmark-Folder'}},pal=['#4f8cff','#e5534b','#2fc4ad','#d67bd9','#f08a3c','#5fcf3f','#ff4d6d','#9aa5b1'],nodes=[],edges=[],eltern=new Set(),stack=[];let pi=0;
+ const types={'Bookmark-Folder':{color:'#e6d2a6',size:3,shape:'folder',label:'Bookmark-Folder'}},pal=['#4f8cff','#e5534b','#2fc4ad','#d67bd9','#f08a3c','#5fcf3f','#ff4d6d','#9aa5b1'],nodes=[],edges=[],eltern=new Set(),stack=[];let pi=0;
  const relTypes={struktur:{label:'Baugruppenlink (enthält)',color:'#2f3f5c',directed:false},inhalt:{label:'Enthalten in Bookmark',color:'#b07a10',directed:true}};
  nodes.push({id:'bm',type:'Bookmark-Folder',name:'Bookmark: '+titel,meta:{Quelle:quelle,Zeilen:String(rows.length-1)}});
  rows.slice(1).forEach((r,k)=>{const id='r'+k,ty=(iTy>=0&&r[iTy])||'Objekt';
@@ -425,7 +436,7 @@ $('ds').onchange=e=>{$('err').textContent='';try{ladeDaten(e.target.value==='spe
 // ---------- Datenraum „Kleinsatellit (fiktiv)“: Erdbeobachtungssatellit EO-Sat 1 im Critical Design Review ----------
 function satData(){s=31;
  const de=(x,d)=>x.toFixed(d).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.'),fk=x=>de(x,x<1?2:1)+' kg',fw=x=>de(x,x%1?1:0)+' W';
- const types={folder:{color:'#f5b942',size:3,shape:'box',label:'Bookmark-Folder'},asm:{color:'#4f8cff',size:3.2,label:'System / Baugruppe'},part:{color:'#2fc4ad',size:1.7,label:'Gerät / Bauteil'},pdf:{color:'#e5534b',size:1.3,shape:'book',label:'Spezifikation / ICD (PDF)'},
+ const types={folder:{color:'#e6d2a6',size:3,shape:'folder',label:'Bookmark-Folder'},asm:{color:'#4f8cff',size:3.2,label:'System / Baugruppe'},part:{color:'#2fc4ad',size:1.7,label:'Gerät / Bauteil'},pdf:{color:'#e5534b',size:1.3,shape:'book',label:'Spezifikation / ICD (PDF)'},
   req:{color:'#8b6cf0',size:1.8,shape:'dodecahedron',label:'Anforderung'},test:{color:'#f08a3c',size:1.8,shape:'box',label:'Test / Verifikation'},issue:{color:'#ff4d6d',size:2.2,shape:'torus',label:'Issue'},task:{color:'#f2c400',size:1.3,label:'Aufgabe'},person:{color:'#5fcf3f',size:2.2,shape:'bust',label:'Person'}};
  const relTypes={struktur:{label:'Baugruppenlink (enthält)',color:'#2f3f5c',directed:false},inhalt:{label:'Enthalten in Bookmark',color:'#b07a10',directed:true},spec:{label:'Spezifiziert',color:'#b8403a',directed:true},gilt:{label:'Anforderung gilt für',color:'#6a52c9',directed:true},
   verif:{label:'Verifiziert',color:'#c76a1c',directed:true},prueft:{label:'Prüft',color:'#9a5a20',directed:true},befund:{label:'Gefunden bei',color:'#d0436a',directed:true},betrifft:{label:'Issue betrifft',color:'#c2255c',directed:true},aufgabe:{label:'Aufgabe für',color:'#b59500',directed:true},zuweisung:{label:'Zugewiesen an',color:'#3a8f2f',directed:true},verantw:{label:'Verantwortlich für',color:'#2f7a6a',directed:true}};
@@ -1408,7 +1419,7 @@ function frame(now){requestAnimationFrame(frame);
     ctx.globalAlpha*=.6;ctx.strokeStyle=e.c2;ctx.lineWidth=Math.max(.6,w1*.06);ctx.beginPath();ctx.moveTo(rL[0]-svx*.15,rL[1]-svy*.15);ctx.quadraticCurveTo(b.x-svx*1.35,b.y-svy*1.35,rR[0]-svx*.15,rR[1]-svy*.15);ctx.stroke();ctx.restore()}
   }else{const n=it.n,q=n.q,R=n.r*q.k;if(q.x<-R||q.x>W+R||q.y<-R||q.y>H+R)return;
    const g=ctx.createRadialGradient(q.x-.35*R,q.y-.35*R,R*.1,q.x,q.y,R);g.addColorStop(0,n.c0);g.addColorStop(.55,n.c1);g.addColorStop(1,n.c2);
-   ctx.globalAlpha=fade(n.dist)*(!(sel||selE||tr)||nb.has(n.i)?1:.15)*n.va*fogK(n.dist);if(n.shape==='meer')zeichneTier(n,q,R,now/1000);else if(n.sh)zeichnePoly(n,proj);else if(n.shape==='bust')zeichneBueste(n,q,R);else if(n.shape==='starfish')zeichneSeestern(n,q,R,now/1000);else if(n.shape==='octopus')zeichneOktopus(n,proj);else if(n.shape==='torus')zeichneMesh(n,proj,TORUS);else if(n.shape==='book')zeichneMesh(n,proj,BOOK);else if(n.role)zeichneAstro(n,q,R,now/1000);else{ctx.fillStyle=g;ctx.beginPath();ctx.arc(q.x,q.y,Math.max(R,1.5),0,7);ctx.fill()}zustandFx(n,q,R,now/1000);
+   ctx.globalAlpha=fade(n.dist)*(!(sel||selE||tr)||nb.has(n.i)?1:.15)*n.va*fogK(n.dist);if(n.shape==='meer')zeichneTier(n,q,R,now/1000);else if(n.sh)zeichnePoly(n,proj);else if(n.shape==='bust')zeichneBueste(n,q,R);else if(n.shape==='starfish')zeichneSeestern(n,q,R,now/1000);else if(n.shape==='octopus')zeichneOktopus(n,proj);else if(n.shape==='torus')zeichneMesh(n,proj,TORUS);else if(n.shape==='book')zeichneMesh(n,proj,BOOK);else if(n.shape==='folder')zeichneMesh(n,proj,FOLDER);else if(n.role)zeichneAstro(n,q,R,now/1000);else{ctx.fillStyle=g;ctx.beginPath();ctx.arc(q.x,q.y,Math.max(R,1.5),0,7);ctx.fill()}zustandFx(n,q,R,now/1000);
    if(Math.hypot(q.x-ax,q.y-ay)<=Math.max(R,4)&&q.z<bz){bz=q.z;best=n}}});
  ctx.globalAlpha=1;LBL.forEach(l=>{const p=proj(l.x,l.y,l.z);if(p.z<.5)return;const sz=Math.max(11,Math.min(30,foc*1.4/p.z));ctx.font=`600 ${sz}px system-ui,sans-serif`;ctx.textBaseline='middle';ctx.textAlign=orient==='h'?'center':'left';ctx.lineJoin='round';ctx.lineWidth=3;ctx.strokeStyle=space?'rgba(0,0,10,.6)':'rgba(255,255,255,.7)';ctx.strokeText(l.t,p.x,p.y);ctx.fillStyle=space?'#cfe0ff':'#0e2a4a';ctx.fillText(l.t,p.x,p.y)});
  hov=best;hovE=best?null:bestE;cv.style.cursor=(best||bestE)?'pointer':'default';

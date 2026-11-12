@@ -1,11 +1,11 @@
-/* 3Deep-Widget, Adapter Version 23.
+/* 3Deep-Widget, Adapter Version 24.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
    im Format der echten Schnittstellen-Antworten. */
 (function () {
   'use strict';
-  var DARSTELLUNG = '68';   // Version von datenraum3d.html; muss zu <meta name="3deep-darstellung"> dort passen (tests/test-gleichstand.js)
+  var DARSTELLUNG = '69';   // Version von datenraum3d.html; muss zu <meta name="3deep-darstellung"> dort passen (tests/test-gleichstand.js)
   var BKS = '/resources/v1/modeler/dsbks/dsbks:Bookmark';
   var ENG = '/resources/v1/modeler/dseng/dseng:EngItem';
   var DOC = '/resources/v1/modeler/documents';
@@ -238,14 +238,25 @@
   function sucheBookmarks(text) {
     return hole(BKS + '/search', { $searchStr: text || '*', $mask: 'dsbks:BksMask.Details', $top: 100, $skip: 0 }).then(mitglieder);
   }
+  // Unterordner, die nicht als normaler Inhalt kommen: ganze Antwort nach Objekten mit Ordner-Typ durchsuchen (Adapter 24, Feldname auf der Plattform unbekannt).
+  // Nicht unter Schlüsseln wie parent/owner/context (sonst ginge es nach oben); der Bookmark selbst zählt nicht.
+  function ordnerInAntwort(o, selbst, weg, aus, tiefe) {
+    if (!o || typeof o !== 'object' || tiefe > 7) return aus;
+    if (Array.isArray(o)) { o.forEach(function (x) { ordnerInAntwort(x, selbst, weg, aus, tiefe + 1); }); return aus; }
+    var ro = o.referencedObject || o, i = ro.identifier || ro.id || ro.physicalid, t = ro.type || o.type || '';
+    if (i && i !== selbst && istOrdner(t) && weg && !aus.some(function (a) { return a.id === i; })) aus.push({ id: i, titel: ro.title || o.title || ro.name || o.name || '', typ: t, feld: weg });
+    Object.keys(o).forEach(function (k) { if (!/parent|owner|context|collabspace|organization|project/i.test(k)) ordnerInAntwort(o[k], selbst, weg ? weg + '.' + k : k, aus, tiefe + 1); });
+    return aus;
+  }
   function bookmarkInhalt(id) {
-    var kopf = null;
+    var kopf = null, extra = [];
     return alleSeiten(BKS + '/' + encodeURIComponent(id), { $mask: 'dsbks:BksMask.Items2' }, function (r) {
       var b = mitglieder(r), bm = b.filter(function (x) { return x.id === id; })[0] || b[0] || {};
       if (!kopf) kopf = bm;
+      ordnerInAntwort(r, id, '', extra, 0);
       var it = bm.items; if (Array.isArray(it) && it.length && it[0] && it[0].member) it = it[0];
       return mitglieder(it);
-    }).then(function (items) { return { kopf: kopf || {}, items: items }; });
+    }).then(function (items) { return { kopf: kopf || {}, items: items, extra: extra }; });
   }
   // Ganze Struktur unter einem Engineering Item in einer Abfrage (laut DS-SDK: POST dseng:EngItem/{ID}/expand, Maske dskern:Mask.Default).
   // Antwort: member[] mit Referenzen, Instanzen und (withPath) Pfaden [Referenz, Instanz, Referenz, …]. Liefert null, wenn die Antwort nicht auswertbar ist.
@@ -464,7 +475,7 @@
   async function leseBookmark(bmId, bmTitel, q) {
     var nodes = [], edges = [], gesehen = {}, hinweise = [], qIss = !!(q && (q.issues || q.person)), pi = null;
     var types = {
-      folder: { color: '#f5b942', size: 3, shape: 'box', label: 'Bookmark-Folder' },
+      folder: { color: '#e6d2a6', size: 3, shape: 'folder', label: 'Bookmark-Folder' },
       asm: { color: '#4f8cff', size: 3.36, label: 'Baugruppe' },
       part: { color: '#2fc4ad', size: 1.96, label: 'Einzelteil' },
       issue: { color: '#ff4d6d', size: 2.2, shape: 'torus', label: 'Issue' },
@@ -497,7 +508,7 @@
     }
 
     // 1. Bookmark-Ordner (samt Unterordnern, soweit sie als Inhalt geliefert werden)
-    var startProdukte = [], ordner = q ? [] : [{ id: bmId, titel: bmTitel, eltern: null }], oi = 0, andere = [];
+    var startProdukte = [], ordner = q ? [] : [{ id: bmId, titel: bmTitel, eltern: null }], oi = 0, andere = []; S.bmInfo = [];
     while (oi < ordner.length && ordner.length < 200) {
       var o = ordner[oi++];
       status('Lese Bookmark „' + (o.titel || o.id) + '“ …');
@@ -513,7 +524,14 @@
         else if (istOrdner(typ)) { if (!ordner.some(function (x) { return x.id === id; })) ordner.push({ id: id, titel: ro.title || it.title || '', eltern: o.id }); }
         else andere.push({ id: id, typ: typ, bm: o.id, titel: ro.title || it.title || ro.name || it.name || '' });
       });
+      var typen = {}, vorher = ordner.length, ausFeld = [];
+      inh.items.forEach(function (it) { var ro = (it && it.referencedObject) || it || {}, t = ro.type || it.type || '?'; typen[t] = (typen[t] || 0) + 1; });
+      inh.extra.forEach(function (x) { if (!ordner.some(function (y) { return y.id === x.id; })) { ordner.push({ id: x.id, titel: x.titel, eltern: o.id }); ausFeld.push(x.feld); } });
+      S.bmInfo.push('„' + (k.title || o.titel || o.id) + '“: ' + inh.items.length + ' Inhalte (' + (Object.keys(typen).map(function (t) { return t + ' ' + typen[t]; }).join(', ') || 'keine') + ')' +
+        (ausFeld.length ? ', ' + ausFeld.length + ' Unterordner außerhalb des Inhalts (Feld ' + ausFeld.filter(function (f, i) { return ausFeld.indexOf(f) === i; }).join(', ') + ')' : '') +
+        (o.eltern ? ', Unterordner' : '') + '; Felder des Bookmarks: ' + Object.keys(k).join(', '));
     }
+    if (ordner.length > 1 || S.bmInfo.length) S.bmInfo.unshift(ordner.length + ' Bookmark-Ordner gelesen (' + (ordner.length - 1) + ' Unterordner)' + (ordner.length >= 200 ? ', Grenze 200 erreicht' : ''));
 
     // 1b. Start bei Issues: Details lesen und die genannten Objekte als Ausgangspunkt nehmen
     var vorIssues = null;
@@ -973,7 +991,7 @@
     S.neuUhr = setTimeout(function () { if (S.laeuft) { S.nachladen = true; return; } S.neuLaden = (S.neuLaden || 0) + 1; laden({ drop: S.zuletzt }); }, S.neuVerzug);
   }
   function diagnoseText() {
-    var z = ['3Deep-Widget Diagnose (Adapter 23, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
+    var z = ['3Deep-Widget Diagnose (Adapter 24, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
       '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-') + (S.ctxZahl ? ' (automatisch gewählt, ' + S.ctxZahl + ' verfügbar)' : ''), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), ''];
     if (S.wurzelInfo) { z.push('', 'Produkte im Bookmark:'); S.wurzelInfo.forEach(function (w) { z.push('  ' + w); }); }
     if (S.issueInfo) {
@@ -991,6 +1009,7 @@
     }
     if (S.dropInfo) { z.push('', 'Letzter Drop:'); S.dropInfo.forEach(function (c) { z.push('  ' + c); }); }
     if (S.personInfo) { var pp = S.personInfo; z.push('', 'Person: ' + (pp.voll || '-') + ', Benutzername ' + (pp.login || '-') + ' (aus ' + pp.quelle + (pp.fehler ? ', pno-Fehler: ' + pp.fehler : '') + ')' + (pp.issues ? ', ' + pp.issues : '')); }
+    if (S.bmInfo && S.bmInfo.length) { z.push('', 'Bookmark-Ordner:'); S.bmInfo.forEach(function (c) { z.push('  ' + c); }); }
     if (S.zgInfo && S.zgInfo.length) { z.push('', 'Zeichnungen:'); S.zgInfo.forEach(function (c) { z.push('  ' + c); }); }
     if (S.zqInfo && S.zqInfo.length) { z.push('', 'Zone Query (Attribute):'); S.zqInfo.forEach(function (c) { z.push('  ' + c); }); }
     if (S.expandInfo && S.expandInfo.length) { z.push('', 'Produktstruktur:'); S.expandInfo.forEach(function (c) { z.push('  ' + c); }); }
@@ -1169,6 +1188,7 @@
     T.bm[unter] = { id: unter, title: 'Dokumente', description: 'Unterordner', owner: 'A. Bauer', created: '2026-09-14T08:00:00Z', modified: '2026-10-01T09:00:00Z', collabspace: 'Common Space', type: 'Workspace Vault', items: [ref('Document', d1)] };
     T.bm[haupt] = { id: haupt, title: 'E-Fahrzeug-Review', description: 'Review-Ordner (Beispiel)', owner: 'A. Bauer', created: '2026-09-14T08:00:00Z', modified: '2026-10-21T15:40:00Z', collabspace: 'Common Space', type: 'Workspace Vault',
       items: [ref('VPMReference', fahrwerk), ref('VPMReference', antrieb), ref('VPMReference', lose), ref('Workspace Vault', unter)] };
+    T.unter2 = id(); T.bm[T.unter2] = { id: T.unter2, title: 'Prüfberichte', description: 'Unter-Unterordner (nur Test S.testUnterFeld)', owner: 'A. Bauer', created: '2026-09-20T08:00:00Z', modified: '2026-10-02T09:00:00Z', collabspace: 'Common Space', type: 'Workspace Vault', items: [] };
     return T;
   }
   function T5(i) { return TEST.v5[i] && TEST.v5[i].typ; }
@@ -1186,7 +1206,15 @@
         }
         if ((m = pfad.match(/dsbks:Bookmark\/([^\/]+)$/))) {
           var b = TEST.bm[m[1]]; if (!b) return nein(new Error('404 Bookmark nicht gefunden'));
-          var kopie = {}; Object.keys(b).forEach(function (k) { kopie[k] = b[k]; }); kopie.items = { totalItems: b.items.length, member: seite(b.items) };
+          var kopie = {}, its = b.items; Object.keys(b).forEach(function (k) { kopie[k] = b[k]; });
+          if (S.testUnterFeld) {   // Test (Adapter 24): Unterordner nicht im Inhalt, sondern in einem eigenen Feld; Eltern-Feld darf nicht nach oben führen
+            its = b.items.filter(function (x) { return !/Workspace/.test(x.referencedObject ? x.referencedObject.type : x.type); });
+            kopie.subBookmarks = b.items.filter(function (x) { return its.indexOf(x) < 0; }).map(function (x) { var u = TEST.bm[(x.referencedObject || x).identifier || (x.referencedObject || x).id] || {}; return { id: u.id, title: u.title, type: 'Workspace Vault' }; })
+              .concat(b.title === 'Dokumente' ? [{ id: TEST.unter2, title: 'Prüfberichte', type: 'Workspace Vault' }] : []);
+            var el = Object.keys(TEST.bm).filter(function (k) { return TEST.bm[k].items.some(function (x) { return ((x.referencedObject || x).identifier || (x.referencedObject || x).id) === b.id; }); })[0];
+            if (el) kopie.parentBookmark = { id: el, title: TEST.bm[el].title, type: 'Workspace Vault' };
+          }
+          delete kopie.items; kopie.items = { totalItems: its.length, member: seite(its) };
           return ja({ totalItems: 1, member: [kopie] });
         }
         if ((m = pfad.match(/dseng:EngItem\/([^\/]+)\/expand$/))) {
