@@ -1,11 +1,11 @@
-/* 3Deep-Widget, Adapter Version 12.
+/* 3Deep-Widget, Adapter Version 13.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
    im Format der echten Schnittstellen-Antworten. */
 (function () {
   'use strict';
-  var DARSTELLUNG = '67';   // Version von datenraum3d.html; muss zu <meta name="3deep-darstellung"> dort passen (tests/test-gleichstand.js)
+  var DARSTELLUNG = '68';   // Version von datenraum3d.html; muss zu <meta name="3deep-darstellung"> dort passen (tests/test-gleichstand.js)
   var BKS = '/resources/v1/modeler/dsbks/dsbks:Bookmark';
   var ENG = '/resources/v1/modeler/dseng/dseng:EngItem';
   var DOC = '/resources/v1/modeler/documents';
@@ -16,7 +16,7 @@
   // bevorzugte abgeleitete Formate (Derived Outputs) für den Download von Bauteilen
   var CADFORMATE = ['STEP', 'STP', '3DXML', 'JT', 'IGES', 'IGS', 'STL', 'CGR', 'PDF'];
   var MAXISSUES = 400, MAXALLE = 3000, FRIST_ALLE = 180;   // Sekunden für die Entwicklerfunktion „Alle Issues“
-  var SEITE = 50, PARALLEL = 8, MAXTIEFE = 12;
+  var SEITE = 50, PARALLEL = 8, MAXTIEFE = 12, EXPANDGRENZE = 10000;   // expand liefert laut DS höchstens 10000 Einträge
   // Dokument-Beziehungen eines Objekts: Name der Beziehung -> Art in der Darstellung
   var DOKREL = [{ rel: 'SpecificationDocument', art: 'spec' }, { rel: 'PLMDocConnection', art: 'praes' }, { rel: 'Reference Document', art: 'praes' }];
   var S = { live: false, WAF: null, space: '', tenant: '', ctx: '', root: null, log: [], roh: {}, bereit: false, wartend: null,
@@ -204,6 +204,33 @@
       return mitglieder(it);
     }).then(function (items) { return { kopf: kopf || {}, items: items }; });
   }
+  // Ganze Struktur unter einem Engineering Item in einer Abfrage (laut DS-SDK: POST dseng:EngItem/{ID}/expand, Maske dskern:Mask.Default).
+  // Antwort: member[] mit Referenzen, Instanzen und (withPath) Pfaden [Referenz, Instanz, Referenz, …]. Liefert null, wenn die Antwort nicht auswertbar ist.
+  async function expandStruktur(id, tiefe) {
+    var tok = await csrf();
+    var r = await hole(ENG + '/' + encodeURIComponent(id) + '/expand', {}, false, 'POST', { ENO_CSRF_TOKEN: tok, 'Content-Type': 'application/json' },
+      { expandDepth: tiefe, withPath: true, type_filter_bo: ['VPMReference'], type_filter_rel: ['VPMInstance'] });
+    var m = mitglieder(r), refs = {}, inst = {}, pfade = [];
+    m.forEach(function (x) {
+      if (!x || typeof x !== 'object') return;
+      var pf = x.Path || x.path || x.paths;
+      if (Array.isArray(pf)) { pfade.push(pf.map(function (e) { return typeof e === 'object' && e ? (e.id || e.identifier) : e; })); return; }
+      if (!x.id) return;
+      if (/Instance/i.test(x.type || '')) inst[x.id] = x; else refs[x.id] = x;
+    });
+    if (!pfade.length && !Object.keys(refs).length) return null;
+    var kinder = {}, tiefeVon = {}; tiefeVon[id] = 0;
+    pfade.forEach(function (pf) {
+      if (pf[0] !== id) return;
+      for (var i = 0; i + 2 < pf.length; i += 2) {
+        var el = pf[i], ins = pf[i + 1], ki = pf[i + 2]; if (!el || !ki) continue;
+        var k = kinder[el] = kinder[el] || {}; k[ki] = k[ki] || {}; if (ins) k[ki][ins] = 1;
+        var t2 = i / 2 + 1; if (tiefeVon[ki] == null || t2 < tiefeVon[ki]) tiefeVon[ki] = t2;
+      }
+    });
+    if (Object.keys(refs).length > 1 && !Object.keys(kinder).length) return null;   // Referenzen ohne Pfade: Struktur nicht ableitbar
+    return { refs: refs, kinder: kinder, tiefe: tiefeVon, voll: m.length >= EXPANDGRENZE };
+  }
   function engItem(id) {
     return hole(ENG + '/' + encodeURIComponent(id), { $mask: 'dsmveng:EngItemMask.Details' }).then(function (r) { return mitglieder(r)[0] || null; });
   }
@@ -365,9 +392,44 @@
     // 2. Produktstruktur abwärts, Ebene für Ebene
     var items = {}, anzahl = 0, grenze = false;
     var front = []; startProdukte.forEach(function (p) { if (front.indexOf(p.id) < 0) front.push(p.id); });
+    // 2a. schneller Weg: ganze Struktur je Startprodukt mit einer expand-Abfrage; bei Fehlern Rückfall auf Ebene für Ebene
+    S.expandInfo = []; S.expandFehl = 0; S.expandOk = false;
+    if (S.mitExpand && maxTiefe > 0 && front.length) {
+      var rest = [], t0 = Date.now();
+      for (var wi = 0; wi < front.length; wi++) {
+        var wid = front[wi], ex = null, grund = '';
+        if (S.expandFehl >= 2 && !S.expandOk) { rest.push(wid); continue; }   // expand geht hier offenbar nicht: nicht weiter versuchen
+        status('Lese Produktstruktur in einer Abfrage (expand): Produkt ' + (wi + 1) + ' von ' + front.length + ' …');
+        try { ex = await expandStruktur(wid, maxTiefe === MAXTIEFE ? -1 : maxTiefe); if (!ex) grund = 'Antwort nicht auswertbar'; else if (ex.voll) { grund = 'Grenze von ' + EXPANDGRENZE + ' Einträgen erreicht'; ex = null; } }
+        catch (e) { grund = e.message; }
+        if (!ex) { S.expandFehl = (S.expandFehl || 0) + 1; rest.push(wid); S.expandInfo.push(wid + ': Rückfall auf Ebene für Ebene (' + grund + ')'); continue; }
+        S.expandOk = true;
+        var reihe = Object.keys(ex.tiefe).sort(function (a, b) { return ex.tiefe[a] - ex.tiefe[b]; }), neu = 0;
+        reihe.forEach(function (rid) {
+          if (items[rid]) return;
+          if (anzahl + nodes.length + andere.length >= S.max) { grenze = true; return; }
+          var kk = ex.kinder[rid] || {};
+          items[rid] = { id: rid, det: ex.refs[rid] || null, tiefe: ex.tiefe[rid],
+            kinder: Object.keys(kk).map(function (c) { return { id: c, n: Math.max(1, Object.keys(kk[c]).length) }; }) };
+          if (ex.refs[rid] && ex.refs[rid].type && !S.cadTyp[rid]) S.cadTyp[rid] = ex.refs[rid].type;
+          anzahl++; neu++;
+        });
+        S.expandInfo.push(wid + ': ' + neu + ' Objekte über expand');
+        melde(true);
+      }
+      // Details nachladen, wo expand keine Grunddaten geliefert hat
+      var ohne = Object.keys(items).filter(function (k) { var d = items[k].det; return !d || !(d.title || d.name); });
+      if (ohne.length) {
+        status('Lese Details zu ' + ohne.length + ' Objekten …');
+        await pool(ohne, PARALLEL, async function (k) { try { items[k].det = await engItem(k); } catch (e) { items[k].fehler = e.message; } });
+      }
+      S.expandInfo.push('Dauer expand samt Details: ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s');
+      front = rest;
+    }
     for (var tiefe = 0; front.length && tiefe <= maxTiefe; tiefe++) {
       var frei = S.max - anzahl - nodes.length - andere.length;
       if (front.length > frei) { front = front.slice(0, Math.max(0, frei)); grenze = true; }
+      front = front.filter(function (id) { return !items[id]; });
       front.forEach(function (id) { items[id] = { id: id, kinder: [], det: null, tiefe: tiefe }; });
       anzahl += front.length;
       status('Lese Produktstruktur: Ebene ' + (tiefe + 1) + ', bisher ' + anzahl + ' Objekte …');
@@ -378,6 +440,7 @@
       var naechste = [];
       front.forEach(function (id) { items[id].kinder.forEach(function (c) { if (!items[c.id] && naechste.indexOf(c.id) < 0) naechste.push(c.id); }); });
       front = naechste;
+      melde(tiefe === 0);
       if (grenze) break;
     }
     if (grenze || (front.length && maxTiefe === MAXTIEFE)) hinweise.push('Höchstzahl von ' + S.max + ' Objekten erreicht, die Struktur ist unvollständig.');
@@ -403,12 +466,14 @@
           });
         }
         erledigt++;
+        melde(false);
         if (erledigt % 10 === 0 || erledigt === ids.length) status('Lese Spezifikationen und Attachments: ' + erledigt + ' von ' + ids.length + ' Objekten, ' + dokZahl + ' Dokumente …');
       });
       DOKREL.forEach(function (r) { var z = zaehler[r.rel]; if (z.fehler && !z.ok) hinweise.push('Beziehung „' + r.rel + '“ nicht lesbar.'); });
       if (dokGrenze) hinweise.push('Höchstzahl von ' + S.max + ' Objekten erreicht, nicht alle Dokumente gezeigt.');
     }
 
+    melde(true);
     // 2c. Issues, Aufgaben und Personen
     var exKnoten = [], exKanten = [], pers = {}, issues = {}, tasks = {};
     if (S.mitIssues || q) {
@@ -508,52 +573,66 @@
       exKnoten.forEach(function (n) { delete n._k; });
     }
 
+    melde(true);
     // 3. übrige Bookmark-Inhalte (Dokumente usw.)
     await pool(andere, PARALLEL, async function (a) {
       if (doks[a.id]) return;
       if (/Document/i.test(a.typ)) { try { a.det = await dokument(a.id); } catch (e) { } }
     });
 
-    // 4. Knoten und Beziehungen
-    var verwendet = {}; Object.keys(items).forEach(function (id) { items[id].kinder.forEach(function (c) { verwendet[c.id] = (verwendet[c.id] || 0) + 1; }); });
-    var fehlend = 0;
-    Object.keys(items).forEach(function (id) {
-      var it = items[id], d = it.det || {}, er = d['dseng:EnterpriseReference'] || {};
-      if (!it.det) fehlend++;
-      var kinder = it.kinder.filter(function (c) { return items[c.id]; });
-      var meta = { Titel: d.title || '', Name: d.name || '', Revision: d.revision || '', Reifegrad: d.state || '', Beschreibung: d.description || '', Teilenummer: er.partNumber || '',
-        Besitzer: d.owner || '', Organisation: d.organization || '', 'Collaborative Space': d.collabspace || '', Erstellt: datum(d.created), 'Geändert': datum(d.modified), Typ: d.type || 'VPMReference',
-        'Direkte Kinder': String(it.kinder.length), Verwendungen: String(verwendet[id] || 0), ID: id };
-      Object.keys(meta).forEach(function (k) { if (meta[k] === '') delete meta[k]; });
-      var n = { id: id, type: it.kinder.length ? 'asm' : 'part', name: d.title || d.name || ('Objekt ' + id.slice(-6)), meta: meta, dl: true };
-      S.cad[id] = 1; if (d.type && (!S.cadTyp[id] || /^VPMReference$/i.test(S.cadTyp[id]))) S.cadTyp[id] = /dsxcad/i.test(S.cadTyp[id] || '') ? S.cadTyp[id] : d.type;
-      if (d.state) n.state = ZUSTAND[d.state] || d.state;
-      nodes.push(n);
-      kinder.forEach(function (c) { var e = { from: c.id, to: id, type: 'struktur' }; if (c.n > 1) { e.label = '×' + c.n; e.meta = { Instanzen: String(c.n) }; } edges.push(e); });
-    });
-    startProdukte.forEach(function (p) { if (items[p.id] && p.bm) { var key = p.id + '>' + p.bm; if (!gesehen[key]) { gesehen[key] = 1; edges.push({ from: p.id, to: 'bm:' + p.bm, type: 'inhalt' }); } } });
-    Object.keys(doks).forEach(function (did) {
-      var x = dokMeta(doks[did].d, 'Document', did), n = { id: 'o:' + did, type: doks[did].art, name: x.name, meta: x.meta, dl: true };
-      if (x.state) n.state = ZUSTAND[String(x.state).toUpperCase().replace(/ /g, '_')] || x.state;
-      gesehen['o:' + did] = 1; nodes.push(n);
-    });
-    var kg = {}; dokKanten.forEach(function (k) { var s = k.from + '>' + k.to + '>' + k.type; if (doks[k.from.slice(2)] && !kg[s]) { kg[s] = 1; edges.push(k); } });
-    andere.forEach(function (a) {
-      var d = a.det || {}, id = 'o:' + a.id;
-      if (!gesehen[id]) {
-        gesehen[id] = 1;
-        var meta = { Titel: d.title || a.titel || '', Name: d.name || '', Revision: d.revision || '', Reifegrad: d.stateNLS || d.state || '', Beschreibung: d.description || '', Typ: a.typ, ID: a.id };
+    // 4. Knoten und Beziehungen (auch für Zwischenstände während des Lesens)
+    function baue(nodes, edges, gesehen) {
+      var verwendet = {}; Object.keys(items).forEach(function (id) { items[id].kinder.forEach(function (c) { verwendet[c.id] = (verwendet[c.id] || 0) + 1; }); });
+      var fehlend = 0;
+      Object.keys(items).forEach(function (id) {
+        var it = items[id], d = it.det || {}, er = d['dseng:EnterpriseReference'] || {};
+        if (!it.det) fehlend++;
+        var kinder = it.kinder.filter(function (c) { return items[c.id]; });
+        var meta = { Titel: d.title || '', Name: d.name || '', Revision: d.revision || '', Reifegrad: d.state || '', Beschreibung: d.description || '', Teilenummer: er.partNumber || '',
+          Besitzer: d.owner || '', Organisation: d.organization || '', 'Collaborative Space': d.collabspace || '', Erstellt: datum(d.created), 'Geändert': datum(d.modified), Typ: d.type || 'VPMReference',
+          'Direkte Kinder': String(it.kinder.length), Verwendungen: String(verwendet[id] || 0), ID: id };
         Object.keys(meta).forEach(function (k) { if (meta[k] === '') delete meta[k]; });
-        var n = { id: id, type: typFuer(a.typ), name: d.title || a.titel || d.name || (a.typ + ' ' + a.id.slice(-6)), meta: meta };
-        if (/Document/i.test(a.typ)) { n.dl = true; if (!S.dateien[a.id]) S.dateien[a.id] = { n: 1 }; }
+        var n = { id: id, type: it.kinder.length ? 'asm' : 'part', name: d.title || d.name || ('Objekt ' + id.slice(-6)), meta: meta, dl: true };
+        S.cad[id] = 1; if (d.type && (!S.cadTyp[id] || /^VPMReference$/i.test(S.cadTyp[id]))) S.cadTyp[id] = /dsxcad/i.test(S.cadTyp[id] || '') ? S.cadTyp[id] : d.type;
         if (d.state) n.state = ZUSTAND[d.state] || d.state;
         nodes.push(n);
-      }
-      if (a.bm) edges.push({ from: id, to: 'bm:' + a.bm, type: 'inhalt' });
-    });
-    exKnoten.forEach(function (n) { nodes.push(n); });
-    var vorhanden = {}; nodes.forEach(function (n) { vorhanden[n.id] = 1; });
-    exKanten.forEach(function (k) { if (vorhanden[k.from] && vorhanden[k.to]) edges.push(k); });
+        kinder.forEach(function (c) { var e = { from: c.id, to: id, type: 'struktur' }; if (c.n > 1) { e.label = '×' + c.n; e.meta = { Instanzen: String(c.n) }; } edges.push(e); });
+      });
+      startProdukte.forEach(function (p) { if (items[p.id] && p.bm) { var key = p.id + '>' + p.bm; if (!gesehen[key]) { gesehen[key] = 1; edges.push({ from: p.id, to: 'bm:' + p.bm, type: 'inhalt' }); } } });
+      Object.keys(doks || {}).forEach(function (did) {
+        var x = dokMeta(doks[did].d, 'Document', did), n = { id: 'o:' + did, type: doks[did].art, name: x.name, meta: x.meta, dl: true };
+        if (x.state) n.state = ZUSTAND[String(x.state).toUpperCase().replace(/ /g, '_')] || x.state;
+        gesehen['o:' + did] = 1; nodes.push(n);
+      });
+      var kg = {}; (dokKanten || []).forEach(function (k) { var s = k.from + '>' + k.to + '>' + k.type; if ((doks || {})[k.from.slice(2)] && !kg[s]) { kg[s] = 1; edges.push(k); } });
+      andere.forEach(function (a) {
+        var d = a.det || {}, id = 'o:' + a.id;
+        if (!gesehen[id]) {
+          gesehen[id] = 1;
+          var meta = { Titel: d.title || a.titel || '', Name: d.name || '', Revision: d.revision || '', Reifegrad: d.stateNLS || d.state || '', Beschreibung: d.description || '', Typ: a.typ, ID: a.id };
+          Object.keys(meta).forEach(function (k) { if (meta[k] === '') delete meta[k]; });
+          var n = { id: id, type: typFuer(a.typ), name: d.title || a.titel || d.name || (a.typ + ' ' + a.id.slice(-6)), meta: meta };
+          if (/Document/i.test(a.typ)) { n.dl = true; if (!S.dateien[a.id]) S.dateien[a.id] = { n: 1 }; }
+          if (d.state) n.state = ZUSTAND[d.state] || d.state;
+          nodes.push(n);
+        }
+        if (a.bm) edges.push({ from: id, to: 'bm:' + a.bm, type: 'inhalt' });
+      });
+      (exKnoten || []).forEach(function (n) { nodes.push(n); });
+      var vorhanden = {}; nodes.forEach(function (n) { vorhanden[n.id] = 1; });
+      (exKanten || []).forEach(function (k) { if (vorhanden[k.from] && vorhanden[k.to]) edges.push(k); });
+      return { nodes: nodes, edges: edges, fehlend: fehlend };
+    }
+    // Zwischenstand an die Darstellung (schrittweiser Aufbau), höchstens alle 1,5 s
+    function melde(sofort) {
+      if (!S.mitAufbau || (!sofort && Date.now() - S.letzteMeldung < 1500)) return;
+      var g = {}; Object.keys(gesehen).forEach(function (k) { g[k] = gesehen[k]; });
+      var z = baue(nodes.slice(), edges.slice(), g); if (!z.nodes.length) return;
+      S.letzteMeldung = Date.now();
+      sende({ quelle: '3deep-adapter', daten: { types: types, relTypes: relTypes, nodes: z.nodes, edges: z.edges, maxObjects: Math.max(500, z.nodes.length) }, lauf: S.lauf, start: !S.zwischen, ergaenzen: true, steuerung: S.zwischen ? undefined : 'game' });
+      S.zwischen = true;
+    }
+    var fertigD = baue(nodes, edges, gesehen), fehlend = fertigD.fehlend;
     S.wurzelInfo = (S.wurzeln || []).map(function (id) { var d = (items[id] && items[id].det) || {}; return (d.title || '?') + ' ' + (d.revision || '') + ' [' + id + ']'; });
     if (S.frist && Date.now() > S.frist) { hinweise = hinweise.filter(function (h) { return !/nicht lesbar/.test(h); }); hinweise.push('Zeitlimit von ' + FRIST_ALLE + ' s erreicht, das Ergebnis ist unvollständig.'); }
     if (fehlend) hinweise.push(fehlend + ' Objekte ohne Detaildaten (keine Leserechte oder kein Engineering Item).');
@@ -592,19 +671,19 @@
     if (S.laeuft) return;
     var b = sonder ? { title: 'Alle Issues' } : S.treffer[+q('.td-tr').value]; if (!b) return;
     try {
-      S.laeuft = true; S.max = Math.max(10, parseInt(S.maxText, 10) || 1500); S.mitDok = q('.td-dk').checked; S.mitIssues = q('.td-ia').checked;
-      S.aufrufe = 0; S.frist = 0;
+      S.laeuft = true; S.max = Math.max(10, parseInt(S.maxText, 10) || 1500); S.mitDok = q('.td-dk').checked; S.mitIssues = q('.td-ia').checked; S.mitExpand = q('.td-ex').checked;
+      S.aufrufe = 0; S.frist = 0; S.lauf = (S.lauf || 0) + 1; S.zwischen = false; S.letzteMeldung = 0; S.mitAufbau = q('.td-au').checked;
       var t0 = Date.now(), erg;
       if (sonder && sonder.alleIssues) { S.frist = t0 + FRIST_ALLE * 1000; S.max = Math.max(S.max, 5000); erg = await leseBookmark(null, null, { alleIssues: true, struktur: false }); }
       else if (b.art === 'issue') erg = await leseBookmark(null, null, { issues: [b.id], struktur: q('.td-sk').checked });
       else erg = await leseBookmark(b.id, b.title || b.name || '');
       S.frist = 0;
-      sende({ quelle: '3deep-adapter', daten: erg.daten, name: b.title || 'Daten', steuerung: 'game' });
+      sende({ quelle: '3deep-adapter', daten: erg.daten, name: b.title || 'Daten', lauf: S.lauf, start: !S.zwischen, ergaenzen: S.zwischen, fertig: true, steuerung: S.zwischen ? undefined : 'game' });
       status(erg.daten.nodes.length + ' Objekte, ' + erg.daten.edges.length + ' Beziehungen aus „' + (b.title || b.id) + '“ in ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s, ' + S.aufrufe + ' Abfragen.' + (erg.hinweise.length ? ' Hinweis: ' + erg.hinweise.join(' ') : ''), erg.hinweise.length > 0);
     } catch (e) { status('Laden fehlgeschlagen: ' + e.message + ' (Details unter „Diagnose“)', true); } finally { S.laeuft = false; S.frist = 0; diagnose(); }
   }
   function diagnoseText() {
-    var z = ['3Deep-Widget Diagnose (Adapter 12, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
+    var z = ['3Deep-Widget Diagnose (Adapter 13, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
       '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-'), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), ''];
     if (S.wurzelInfo) { z.push('', 'Produkte im Bookmark:'); S.wurzelInfo.forEach(function (w) { z.push('  ' + w); }); }
     if (S.issueInfo) {
@@ -614,6 +693,7 @@
       z.push('Issues mit betroffenen Objekten (neueste zuerst, höchstens 40):');
       ii.mitBezug.slice().sort(nachDatum).slice(0, 40).forEach(function (x) { z.push('  ' + x.d + '  ' + x.t + '  -> ' + (x.ids.join(', ') || '(keine ID erkannt)') + '  Treffer im Bookmark: ' + x.treffer); });
     }
+    if (S.expandInfo && S.expandInfo.length) { z.push('', 'Produktstruktur:'); S.expandInfo.forEach(function (c) { z.push('  ' + c); }); }
     if (S.cadInfo.length) { z.push('', 'Downloads von Bauteilen/Baugruppen:'); S.cadInfo.forEach(function (c) { z.push('  ' + c); }); }
     z.push('', '=== Ab hier nur bei Bedarf: alle Aufrufe ===', 'Aufrufe:');
     S.log.forEach(function (l) { z.push(l.zeit + '  ' + (l.ok ? 'ok    ' : 'FEHLER') + '  ' + l.aufruf + '  ' + l.info + '  ' + l.ms + ' ms'); });
@@ -636,6 +716,8 @@
       '<button class="td-sb" style="' + knopf + '">Suchen</button>' +
       '<select class="td-tr" style="' + feld + ';max-width:260px;display:none"></select>' +
       '<button class="td-la" style="' + knopf + ';background:#2563d6;display:none">Laden</button>' +
+      '<label title="Produktstruktur mit einer Abfrage je Produkt lesen (expand, schneller); aus = Ebene für Ebene wie bisher" style="display:flex;align-items:center;gap:4px"><input class="td-ex" type="checkbox" checked="checked" />Schnell</label>' +
+      '<label title="Bild während des Lesens schrittweise aufbauen; aus = erst am Ende zeigen" style="display:flex;align-items:center;gap:4px"><input class="td-au" type="checkbox" checked="checked" />Aufbau</label>' +
       '<label title="Spezifikationen und Attachments der Objekte mitlesen" style="display:flex;align-items:center;gap:4px"><input class="td-dk" type="checkbox" checked="checked" />Dokumente</label>' +
       '<label title="Issues, Aufgaben und Personen zu den Objekten mitlesen" style="display:flex;align-items:center;gap:4px"><input class="td-ia" type="checkbox" checked="checked" />Issues/Aufgaben</label>' +
       '<label class="td-skl" title="Produktstruktur der betroffenen Objekte abwärts mitlesen" style="display:none;align-items:center;gap:4px"><input class="td-sk" type="checkbox" />Struktur</label>' +
@@ -786,6 +868,7 @@
       items: [ref('VPMReference', fahrwerk), ref('VPMReference', antrieb), ref('VPMReference', lose), ref('Workspace Vault', unter)] };
     return T;
   }
+  function T5(i) { return TEST.v5[i] && TEST.v5[i].typ; }
   function eref2(typ, i) { return { source: '$3DSpace', type: typ, identifier: i, relativePath: '/…/' + i }; }
   function testGet(pfad, p, methode, body) {
     if (!TEST) TEST = testDaten();
@@ -802,6 +885,19 @@
           var b = TEST.bm[m[1]]; if (!b) return nein(new Error('404 Bookmark nicht gefunden'));
           var kopie = {}; Object.keys(b).forEach(function (k) { kopie[k] = b[k]; }); kopie.items = { totalItems: b.items.length, member: seite(b.items) };
           return ja({ totalItems: 1, member: [kopie] });
+        }
+        if ((m = pfad.match(/dseng:EngItem\/([^\/]+)\/expand$/))) {
+          if (methode !== 'POST') return nein(new Error('405'));
+          if (S.testExpandFehler) return nein(new Error('404 Not Found'));
+          var wurzel = m[1]; if (!TEST.it[wurzel]) return nein(new Error('404 Objekt nicht gefunden'));
+          var mem = [], gesehenR = {}, maxT = (body || {}).expandDepth; if (maxT == null || maxT < 0) maxT = 99;
+          (function ab(rid, pfadBis, t) {
+            if (!gesehenR[rid]) { gesehenR[rid] = 1; var o = TEST.it[rid], k = {}; ['id', 'name', 'title', 'description', 'type', 'revision', 'state', 'owner', 'organization', 'collabspace', 'created', 'modified', 'cestamp'].forEach(function (f) { k[f] = o[f]; }); if (T5(rid)) k.type = T5(rid); mem.push(k); }
+            if (t >= maxT) return;
+            (TEST.kids[rid] || []).forEach(function (ins) { var c = ins.referencedObject.identifier, p2 = pfadBis.concat([ins.id, c]);
+              mem.push({ id: ins.id, type: 'VPMInstance', name: ins.name }); mem.push({ Path: p2 }); ab(c, p2, t + 1); });
+          })(wurzel, [wurzel], 0);
+          return ja({ totalItems: mem.length, member: mem });
         }
         if ((m = pfad.match(/dseng:EngItem\/([^\/]+)\/dseng:EngInstance$/))) { var kk = TEST.kids[m[1]] || []; return ja({ totalItems: kk.length, member: seite(kk) }); }
         if ((m = pfad.match(/dseng:EngItem\/([^\/]+)$/))) { var it = TEST.it[m[1]]; return it ? ja({ totalItems: 1, member: [it] }) : nein(new Error('404 Objekt nicht gefunden')); }
@@ -840,7 +936,7 @@
         if (pfad === PNO) return ja({ name: 'abauer', preferredcredentials: { role: { name: 'VPLMProjectLeader' }, organization: { name: 'Company Name' }, collabspace: { name: 'Common Space' } },
           collabspaces: [{ name: 'Common Space', couples: [{ role: { name: 'VPLMProjectLeader' }, organization: { name: 'Company Name' } }, { role: { name: 'VPLMCreator' }, organization: { name: 'Company Name' } }] }] });
         nein(new Error('Testmodus kennt diesen Aufruf nicht: ' + pfad));
-      }, 15);
+      }, S.testMs || 15);
     });
   }
   function startTest() {

@@ -1,9 +1,9 @@
-# 3Deep-Widget: Einrichtung und Bedienung (Stand Adapter Version 12, Darstellung Version 67)
+# 3Deep-Widget: Einrichtung und Bedienung (Stand Adapter Version 13, Darstellung Version 68)
 
 ## Dateien (alle im selben Ordner auf GitHub Pages)
 - `widget.html` – kleiner Lader für das 3DDashboard. **Diese Adresse** trägt man im Dashboard ein.
 - `adapter.js` – Suchleiste und Adapter für die 3DEXPERIENCE-Schnittstellen.
-- `datenraum3d.html` – die 3D-Darstellung (Version 67, auch lokal per Doppelklick nutzbar). Dieselbe Datei wie lokal und im Artifact; die Version steht unten im Panel.
+- `datenraum3d.html` – die 3D-Darstellung (Version 68, auch lokal per Doppelklick nutzbar). Dieselbe Datei wie lokal und im Artifact; die Version steht unten im Panel.
 - `index.html` – Testseite für den Browser mit Beispieldaten (nicht fürs Dashboard).
 
 Hosting: Repository `kodoiii/3Deep` (öffentlich), Adresse `https://kodoiii.github.io/3Deep/`.
@@ -20,6 +20,8 @@ Hosting: Repository `kodoiii/3Deep` (öffentlich), Adresse `https://kodoiii.gith
 
 ## Bedienung
 - Auswahl „Bookmark | Issue“: womit begonnen wird. Namen oder Titel eingeben, „Suchen“, Treffer wählen, „Laden“.
+- Häkchen „Schnell“: Produktstruktur mit einer Abfrage je Produkt lesen (expand); geht das nicht, liest das Widget automatisch Ebene für Ebene. Aus = immer Ebene für Ebene (zum Vergleich).
+- Häkchen „Aufbau“: Das Bild baut sich schon während des Lesens auf; bereits gezeigte Objekte bleiben an ihrem Platz, am Ende ordnet sich das Netz einmal weich neu. Solange man nicht selbst klickt, scrollt oder eine Taste drückt, rahmt die Kamera den wachsenden Raum.
 - Häkchen „Dokumente“: Spezifikationen und Attachments mitlesen. „Issues/Aufgaben“: Issues, Aufgaben, Personen mitlesen.
 - Häkchen „Struktur“ (nur bei Start mit Issue): Produktstruktur der betroffenen Objekte abwärts.
 - Knopf „Alle Issues“: Entwicklerfunktion für Performancetests, Zeitlimit 180 s.
@@ -41,5 +43,7 @@ Hosting: Repository `kodoiii/3Deep` (öffentlich), Adresse `https://kodoiii.gith
 | Start bei einem Issue, Attachments direkt am Issue, „Alle Issues“ | nur mit Beispieldaten getestet |
 | Aufgaben mit Bezug zu einem Objekt | Abruf läuft, noch kein Treffer gesehen |
 | Download von Bauteilen/Baugruppen: CAD-Datei über `dsxcad … AuthoringFile/DownloadTicket`, sonst Derived Output über `dsdo:DerivedOutputs/Locate` | laut DS-SDK, nur mit Beispieldaten getestet |
+| Produktstruktur in einer Abfrage (`dseng:EngItem/{ID}/expand`), Rückfall Ebene für Ebene | laut DS-SDK, nur mit Beispieldaten getestet |
+| Schrittweiser Aufbau während des Lesens | mit Beispieldaten getestet |
 | Unterordner eines Bookmarks | vermutet |
 | WASD mit eingefangener Maus, SpaceMouse im Dashboard | offen |
