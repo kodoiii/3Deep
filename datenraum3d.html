@@ -2,7 +2,7 @@
 <html lang="de"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>3Deep – Datenraum in 3D</title>
-<meta name="3deep-darstellung" content="69">
+<meta name="3deep-darstellung" content="70">
 <style>
 :root{--fg:#e6edf3;--panel:rgba(15,22,41,.86);--mut:#9fb0c4}
 html,body{margin:0;height:100%;background:linear-gradient(180deg,#d4ecff 0%,#93c3ea 55%,#5088c0 100%) fixed;color:var(--fg);font:13px/1.4 system-ui,sans-serif;overflow:hidden}
@@ -81,7 +81,7 @@ html{--lg:#0e2a4a;--lgh:rgba(255,255,255,.85)}html.space{--lg:#dbe7ff;--lgh:rgba
 <div id="err" style="color:#ff9aa8;margin-top:4px"></div>
 <div class="m" style="margin-top:6px">Format: <code>{types:{Typ:{color,size,shape,label}}, relTypes:{Typ:{color,directed}}, nodes:[{id,type,name,meta:{…}}], edges:[{from,to,type,directed}]}</code> – size = Kugeldurchmesser, shape = sphere (Standard), dodecahedron, torus, box, book, bust (Person), starfish (Seestern) oder octopus. Knoten optional mit state: In Work, Frozen, Released, Obsolete oder To do. Den Mindestabstand bestimmt der größte Durchmesser (oder optional spacing). Weitere optionale Felder: axes (Vorlagen fürs Wertediagramm: name, x, y, z, zinv, note), stateTitle und stateNames (eigene Statusnamen, z. B. Vertragsstatus), attr (bevorzugtes Gruppierungsattribut). Zahlen in meta (z. B. „12.500 €“, „34 %“) können im Wertediagramm auf Achsen gelegt werden. Am einfachsten: Demo-JSON speichern und anpassen. CSV: Der Export aus dem Bookmark-Editor (Spalten Level, Title, Type, Maturity State …) wird direkt eingelesen.</div>
 </details>
-<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 69</div>
+<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 70</div>
 </div>
 <div id="det" class="pn"></div></div>
 <div id="dcap"></div><div id="dfade" style="position:fixed;inset:0;background:#0b1424;opacity:0;pointer-events:none;transition:opacity .6s;z-index:14"></div><div id="cross"></div><div id="info"></div>
@@ -97,7 +97,7 @@ const mix=(c,t,a)=>'rgb('+hx(c).map(v=>Math.round(v+(t-v)*a)).join(',')+')';
 let s=7;const rnd=()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
 // ---------- Demo-Daten im Import-Format ----------
 function demoData(){s=7;
- const types={folder:{color:'#e6d2a6',size:3,shape:'folder',label:'Bookmark-Folder'},asm:{color:'#4f8cff',size:3.36,label:'Baugruppe'},part:{color:'#2fc4ad',size:1.96,label:'Einzelteil (CAD)'},pdf:{color:'#e5534b',size:1.3,shape:'book',label:'Spezifikation (PDF)'},ppt:{color:'#f08a3c',size:.9,label:'Attachment'},dwg:{color:'#9aa5b1',size:.9,label:'Zeichnung'},mk:{color:'#d67bd9',size:.8,label:'Markup / Review'},issue:{color:'#ff4d6d',size:2.2,shape:'torus',label:'Issue'},person:{color:'#5fcf3f',size:2.2,shape:'bust',label:'Person'},task:{color:'#f2c400',size:1.4,shape:'dodecahedron',label:'Aufgabe'}};
+ const types={folder:{color:'#e6d2a6',size:6,shape:'folder',label:'Bookmark-Folder'},asm:{color:'#4f8cff',size:3.36,label:'Baugruppe'},part:{color:'#2fc4ad',size:1.96,label:'Einzelteil (CAD)'},pdf:{color:'#e5534b',size:1.3,shape:'book',label:'Spezifikation (PDF)'},ppt:{color:'#f08a3c',size:.9,label:'Attachment'},dwg:{color:'#9aa5b1',size:1.8,label:'Zeichnung'},mk:{color:'#d67bd9',size:.8,label:'Markup / Review'},issue:{color:'#ff4d6d',size:2.2,shape:'torus',label:'Issue'},person:{color:'#5fcf3f',size:2.2,shape:'bust',label:'Person'},task:{color:'#f2c400',size:1.4,shape:'dodecahedron',label:'Aufgabe'}};
  const relTypes={struktur:{label:'Baugruppenlink (enthält)',color:'#2f3f5c',directed:false},inhalt:{label:'Enthalten in Bookmark',color:'#b07a10',directed:true},spec:{label:'Spezifikationslink',color:'#b8403a',directed:true},praes:{label:'Attachment-Link',color:'#c76a1c',directed:true},zeichnung:{label:'Zeichnungslink',color:'#5d6975',directed:true},markup:{label:'Markup/Review',color:'#a24fa6',directed:true},betrifft:{label:'Issue betrifft',color:'#c2255c',directed:true},aufgabe:{label:'Aufgabe für',color:'#b59500',directed:true},zuweisung:{label:'Zugewiesen an',color:'#3a8f2f',directed:true}};
  const nodes=[],edges=[];const add=(type,name,meta)=>{const id='n'+nodes.length;nodes.push({id,type,name,meta});return id};const link=(from,to,type)=>edges.push({from,to,type});
  const st=['In Arbeit','Freigegeben','In Prüfung'],ps=['A. Bauer','B. Keller','C. Weber','D. Hoffmann','E. Schulz','F. Wagner','G. Neumann','H. Krause'];
@@ -128,7 +128,7 @@ function demoData(){s=7;
  [['Fahrwerk','Design Review Fahrwerk'],['Elektroantrieb','Projektstatus Elektroantrieb'],['Hochvoltbatterie','Sicherheitskonzept Hochvoltbatterie'],['Interieur','Design Review Interieur'],['Leistungselektronik','Kostenanalyse Leistungselektronik'],['Zellmodule','Lieferantenvergleich Zellmodule']].forEach(([b,t])=>{const a=nodes.find(n=>n.type==='asm'&&n.name===b);link(add('ppt',t+'.pptx',{Dateityp:'PowerPoint'}),a.id,'praes')});
  let ti=0;nodes.forEach(n=>{delete n.meta.Status;if(n.type==='person')return;const x=rnd();n.state=(n.type==='task'||n.type==='issue')?['To do','In Work','To do','Released','To do','In Work'][ti++%6]:(x<.3?'In Work':x<.55?'Frozen':x<.93?'Released':'Obsolete')});
  {const ob=nodes.filter(n=>n.state==='Obsolete');ob.forEach((n,i)=>{if(i>0&&i<ob.length-1)n.state='Released'})}
- anreichern(nodes);return{types,relTypes,nodes,edges,maxObjects:nodes.length}}
+ anreichern(nodes);return{types,relTypes,nodes,edges,spacing:9.408,maxObjects:nodes.length}}
 // ---------- Laden + Layout ----------
 let N=[],E=[],T={},RT={},RAD=50,MAXD=3,MIND=12,needHome=false,animL=false,space=false,sel=null,selE=null,hov=null,hovE=null,fly=null,maxD=300,maxO=200,yaw=0,pitch=0,locked=false,drag=false,mx=0,my=0,dwn=null;const hidden=new Set(),cam={x:0,y:0,z:0},keys={};
 const gkey=(x,y,z)=>((x+1024)&2047)+2048*(((y+1024)&2047)+2048*((z+1024)&2047));
@@ -418,7 +418,7 @@ function csvZuDaten(text,titel,quelle){
  if(rows.length<2)throw new Error('CSV enthält keine Datenzeilen');
  const hdr=rows[0].map(h=>h.trim()),col=n=>hdr.findIndex(h=>h.toLowerCase()===n.toLowerCase()),iT=col('Title'),iL=col('Level'),iTy=col('Type'),iM=col('Maturity State');
  if(iT<0)throw new Error('Spalte Title fehlt');
- const types={'Bookmark-Folder':{color:'#e6d2a6',size:3,shape:'folder',label:'Bookmark-Folder'}},pal=['#4f8cff','#e5534b','#2fc4ad','#d67bd9','#f08a3c','#5fcf3f','#ff4d6d','#9aa5b1'],nodes=[],edges=[],eltern=new Set(),stack=[];let pi=0;
+ const types={'Bookmark-Folder':{color:'#e6d2a6',size:6,shape:'folder',label:'Bookmark-Folder'}},pal=['#4f8cff','#e5534b','#2fc4ad','#d67bd9','#f08a3c','#5fcf3f','#ff4d6d','#9aa5b1'],nodes=[],edges=[],eltern=new Set(),stack=[];let pi=0;
  const relTypes={struktur:{label:'Baugruppenlink (enthält)',color:'#2f3f5c',directed:false},inhalt:{label:'Enthalten in Bookmark',color:'#b07a10',directed:true}};
  nodes.push({id:'bm',type:'Bookmark-Folder',name:'Bookmark: '+titel,meta:{Quelle:quelle,Zeilen:String(rows.length-1)}});
  rows.slice(1).forEach((r,k)=>{const id='r'+k,ty=(iTy>=0&&r[iTy])||'Objekt';
@@ -431,12 +431,13 @@ function csvZuDaten(text,titel,quelle){
   const par=L>0?stack[L-1]:undefined;stack.length=L;stack.push(id);
   if(par){edges.push({from:id,to:par,type:'struktur'});eltern.add(par)}else edges.push({from:id,to:'bm',type:'inhalt'})});
  nodes.forEach(n=>{if(eltern.has(n.id))n.size=3.36});
- return{types,relTypes,nodes,edges}}
+ const spacing=2.8*Math.max(3,...nodes.filter(n=>n.type!=='Bookmark-Folder').map(n=>n.size||types[n.type].size));   // Abstand wie vor Version 70 (Ordner damals 3)
+ return{types,relTypes,nodes,edges,spacing}}
 $('ds').onchange=e=>{$('err').textContent='';try{ladeDaten(e.target.value==='speaker'?csvZuDaten(SPEAKER_CSV,'Speaker','bookmark_editor_Nov_04_2026_20_58_44.csv'):e.target.value==='rflp'?rflpData():e.target.value==='kauf'?kaufData():e.target.value==='sat'?satData():demoData())}catch(x){$('err').textContent='Fehler: '+x.message}};
 // ---------- Datenraum „Kleinsatellit (fiktiv)“: Erdbeobachtungssatellit EO-Sat 1 im Critical Design Review ----------
 function satData(){s=31;
  const de=(x,d)=>x.toFixed(d).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.'),fk=x=>de(x,x<1?2:1)+' kg',fw=x=>de(x,x%1?1:0)+' W';
- const types={folder:{color:'#e6d2a6',size:3,shape:'folder',label:'Bookmark-Folder'},asm:{color:'#4f8cff',size:3.2,label:'System / Baugruppe'},part:{color:'#2fc4ad',size:1.7,label:'Gerät / Bauteil'},pdf:{color:'#e5534b',size:1.3,shape:'book',label:'Spezifikation / ICD (PDF)'},
+ const types={folder:{color:'#e6d2a6',size:6,shape:'folder',label:'Bookmark-Folder'},asm:{color:'#4f8cff',size:3.2,label:'System / Baugruppe'},part:{color:'#2fc4ad',size:1.7,label:'Gerät / Bauteil'},pdf:{color:'#e5534b',size:1.3,shape:'book',label:'Spezifikation / ICD (PDF)'},
   req:{color:'#8b6cf0',size:1.8,shape:'dodecahedron',label:'Anforderung'},test:{color:'#f08a3c',size:1.8,shape:'box',label:'Test / Verifikation'},issue:{color:'#ff4d6d',size:2.2,shape:'torus',label:'Issue'},task:{color:'#f2c400',size:1.3,label:'Aufgabe'},person:{color:'#5fcf3f',size:2.2,shape:'bust',label:'Person'}};
  const relTypes={struktur:{label:'Baugruppenlink (enthält)',color:'#2f3f5c',directed:false},inhalt:{label:'Enthalten in Bookmark',color:'#b07a10',directed:true},spec:{label:'Spezifiziert',color:'#b8403a',directed:true},gilt:{label:'Anforderung gilt für',color:'#6a52c9',directed:true},
   verif:{label:'Verifiziert',color:'#c76a1c',directed:true},prueft:{label:'Prüft',color:'#9a5a20',directed:true},befund:{label:'Gefunden bei',color:'#d0436a',directed:true},betrifft:{label:'Issue betrifft',color:'#c2255c',directed:true},aufgabe:{label:'Aufgabe für',color:'#b59500',directed:true},zuweisung:{label:'Zugewiesen an',color:'#3a8f2f',directed:true},verantw:{label:'Verantwortlich für',color:'#2f7a6a',directed:true}};
@@ -507,7 +508,7 @@ function satData(){s=31;
  const axes=[{name:'Geräte: Masse · Leistungsaufnahme · TRL',x:'Masse',y:'Leistungsaufnahme',z:'TRL',zinv:true,note:'Alle Geräte mit Stromverbrauch. Rechts = schwer, oben = hoher Leistungsbedarf, vorne = niedriger Technologiereifegrad (TRL). Rechts oben vorne liegen die größten Risiken fürs Massen- und Leistungsbudget.'},
   {name:'Geräte: Masse logarithmisch · Leistungsaufnahme · TRL',x:'Masse',y:'Leistungsaufnahme',z:'TRL',zinv:true,xlog:true,note:'Wie oben, die Masse logarithmisch: Die vielen leichten Geräte rücken auseinander.'},
   {name:'Einheiten: Masse · Leistung · Anzahl Geräte',x:'Masse gesamt',y:'Leistung gesamt',z:'Geräte',note:'Alle Einheiten unterhalb der Subsysteme. Rechts = schwer, oben = großer Verbraucher, vorne = viele Geräte.'}];
- return{types,relTypes,nodes,edges,chains,axes,attr:'Subsystem',maxObjects:nodes.length}}
+ return{types,relTypes,nodes,edges,chains,axes,attr:'Subsystem',spacing:15.4,maxObjects:nodes.length}}
 // ---------- Fiktive Stammdaten für die Demo-Datenräume ----------
 function anreichern(nodes){ // fiktive Stammdaten für die Demo-Datenräume (Profilkarte); bestehende Werte bleiben
  const sv=s;s=99;const R=n=>Math.floor(rnd()*n),pk=a=>a[R(a.length)],dt=()=>(2024+R(3))+'-'+String(1+R(10)).padStart(2,'0')+'-'+String(1+R(28)).padStart(2,'0'),us=['A. Bauer','B. Keller','C. Weber','D. Hoffmann','E. Schulz','F. Wagner','G. Neumann'];

@@ -1,11 +1,11 @@
-/* 3Deep-Widget, Adapter Version 27.
+/* 3Deep-Widget, Adapter Version 28.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
    im Format der echten Schnittstellen-Antworten. */
 (function () {
   'use strict';
-  var DARSTELLUNG = '69';   // Version von datenraum3d.html; muss zu <meta name="3deep-darstellung"> dort passen (tests/test-gleichstand.js)
+  var DARSTELLUNG = '70';   // Version von datenraum3d.html; muss zu <meta name="3deep-darstellung"> dort passen (tests/test-gleichstand.js)
   var BKS = '/resources/v1/modeler/dsbks/dsbks:Bookmark';
   var ENG = '/resources/v1/modeler/dseng/dseng:EngItem';
   var DOC = '/resources/v1/modeler/documents';
@@ -574,7 +574,7 @@
   async function leseBookmark(bmId, bmTitel, q) {
     var nodes = [], edges = [], gesehen = {}, hinweise = [], qIss = !!(q && (q.issues || q.person)), pi = null;
     var types = {
-      folder: { color: '#e6d2a6', size: 3, shape: 'folder', label: 'Bookmark-Folder' },
+      folder: { color: '#e6d2a6', size: 6, shape: 'folder', label: 'Bookmark-Folder' },
       asm: { color: '#4f8cff', size: 3.36, label: 'Baugruppe' },
       part: { color: '#2fc4ad', size: 1.96, label: 'Einzelteil' },
       issue: { color: '#ff4d6d', size: 2.2, shape: 'torus', label: 'Issue' },
@@ -582,7 +582,7 @@
       person: { color: '#5fcf3f', size: 2.2, shape: 'bust', label: 'Person' },
       spec: { color: '#e5534b', size: 1.3, shape: 'book', label: 'Spezifikation' },
       praes: { color: '#f08a3c', size: 0.9, label: 'Attachment' },
-      dwg: { color: '#9aa5b1', size: 0.9, label: 'Zeichnung' }
+      dwg: { color: '#9aa5b1', size: 1.8, label: 'Zeichnung' }
     };
     var relTypes = {
       struktur: { label: 'Strukturlink (enthält)', color: '#2f3f5c', directed: false },
@@ -1000,7 +1000,9 @@
     var fertigD = baue(nodes, edges, gesehen), fehlend = fertigD.fehlend;
     S.wurzelInfo = (S.wurzeln || []).map(function (id) { var d = (items[id] && items[id].det) || {}; return (d.title || '?') + ' ' + (d.revision || '') + ' [' + id + ']'; });
     if (fehlend) hinweise.push(fehlend + ' Objekte ohne Detaildaten (keine Leserechte oder kein Engineering Item).');
-    return { daten: { types: types, relTypes: relTypes, nodes: nodes, edges: edges, maxObjects: Math.max(500, nodes.length) }, hinweise: hinweise };
+    // Abstand wie vor Adapter 28 (Ordner damals 3, Zeichnung 0.9): größere Ordner/Zeichnungen sollen den Raum nicht auseinanderziehen
+    var abst = 3; nodes.forEach(function (n) { if (n.type === 'folder' || n.type === 'dwg') return; var g = +n.size > 0 ? +n.size : ((types[n.type] || {}).size || 1); if (g > abst) abst = g; });
+    return { daten: { types: types, relTypes: relTypes, nodes: nodes, edges: edges, spacing: +(2.8 * abst).toFixed(3), maxObjects: Math.max(500, nodes.length) }, hinweise: hinweise };
   }
 
   // ---------- Darstellung (iframe) ----------
@@ -1117,7 +1119,7 @@
     S.neuUhr = setTimeout(function () { if (S.laeuft) { S.nachladen = true; return; } S.neuLaden = (S.neuLaden || 0) + 1; laden({ drop: S.zuletzt }); }, S.neuVerzug);
   }
   function diagnoseText() {
-    var z = ['3Deep-Widget Diagnose (Adapter 27, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
+    var z = ['3Deep-Widget Diagnose (Adapter 28, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
       '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-') + (S.ctxZahl ? ' (automatisch gewählt, ' + S.ctxZahl + ' verfügbar)' : ''), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), ''];
     if (S.wurzelInfo) { z.push('', 'Produkte im Bookmark:'); S.wurzelInfo.forEach(function (w) { z.push('  ' + w); }); }
     if (S.issueInfo) {
