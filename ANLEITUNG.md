@@ -1,4 +1,4 @@
-# 3Deep-Widget: Einrichtung und Bedienung (Stand Adapter Version 17, Darstellung Version 68)
+# 3Deep-Widget: Einrichtung und Bedienung (Stand Adapter Version 18, Darstellung Version 68)
 
 ## Dateien (alle im selben Ordner auf GitHub Pages)
 - `widget.html` – kleiner Lader für das 3DDashboard. **Diese Adresse** trägt man im Dashboard ein.
@@ -19,13 +19,12 @@ Hosting: Repository `kodoiii/3Deep` (öffentlich), Adresse `https://kodoiii.gith
 - Dauerhaft (Admin): Platform Management → Members → Additional Apps → Create Additional App, Typ Widget, Source code URL wie oben. (Noch nicht ausprobiert.)
 
 ## Bedienung
-- Auswahl „Bookmark | Issue“: womit begonnen wird. Namen oder Titel eingeben, „Suchen“, Treffer wählen, „Laden“.
+- Links oben das Drop-Feld (siehe unten), daneben die Bookmark-Suche: Namen oder ID eingeben, „Suchen“, Treffer wählen, „Laden“.
 - Häkchen „Schnell“: Produktstruktur mit einer Abfrage je Produkt lesen (expand); geht das nicht, liest das Widget automatisch Ebene für Ebene. Aus = immer Ebene für Ebene (zum Vergleich).
 - Häkchen „Attribute“ (Standard an): liest die Attribute aller Strukturobjekte (z. B. Teilenummer, Reifegrad, Besitzer) mit einer einzigen Abfrage (Zone Query, `POST /cvservlet/zonequeries`). Klappt das nicht, geht es ohne diese Attribute weiter wie bisher; Ergebnis in der Diagnose unter „Zone Query (Attribute)“.
 - Drop-Feld „⤓ Objekt hierher ziehen“: genau ein Objekt aus einer 3DEXPERIENCE-Suche (z. B. 3DSearch) hineinziehen. Physical Product: das Produkt mit seiner Struktur abwärts (nie nach oben). Bookmark: wie „Laden“. Issue: wie der Issue-Start. Person: ihre Issues (zugewiesen, Besitzer, mitwirkend) mit den betroffenen Objekten und ihre Aufgaben. Mehrere Objekte, andere Typen oder Dateien ergeben eine rote Warnung, es wird dann nichts geladen. Häkchen „Dokumente“, „Issues/Aufgaben“ und „Attribute“ gelten auch hier.
 - Häkchen „Dokumente“: Spezifikationen und Attachments mitlesen. „Issues/Aufgaben“: Issues, Aufgaben, Personen mitlesen. Beide sind seit Adapter 14 standardmäßig aus (schnell, nur Bookmark und Produktstruktur); bei Bedarf einschalten und neu laden. Beim Start über ein Issue werden dessen Objekte, Dokumente und Zuweisungen immer gelesen.
-- Häkchen „Struktur“ (nur bei Start mit Issue): Produktstruktur der betroffenen Objekte abwärts.
-- Knopf „Alle Issues“: Entwicklerfunktion für Performancetests, Zeitlimit 180 s.
+- Häkchen „Zeichnungen“ (Standard aus): Zeichnungen (Drawings) der Strukturobjekte suchen und als „Zeichnung“ mit Zeichnungslink zum Bauteil zeigen, auch CATIA-V5-Zeichnungen (CATDrawing) mit Download. Erst über die Zone Query (ohne Zusatzabfragen), sonst je Objekt.
 - Dokument anklicken → „⬇ Datei herunterladen“.
 - Bauteil oder Baugruppe anklicken → „⬇ Datei herunterladen“: zuerst die CAD-Datei (z. B. CATIA V5 .CATPart/.CATProduct), sonst ein abgeleitetes Format (STEP bevorzugt, dann 3DXML usw.). Gibt es beides nicht, meldet die Statuszeile das; Einzelheiten unter „Diagnose“ (Abschnitt „Downloads von Bauteilen/Baugruppen“).
 - In die 3D-Ansicht klicken, dann W A S D bewegen, Maus umsehen, Leertaste/E hoch, Q/C runter, Umschalt schneller, Esc gibt die Maus frei.
@@ -41,13 +40,15 @@ Hosting: Repository `kodoiii/3Deep` (öffentlich), Adresse `https://kodoiii.gith
 | Bookmark, Produktstruktur | auf der Plattform bestätigt |
 | Spezifikationen und Attachments an Teilen, Download | auf der Plattform bestätigt |
 | Issues mit betroffenen Objekten (`$fields`), Personen aus Zuweisungen | auf der Plattform bestätigt |
-| Start bei einem Issue, Attachments direkt am Issue, „Alle Issues“ | nur mit Beispieldaten getestet |
+| Start bei einem Issue (per Drag & Drop), Attachments direkt am Issue | nur mit Beispieldaten getestet |
+| Drag & Drop | auf der Plattform bestätigt |
+| Download CATPart/CATProduct (Ticket per POST) | auf der Plattform bestätigt |
+| Zeichnungen: Zone Query (Repräsentation Typ Drawing), `dseng:EngRepInstance`, V5 über `dsxcad:…/dsxcad:Drawing`, Download `dsxcad:Drawing` | vermutet, nur mit Beispieldaten getestet |
 | Aufgaben mit Bezug zu einem Objekt | Abruf läuft, noch kein Treffer gesehen |
-| Download von Bauteilen/Baugruppen: CAD-Datei über `dsxcad … AuthoringFile/DownloadTicket`, sonst Derived Output über `dsdo:DerivedOutputs/Locate` | Ticket-Abruf auf der Plattform gesehen (FCS-Adresse ohne Ticket); Übergabe des Tickets per Formular (POST `__fcs__jobTicket`) seit Adapter 17 vermutet, nur mit Beispieldaten getestet |
+| Download abgeleiteter Formate (Derived Output über `dsdo:DerivedOutputs/Locate`) | laut DS-SDK, nur mit Beispieldaten getestet |
 | Produktstruktur in einer Abfrage (`dseng:EngItem/{ID}/expand`), Rückfall Ebene für Ebene | auf der Plattform bestätigt (ca. 2 s statt ca. 80 s) |
 | Attribute über Zone Query (`/cvservlet/zonequeries`, Body laut Doku R2026x) | Aufruf laut Doku; Prädikate außer `ds6w:label`/`ds6w:type`, Adresse und Teilenummer vermutet, nur mit Beispieldaten getestet |
 | Dokument-Beziehungen je Objekt gleichzeitig abfragen | mit Beispieldaten getestet |
-| Drag & Drop (Format 3DXContent, Modul `DS/DataDragAndDrop` und Browser-Drop) | vermutet, nur mit Beispieldaten getestet |
 | Person per Drop: Benutzername über `pno/person/{ID}` | vermutet, nur mit Beispieldaten getestet |
 | Unterordner eines Bookmarks | vermutet |
 | WASD mit eingefangener Maus, SpaceMouse im Dashboard | offen |

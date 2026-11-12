@@ -1,4 +1,4 @@
-/* 3Deep-Widget, Adapter Version 17.
+/* 3Deep-Widget, Adapter Version 18.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
@@ -15,7 +15,7 @@
   var XCAD = '/resources/v1/modeler/dsxcad/', DSDO = '/resources/v1/modeler/dsdo/';
   // bevorzugte abgeleitete Formate (Derived Outputs) für den Download von Bauteilen
   var CADFORMATE = ['STEP', 'STP', '3DXML', 'JT', 'IGES', 'IGS', 'STL', 'CGR', 'PDF'];
-  var MAXISSUES = 400, MAXALLE = 3000, FRIST_ALLE = 180;   // Sekunden für die Entwicklerfunktion „Alle Issues“
+  var MAXISSUES = 400;
   var SEITE = 50, PARALLEL = 8, MAXTIEFE = 12, EXPANDGRENZE = 10000;   // expand liefert laut DS höchstens 10000 Einträge
   // Dokument-Beziehungen eines Objekts: Name der Beziehung -> Art in der Darstellung
   // Zone Query (laut Doku R2026x: POST /cvservlet/zonequeries): Attribute aller Strukturobjekte mit einer Abfrage. Varianten von viel nach wenig;
@@ -81,7 +81,6 @@
   function hole(pfad, params, ohneKontext, methode, kopfPlus, body) {
     var p = {}; Object.keys(params || {}).forEach(function (k) { p[k] = params[k]; });
     if (S.tenant) p.tenant = S.tenant;
-    if (S.frist && Date.now() > S.frist) return Promise.reject(new Error('Zeitlimit erreicht'));
     S.aufrufe = (S.aufrufe || 0) + 1;
     var t0 = Date.now(), anfrage = S.live ? liveGet(pfad, p, ohneKontext, methode, kopfPlus, body) : testGet(pfad, p, methode, body);
     return anfrage.then(function (d) { protokoll(pfad, p, true, d, Date.now() - t0); return d; },
@@ -117,7 +116,7 @@
     }, function (e) { if (!zweiter) return ticket(docId, mehrere, zipName, true); throw e; });
   }
   async function download(knotenId, name) {
-    var docId = String(knotenId || '').replace(/^o:/, ''), info = S.dateien[docId];
+    var docId = String(knotenId || '').replace(/^[oz]:/, ''), info = S.dateien[docId];
     if (docId && !info && S.cad[docId]) { await cadDownload(docId, name); diagnose(); return; }
     if (!docId || !info) { status('Zu diesem Objekt ist keine Datei bekannt.', true); return; }
     if (!info.n) { status('„' + (name || docId) + '“ enthält keine Datei.', true); return; }
@@ -191,7 +190,7 @@
     var typ = S.cadTyp[id] || '', wege = [], t = null, quelle = '';
     status('Suche Datei zu „' + (name || id) + '“ …');
     try { await csrf(true); } catch (e) { status('Download fehlgeschlagen: ' + e.message, true); return; }
-    var arten = /Product/i.test(typ) ? ['Product', 'Part'] : ['Part', 'Product'];
+    var arten = /Drawing|Drw/i.test(typ) ? ['Drawing'] : /Product/i.test(typ) ? ['Product', 'Part'] : ['Part', 'Product'];
     for (var i = 0; i < arten.length && !t; i++) {
       try {
         t = ticketAus(await postMitCsrf(XCAD + 'dsxcad:' + arten[i] + '/' + encodeURIComponent(id) + '/dsxcad:AuthoringFile/DownloadTicket', {}));
@@ -363,8 +362,9 @@
   function zoneAntwort(r) {
     var res = r && r.results; if (!Array.isArray(res)) throw new Error('keine Ergebnisliste (leere Antwort? Security Context prüfen)');
     if (res.length === 1 && res[0] && res[0].status) throw new Error(res[0].status);
-    var aus = {}, zahl = 0;
+    var aus = {}, zahl = 0, didPid = {}, pfadeD = [];
     res.forEach(function (x) {
+      if (x && Array.isArray(x.path)) { pfadeD.push(x.path); return; }
       if (!x || !Array.isArray(x.attributes)) return;
       var a = {};
       x.attributes.forEach(function (e) {
@@ -373,9 +373,11 @@
         else Object.keys(e).forEach(function (k) { a[k] = e[k]; });   // Form {"physicalid":"…"} aus dem Doku-Beispiel
       });
       var pid = a.physicalid; if (!pid) return;
+      if (a.did != null) didPid[String(a.did)] = pid;
       delete a.did; delete a.physicalid; aus[pid] = a; zahl++;
     });
     if (!zahl) throw new Error('keine Attribute in der Antwort');
+    Object.defineProperty(aus, '_pfade', { value: pfadeD.map(function (pf) { return pf.map(function (d) { return didPid[String(d)] || ''; }); }), enumerable: false });
     return aus;
   }
   async function zoneAttribute(wurzeln, tiefe) {
@@ -416,16 +418,43 @@
     if (namen(m.contributors).some(gleich)) ro.push('Mitwirkend');
     return ro;
   }
+  // Zeichnungen (Adapter 18). Weg 1: Zone-Query-Pfade [… Referenz, RepInstanz, Repräsentation]; Repräsentation mit ds6w:type „Drawing“ (laut Doku liefert die
+  // Zone Query auch Repräsentationen, Typname vermutet). Weg 2 je Objekt: dseng:EngItem/{ID}/dseng:EngRepInstance (vermutet).
+  // Weg 3 für CATIA-V5-Objekte (xCAD): dsxcad:Part|Product/{ID}/dsxcad:Drawing (vermutet).
+  function zeichnungenAusZone(zq) {
+    var gef = {}, typen = {};
+    Object.keys(zq).forEach(function (k) { var t = zq[k]['ds6w:type']; if (t) typen[t] = (typen[t] || 0) + 1; });
+    (zq._pfade || []).forEach(function (pf) {
+      for (var j = 2; j < pf.length; j += 2) {
+        var rid = pf[j], a = zq[rid] || {};
+        if (!rid || !/Drawing|Drw/i.test(a['ds6w:type'] || '')) continue;
+        var g = gef[rid] = gef[rid] || { id: rid, eltern: {}, a: a, quelle: 'Zone Query' }; if (pf[j - 2]) g.eltern[pf[j - 2]] = 1;
+      }
+    });
+    return { gef: gef, typen: typen };
+  }
+  function zeichnungenEng(id) {
+    return alleSeiten(ENG + '/' + encodeURIComponent(id) + '/dseng:EngRepInstance', {}).then(function (m) {
+      return m.map(function (x) { var ro = x.referencedObject || {}; return { id: ro.identifier || ro.id, typ: ro.type || '', titel: ro.title || x.title || String(x.name || '').replace(/\.\d+$/, '') }; })
+        .filter(function (x) { return x.id && /Drawing|Drw/i.test(x.typ); });
+    });
+  }
+  function zeichnungenXcad(id) {
+    var art = /Product/i.test(S.cadTyp[id] || '') ? 'Product' : 'Part';
+    return hole(XCAD + 'dsxcad:' + art + '/' + encodeURIComponent(id) + '/dsxcad:Drawing', {}).then(function (r) {
+      return mitglieder(r).map(function (x) { var d = x.dataelements || x; return { id: x.id || x.identifier, typ: x.type || 'dsxcad:Drawing', titel: d.title || d.name || '', d: d }; }).filter(function (x) { return x.id; });
+    });
+  }
   function zqWert(k, v) {
     if (v == null || v === '') return '';
     if (k === 'ds6w:created' || k === 'ds6w:modified') return datum(v);
     return Array.isArray(v) ? v.join(', ') : String(v);
   }
 
-  // q fehlt: Start beim Bookmark. q.issues = [IDs]: Start bei diesen Issues. q.alleIssues: alle Issues der Plattform.
+  // q fehlt: Start beim Bookmark. q.issues = [IDs]: Start bei diesen Issues (per Drag & Drop).
   // q.produkte = [IDs]: Start bei Physical Products (nur abwärts). q.person = {id, name}: Start bei einer Person (ihre Issues und Aufgaben).
   async function leseBookmark(bmId, bmTitel, q) {
-    var nodes = [], edges = [], gesehen = {}, hinweise = [], qIss = !!(q && (q.issues || q.alleIssues || q.person)), pi = null;
+    var nodes = [], edges = [], gesehen = {}, hinweise = [], qIss = !!(q && (q.issues || q.person)), pi = null;
     var types = {
       folder: { color: '#f5b942', size: 3, shape: 'box', label: 'Bookmark-Folder' },
       asm: { color: '#4f8cff', size: 3.36, label: 'Baugruppe' },
@@ -434,7 +463,8 @@
       task: { color: '#f2c400', size: 1.4, shape: 'dodecahedron', label: 'Aufgabe' },
       person: { color: '#5fcf3f', size: 2.2, shape: 'bust', label: 'Person' },
       spec: { color: '#e5534b', size: 1.3, shape: 'book', label: 'Spezifikation' },
-      praes: { color: '#f08a3c', size: 0.9, label: 'Attachment' }
+      praes: { color: '#f08a3c', size: 0.9, label: 'Attachment' },
+      dwg: { color: '#9aa5b1', size: 0.9, label: 'Zeichnung' }
     };
     var relTypes = {
       struktur: { label: 'Strukturlink (enthält)', color: '#2f3f5c', directed: false },
@@ -443,7 +473,8 @@
       aufgabe: { label: 'Aufgabe für', color: '#b59500', directed: true },
       zuweisung: { label: 'Zugewiesen an', color: '#3a8f2f', directed: true },
       spec: { label: 'Spezifikationslink', color: '#b8403a', directed: true },
-      praes: { label: 'Attachment-Link', color: '#c76a1c', directed: true }
+      praes: { label: 'Attachment-Link', color: '#c76a1c', directed: true },
+      zeichnung: { label: 'Zeichnungslink', color: '#5d6975', directed: true }
     };
     var palette = ['#e5534b', '#d67bd9', '#f08a3c', '#5fcf3f', '#ff4d6d', '#9aa5b1', '#7c6cf0'], pi = 0;
     function typFuer(name) {
@@ -482,8 +513,8 @@
     S.personRollen = {}; S.personInfo = null;
     if (q && q.person) { pi = await personInfo(q.person); S.personInfo = pi; }
     if (qIss) {
-      status(q.alleIssues ? 'Suche alle Issues …' : q.person ? 'Suche Issues von ' + (pi.voll || pi.login) + ' …' : 'Lese Issue …');
-      var qIds = q.alleIssues ? await issueIds(MAXALLE) : q.person ? await issueIds(MAXISSUES) : q.issues, qFertig = 0, schon = {};
+      status(q.person ? 'Suche Issues von ' + (pi.voll || pi.login) + ' …' : 'Lese Issue …');
+      var qIds = q.person ? await issueIds(MAXISSUES) : q.issues, qFertig = 0, schon = {};
       vorIssues = {}; S.issueZahl = qIds.length;
       await pool(qIds, PARALLEL, async function (iid) {
         try {
@@ -512,14 +543,14 @@
     // 2a. schneller Weg: ganze Struktur je Startprodukt mit einer expand-Abfrage; bei Fehlern Rückfall auf Ebene für Ebene
     S.expandInfo = []; S.expandFehl = 0; S.expandOk = false;
     // 2·. Attribute aller Strukturobjekte mit einer Zone Query (eine Abfrage für alle Startprodukte); bei Fehler weiter wie bisher
-    var zq = {}; S.zqInfo = [];
+    var zq = {}; S.zqInfo = []; S.zqOk = false;
     if (S.mitZone && maxTiefe > 0 && front.length) {
       if ((S.zqFehl || 0) >= 2) S.zqInfo.push('übersprungen: in dieser Sitzung zweimal ohne Erfolg (Widget neu laden für einen neuen Versuch)');
       else {
         var tz = Date.now();
         status('Lese Attribute der Produktstruktur in einer Abfrage (Zone Query) …');
         try {
-          var zr = await zoneAttribute(front, maxTiefe === MAXTIEFE ? -1 : maxTiefe); zq = zr.attr; S.zqFehl = 0;
+          var zr = await zoneAttribute(front, maxTiefe === MAXTIEFE ? -1 : maxTiefe); zq = zr.attr; S.zqFehl = 0; S.zqOk = true;
           var namen = {}, pn = 0; Object.keys(zq).forEach(function (k) { Object.keys(zq[k]).forEach(function (n) { if (zq[k][n] !== '' && zq[k][n] != null) namen[n] = (namen[n] || 0) + 1; }); if (zq[k]['ds6wg:EnterpriseExtension.V_PartNumber']) pn++; });
           S.zqInfo.push('ok: Variante ' + (zr.variante + 1) + ' von ' + ZQATTR.length + (zr.ohneEnovia ? ' (Adresse ohne /enovia)' : '') + ', ' + Object.keys(zq).length + ' Objekte mit Attributen, davon ' + pn + ' mit Teilenummer, ' + ((Date.now() - tz) / 1000).toFixed(1) + ' s');
           S.zqInfo.push('gelieferte Attribute (Anzahl Objekte): ' + (Object.keys(namen).map(function (n) { return n + ' ' + namen[n]; }).join(', ') || '(keine)'));
@@ -578,6 +609,39 @@
     }
     if (grenze || (front.length && maxTiefe === MAXTIEFE)) hinweise.push('Höchstzahl von ' + S.max + ' Objekten erreicht, die Struktur ist unvollständig.');
 
+    // 2a'. Zeichnungen der Strukturobjekte
+    var zeich = {}, zeichZahl = 0; S.zgInfo = [];
+    if (S.mitZeich && Object.keys(items).length) {
+      var tz0 = Date.now(), nimm = function (z, el, quelle) {
+        if (!z.id || items[z.id]) return;
+        if (!zeich[z.id]) { if (nodes.length + anzahl + andere.length + zeichZahl >= S.max) return; zeich[z.id] = { id: z.id, typ: z.typ || '', titel: z.titel || '', a: z.a || {}, d: z.d || {}, eltern: {}, quelle: quelle }; zeichZahl++; }
+        if (el && items[el]) zeich[z.id].eltern[el] = 1;
+      };
+      var zz = zeichnungenAusZone(zq), zoneZahl = Object.keys(zz.gef).length;
+      Object.keys(zz.gef).forEach(function (k) { var g = zz.gef[k]; Object.keys(g.eltern).concat([null]).forEach(function (el) { nimm({ id: k, typ: g.a['ds6w:type'], titel: g.a['ds6w:label'] || g.a['ds6w:identifier'], a: g.a }, el, 'Zone Query'); }); });
+      if (S.zqOk) S.zgInfo.push('Zone Query: ' + zoneZahl + ' Zeichnungen; Typen in der Antwort: ' + (Object.keys(zz.typen).map(function (t) { return t + ' ' + zz.typen[t]; }).join(', ') || '(keine)'));
+      else S.zgInfo.push('Zone Query nicht verfügbar (Häkchen „Attribute“ aus oder Fehler)');
+      var ids2 = Object.keys(items), zf = { eng: { ok: 0, fehler: 0, treffer: 0, fehlerText: '' }, xcad: { ok: 0, fehler: 0, treffer: 0, fehlerText: '' } }, zErl = 0;
+      var mitEng = !zoneZahl, xIds = ids2.filter(function (id) { return /dsxcad/i.test(S.cadTyp[id] || ''); });
+      status('Suche Zeichnungen …');
+      await pool(ids2, PARALLEL, async function (id) {
+        var auf = [];
+        if (mitEng) auf.push(['eng', zeichnungenEng]);
+        if (xIds.indexOf(id) >= 0) auf.push(['xcad', zeichnungenXcad]);
+        await Promise.all(auf.map(async function (w) {
+          var z = zf[w[0]]; if (z.fehler >= 3 && !z.ok) return;
+          try { var l = await w[1](id); z.ok++; z.treffer += l.length; l.forEach(function (x) { nimm(x, id, w[0] === 'eng' ? 'EngRepInstance' : 'dsxcad'); }); }
+          catch (e) { z.fehler++; if (!z.fehlerText) z.fehlerText = e.message; }
+        }));
+        zErl++; if (zErl % 10 === 0 || zErl === ids2.length) status('Suche Zeichnungen: ' + zErl + ' von ' + ids2.length + ' Objekten, ' + zeichZahl + ' gefunden …');
+      });
+      if (mitEng) S.zgInfo.push('EngRepInstance je Objekt: ' + zf.eng.ok + ' ok, ' + zf.eng.fehler + ' Fehler, ' + zf.eng.treffer + ' Zeichnungen' + (zf.eng.fehlerText ? ' (erster Fehler: ' + zf.eng.fehlerText + ')' : ''));
+      else S.zgInfo.push('EngRepInstance je Objekt: übersprungen (Zone Query hat Zeichnungen geliefert)');
+      S.zgInfo.push('dsxcad Drawing je V5-Objekt (' + xIds.length + ' Objekte): ' + zf.xcad.ok + ' ok, ' + zf.xcad.fehler + ' Fehler, ' + zf.xcad.treffer + ' Zeichnungen' + (zf.xcad.fehlerText ? ' (erster Fehler: ' + zf.xcad.fehlerText + ')' : ''));
+      S.zgInfo.push('Ergebnis: ' + zeichZahl + ' Zeichnungen in ' + ((Date.now() - tz0) / 1000).toFixed(1) + ' s');
+      if (!zeichZahl && zf.eng.fehler && !zf.eng.ok && zf.xcad.fehler && !zf.xcad.ok) hinweise.push('Zeichnungen nicht lesbar (Details unter „Diagnose“).');
+    }
+
     // 2b. Spezifikationen und Attachments der Objekte
     var doks = {}, dokKanten = [], dokZahl = 0, dokGrenze = false;
     if (S.mitDok) {
@@ -595,7 +659,7 @@
           liste.forEach(function (d) {
             var did = d && (d.id || d.identifier); if (!did) return;
             if (!doks[did]) {
-              if (nodes.length + anzahl + andere.length + dokZahl >= S.max) { dokGrenze = true; return; }
+              if (nodes.length + anzahl + andere.length + dokZahl + zeichZahl >= S.max) { dokGrenze = true; return; }
               doks[did] = { d: d, art: r.art }; dokZahl++;
             } else if (r.art === 'spec') doks[did].art = 'spec';
             dokKanten.push({ from: 'o:' + did, to: id, type: r.art, meta: { Beziehung: r.rel } });
@@ -615,8 +679,9 @@
       ordner.forEach(function (o) { ziel[o.id] = 'bm:' + o.id; });
       Object.keys(items).forEach(function (id) { ziel[id] = id; });
       Object.keys(doks).forEach(function (id) { ziel[id] = 'o:' + id; });
+      Object.keys(zeich).forEach(function (id) { ziel[id] = 'z:' + id; });
       andere.forEach(function (a) { if (!ziel[a.id]) ziel[a.id] = 'o:' + a.id; });
-      var frei2 = function () { return nodes.length + anzahl + andere.length + dokZahl + exKnoten.length < S.max; }, exGrenze = false;
+      var frei2 = function () { return nodes.length + anzahl + andere.length + dokZahl + zeichZahl + exKnoten.length < S.max; }, exGrenze = false;
       var person = function (login, voll, mail) {
         login = String(login || '').trim(); if (!login) return null;
         if (!pers[login]) {
@@ -661,7 +726,7 @@
           var ro = S.personRollen[iid] || [];
           if (pId && ro.length && ro.indexOf('Zugewiesen') < 0) exKanten.push({ from: n.id, to: pId, type: 'zuweisung', label: ro.join(', '), meta: { Rolle: ro.join(', ') } });
         });
-        if (iIds.length >= (q && q.alleIssues ? MAXALLE : MAXISSUES)) hinweise.push('Nur die ersten ' + iIds.length + ' Issues der Plattform gelesen.');
+        if (iIds.length >= MAXISSUES) hinweise.push('Nur die ersten ' + iIds.length + ' Issues der Plattform gelesen.');
         // Attachments direkt am Issue
         if (S.mitDok || qIss) {
           var aIds = Object.keys(issues), aFertig = 0, aOk = 0, aFehler = 0;
@@ -701,7 +766,7 @@
         bez.forEach(function (x) { if (!tasks[tid]._k[x]) { tasks[tid]._k[x] = 1; exKanten.push({ from: tasks[tid].id, to: ziel[x], type: 'aufgabe' }); } });
       };
       try { status('Lese Aufgaben …'); (await taskAufruf(TSK, { showProjectTasks: 'true' })).forEach(nimmTask); } catch (e) { hinweise.push('Eigene Aufgaben nicht lesbar (' + e.message + ').'); }
-      var sIds = (q && q.alleIssues ? [] : ordner.map(function (o) { return o.id; }).concat(Object.keys(items))).concat(Object.keys(issues)), sOk = 0, sFehler = 0, sFertig = 0;
+      var sIds = ordner.map(function (o) { return o.id; }).concat(Object.keys(items)).concat(Object.keys(issues)), sOk = 0, sFehler = 0, sFertig = 0;
       await pool(sIds, PARALLEL, async function (sid) {
         if (sFehler >= 3 && !sOk) return;
         try { var l = await taskAufruf(TSK + '/scopeId/' + encodeURIComponent(sid), {}); sOk++; l.forEach(function (t) { if (t) { t._scope = sid; nimmTask(t); } }); } catch (e) { sFehler++; }
@@ -745,6 +810,17 @@
         kinder.forEach(function (c) { var e = { from: c.id, to: id, type: 'struktur' }; if (c.n > 1) { e.label = '×' + c.n; e.meta = { Instanzen: String(c.n) }; } edges.push(e); });
       });
       startProdukte.forEach(function (p) { if (items[p.id] && p.bm) { var key = p.id + '>' + p.bm; if (!gesehen[key]) { gesehen[key] = 1; edges.push({ from: p.id, to: 'bm:' + p.bm, type: 'inhalt' }); } } });
+      Object.keys(zeich || {}).forEach(function (zid) {
+        var z = zeich[zid], a = z.a || {}, d = z.d || {}, v5 = /dsxcad/i.test(z.typ);
+        var meta = { Titel: z.titel || a['ds6w:label'] || d.title || '', Name: a['ds6w:identifier'] || d.name || '', Revision: a['ds6wg:revision'] || d.revision || '', Reifegrad: (a['ds6w:status'] ? String(a['ds6w:status']).split('.').pop() : '') || d.state || '',
+          Besitzer: a['ds6w:responsible'] || d.owner || '', 'Geändert': a['ds6w:modified'] ? datum(a['ds6w:modified']) : datum(d.modified), Dateityp: v5 ? 'CATDrawing' : '', Typ: z.typ || 'Drawing', Quelle: z.quelle, ID: zid };
+        Object.keys(meta).forEach(function (k) { if (meta[k] === '') delete meta[k]; });
+        var n = { id: 'z:' + zid, type: 'dwg', name: meta.Titel || meta.Name || ('Zeichnung ' + zid.slice(-6)), meta: meta, dl: true };
+        var st = String(a['ds6w:status'] || d.state || '').split('.').pop().toUpperCase().replace(/ /g, '_'); if (st) n.state = ZUSTAND[st] || st;
+        S.cad[zid] = 1; S.cadTyp[zid] = z.typ || 'Drawing';
+        nodes.push(n);
+        Object.keys(z.eltern).forEach(function (el) { if (items[el]) edges.push({ from: 'z:' + zid, to: el, type: 'zeichnung' }); });
+      });
       Object.keys(doks || {}).forEach(function (did) {
         var x = dokMeta(doks[did].d, 'Document', did), n = { id: 'o:' + did, type: doks[did].art, name: x.name, meta: x.meta, dl: true };
         if (x.state) n.state = ZUSTAND[String(x.state).toUpperCase().replace(/ /g, '_')] || x.state;
@@ -771,7 +847,6 @@
     }
     var fertigD = baue(nodes, edges, gesehen), fehlend = fertigD.fehlend;
     S.wurzelInfo = (S.wurzeln || []).map(function (id) { var d = (items[id] && items[id].det) || {}; return (d.title || '?') + ' ' + (d.revision || '') + ' [' + id + ']'; });
-    if (S.frist && Date.now() > S.frist) { hinweise = hinweise.filter(function (h) { return !/nicht lesbar/.test(h); }); hinweise.push('Zeitlimit von ' + FRIST_ALLE + ' s erreicht, das Ergebnis ist unvollständig.'); }
     if (fehlend) hinweise.push(fehlend + ' Objekte ohne Detaildaten (keine Leserechte oder kein Engineering Item).');
     return { daten: { types: types, relTypes: relTypes, nodes: nodes, edges: edges, maxObjects: Math.max(500, nodes.length) }, hinweise: hinweise };
   }
@@ -854,39 +929,33 @@
   // ---------- Bedienung ----------
   async function suchen() {
     if (S.laeuft) return;
-    var text = q('.td-su').value.trim(), sel = q('.td-tr'), iss = q('.td-ar').value === 'iss', was = iss ? 'Issue' : 'Bookmark';
+    var text = q('.td-su').value.trim(), sel = q('.td-tr');
     try {
-      S.laeuft = true; S.frist = 0; status('Suche ' + was + 's …');
-      if (/^[0-9A-Fa-f]{20,}$/.test(text)) S.treffer = [{ id: text, title: 'ID ' + text, art: iss ? 'issue' : 'bm' }];
-      else if (iss) {
-        var ids = await issueIds(60, text), liste = [];
-        await pool(ids, PARALLEL, async function (iid) { try { var d = await issueDetail(iid); if (d) liste.push({ id: iid, art: 'issue', title: (d.name ? d.name + '  ' : '') + (d.title || ''), owner: d.owner || '', d: d['Creation Date'] || '' }); } catch (e) { } });
-        S.treffer = liste.sort(function (x, y) { return String(y.d).localeCompare(String(x.d)); });
-      } else S.treffer = await sucheBookmarks(text);
+      S.laeuft = true; status('Suche Bookmarks …');
+      if (/^[0-9A-Fa-f]{20,}$/.test(text)) S.treffer = [{ id: text, title: 'ID ' + text, art: 'bm' }];
+      else S.treffer = await sucheBookmarks(text);
       sel.innerHTML = S.treffer.map(function (b, i) { return '<option value="' + i + '">' + esc(b.title || b.name || b.id) + (b.owner ? ' (' + esc(b.owner) + ')' : '') + '</option>'; }).join('');
       sel.style.display = S.treffer.length ? '' : 'none'; q('.td-la').style.display = S.treffer.length ? '' : 'none';
-      status(S.treffer.length ? S.treffer.length + ' ' + was + '(s) gefunden' + (iss && S.treffer.length >= 60 ? ' (nur die ersten 60, Suchtext eingrenzen)' : '') + '. Auswählen und „Laden“ drücken.' : 'Kein ' + was + ' gefunden.', !S.treffer.length);
+      status(S.treffer.length ? S.treffer.length + ' Bookmark(s) gefunden. Auswählen und „Laden“ drücken.' : 'Kein Bookmark gefunden.', !S.treffer.length);
     } catch (e) { status('Suche fehlgeschlagen: ' + e.message, true); } finally { S.laeuft = false; diagnose(); }
   }
   async function laden(sonder) {
     if (S.laeuft) return;
-    var b = sonder ? (sonder.drop || { title: 'Alle Issues' }) : S.treffer[+q('.td-tr').value]; if (!b) return;
+    var b = sonder ? sonder.drop : S.treffer[+q('.td-tr').value]; if (!b) return;
     try {
-      S.laeuft = true; S.max = Math.max(10, parseInt(S.maxText, 10) || 1500); S.mitDok = q('.td-dk').checked; S.mitIssues = q('.td-ia').checked; S.mitExpand = q('.td-ex').checked; S.mitZone = q('.td-zq').checked;
-      S.aufrufe = 0; S.frist = 0;
+      S.laeuft = true; S.max = Math.max(10, parseInt(S.maxText, 10) || 1500); S.mitDok = q('.td-dk').checked; S.mitIssues = q('.td-ia').checked; S.mitExpand = q('.td-ex').checked; S.mitZone = q('.td-zq').checked; S.mitZeich = q('.td-zg').checked;
+      S.aufrufe = 0;
       var t0 = Date.now(), erg;
-      if (sonder && sonder.alleIssues) { S.frist = t0 + FRIST_ALLE * 1000; S.max = Math.max(S.max, 5000); erg = await leseBookmark(null, null, { alleIssues: true, struktur: false }); }
-      else if (b.art === 'issue') erg = await leseBookmark(null, null, { issues: [b.id], struktur: q('.td-sk').checked });
+      if (b.art === 'issue') erg = await leseBookmark(null, null, { issues: [b.id], struktur: false });
       else if (b.art === 'produkt') erg = await leseBookmark(null, null, { produkte: [b.id], struktur: true });
-      else if (b.art === 'person') erg = await leseBookmark(null, null, { person: { id: b.id, name: b.title }, struktur: q('.td-sk').checked });
+      else if (b.art === 'person') erg = await leseBookmark(null, null, { person: { id: b.id, name: b.title }, struktur: false });
       else erg = await leseBookmark(b.id, b.title || b.name || '');
-      S.frist = 0;
       sende({ quelle: '3deep-adapter', daten: erg.daten, name: b.title || 'Daten', steuerung: 'game' });
       status(erg.daten.nodes.length + ' Objekte, ' + erg.daten.edges.length + ' Beziehungen aus „' + (b.title || b.id) + '“ in ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s, ' + S.aufrufe + ' Abfragen.' + (erg.hinweise.length ? ' Hinweis: ' + erg.hinweise.join(' ') : ''), erg.hinweise.length > 0);
-    } catch (e) { status('Laden fehlgeschlagen: ' + e.message + ' (Details unter „Diagnose“)', true); } finally { S.laeuft = false; S.frist = 0; diagnose(); }
+    } catch (e) { status('Laden fehlgeschlagen: ' + e.message + ' (Details unter „Diagnose“)', true); } finally { S.laeuft = false; diagnose(); }
   }
   function diagnoseText() {
-    var z = ['3Deep-Widget Diagnose (Adapter 17, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
+    var z = ['3Deep-Widget Diagnose (Adapter 18, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
       '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-'), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), ''];
     if (S.wurzelInfo) { z.push('', 'Produkte im Bookmark:'); S.wurzelInfo.forEach(function (w) { z.push('  ' + w); }); }
     if (S.issueInfo) {
@@ -898,6 +967,7 @@
     }
     if (S.dropInfo) { z.push('', 'Letzter Drop:'); S.dropInfo.forEach(function (c) { z.push('  ' + c); }); }
     if (S.personInfo) { var pp = S.personInfo; z.push('', 'Person: ' + (pp.voll || '-') + ', Benutzername ' + (pp.login || '-') + ' (aus ' + pp.quelle + (pp.fehler ? ', pno-Fehler: ' + pp.fehler : '') + ')' + (pp.issues ? ', ' + pp.issues : '')); }
+    if (S.zgInfo && S.zgInfo.length) { z.push('', 'Zeichnungen:'); S.zgInfo.forEach(function (c) { z.push('  ' + c); }); }
     if (S.zqInfo && S.zqInfo.length) { z.push('', 'Zone Query (Attribute):'); S.zqInfo.forEach(function (c) { z.push('  ' + c); }); }
     if (S.expandInfo && S.expandInfo.length) { z.push('', 'Produktstruktur:'); S.expandInfo.forEach(function (c) { z.push('  ' + c); }); }
     if (S.cadInfo.length) { z.push('', 'Downloads von Bauteilen/Baugruppen:'); S.cadInfo.forEach(function (c) { z.push('  ' + c); }); if (S.dlWeg) z.push('  zuletzt von Hand gewählt: ' + S.dlWeg); }
@@ -917,21 +987,19 @@
       '<div class="td-w" style="position:fixed;left:0;top:0;right:0;bottom:0;display:flex;flex-direction:column;background:#0b1220;color:#e8eefc;font:13px/1.35 system-ui,Segoe UI,Arial,sans-serif">' +
       '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 8px;background:#121c30;border-bottom:1px solid #26344f">' +
       '<b style="margin-right:4px">3Deep</b>' +
-      '<select class="td-ar" title="Womit beginnen?" style="' + feld + '"><option value="bm">Bookmark</option><option value="iss">Issue</option></select>' +
-      '<input class="td-su" type="text" placeholder="Bookmark-Name oder ID" style="' + feld + ';width:190px" />' +
+      '<div class="td-dz" title="Ein Objekt aus einer 3DEXPERIENCE-Suche hierher ziehen: Physical Product (Struktur abwärts), Bookmark, Issue oder Person" style="border:2px dashed #5b7bb8;border-radius:6px;padding:3px 10px;color:#9fb4dc;white-space:nowrap">⤓ Objekt hierher ziehen</div>' +
+      '<input class="td-su" type="text" placeholder="Bookmark-Name oder ID" title="Bookmark nach Name oder ID suchen" style="' + feld + ';width:190px" />' +
       '<button class="td-sb" style="' + knopf + '">Suchen</button>' +
       '<select class="td-tr" style="' + feld + ';max-width:260px;display:none"></select>' +
       '<button class="td-la" style="' + knopf + ';background:#2563d6;display:none">Laden</button>' +
       '<label title="Produktstruktur mit einer Abfrage je Produkt lesen (expand, schneller); aus = Ebene für Ebene wie bisher" style="display:flex;align-items:center;gap:4px"><input class="td-ex" type="checkbox" checked="checked" />Schnell</label>' +
       '<label title="Attribute aller Strukturobjekte (z. B. Teilenummer) mit einer Abfrage nachlesen (Zone Query); aus = wie bisher" style="display:flex;align-items:center;gap:4px"><input class="td-zq" type="checkbox" checked="checked" />Attribute</label>' +
       '<label title="Spezifikationen und Attachments der Objekte mitlesen" style="display:flex;align-items:center;gap:4px"><input class="td-dk" type="checkbox" />Dokumente</label>' +
+      '<label title="Zeichnungen (Drawings) der Strukturobjekte suchen und anzeigen" style="display:flex;align-items:center;gap:4px"><input class="td-zg" type="checkbox" />Zeichnungen</label>' +
       '<label title="Issues, Aufgaben und Personen zu den Objekten mitlesen" style="display:flex;align-items:center;gap:4px"><input class="td-ia" type="checkbox" />Issues/Aufgaben</label>' +
-      '<label class="td-skl" title="Produktstruktur der betroffenen Objekte abwärts mitlesen" style="display:none;align-items:center;gap:4px"><input class="td-sk" type="checkbox" />Struktur</label>' +
-      '<button class="td-ai" title="Entwicklerfunktion (Performancetest): alle Issues der Plattform mit ihren Objekten, Zeitlimit ' + FRIST_ALLE + ' s" style="' + knopf + ';background:#5a3d10">Alle Issues</button>' +
       '<select class="td-cx" title="Security Context" style="' + feld + ';max-width:240px;display:none"></select>' +
       '<input class="td-ci" type="text" placeholder="Security Context: Rolle.Organisation.Collaborative Space" title="Security Context von Hand" style="' + feld + ';width:330px;display:none" />' +
       '<button class="td-db" style="' + knopf + '">Diagnose</button>' +
-      '<div class="td-dz" title="Ein Objekt aus einer 3DEXPERIENCE-Suche hierher ziehen: Physical Product (Struktur abwärts), Bookmark, Issue oder Person" style="border:2px dashed #5b7bb8;border-radius:6px;padding:3px 10px;color:#9fb4dc;white-space:nowrap">⤓ Objekt hierher ziehen</div>' +
       '<span class="td-mo" style="padding:2px 8px;border-radius:10px;background:#5a4410;color:#ffd98a;display:none">Testmodus: Beispieldaten</span>' +
       '<span class="td-st" style="flex:1;min-width:200px;color:#c9d4e8">Starte …</span></div>' +
       '<div class="td-dp" style="display:none;padding:6px 8px;background:#121c30;border-bottom:1px solid #26344f">' +
@@ -939,12 +1007,6 @@
       '<textarea class="td-dx" readonly="readonly" style="' + feld + ';width:100%;height:180px;box-sizing:border-box;font:12px monospace;display:none"></textarea></div>' +
       '<iframe class="td-fr" title="3Deep Darstellung" allow="fullscreen" style="flex:1;width:100%;border:0;background:#0b1220"></iframe></div>';
     q('.td-sb').onclick = suchen; q('.td-la').onclick = function () { laden(); };
-    q('.td-ai').onclick = function () { laden({ alleIssues: true }); };
-    q('.td-ar').onchange = function (e) {
-      var iss = e.target.value === 'iss';
-      q('.td-su').placeholder = iss ? 'Issue-Titel, Name oder ID (leer = alle)' : 'Bookmark-Name oder ID';
-      q('.td-skl').style.display = iss ? 'flex' : 'none'; S.treffer = []; q('.td-tr').style.display = 'none'; q('.td-la').style.display = 'none';
-    };
     q('.td-su').addEventListener('keydown', function (e) { if (e.key === 'Enter') suchen(); });
     q('.td-db').onclick = function () { var p = q('.td-dp'), d = q('.td-dx'), auf = p.style.display === 'none'; p.style.display = auf ? '' : 'none'; d.style.display = auf ? '' : 'none'; diagnose(); };
     q('.td-dc').onclick = function () { var d = q('.td-dx'); d.value = diagnoseText(); d.select(); try { document.execCommand('copy'); } catch (e) { } if (navigator.clipboard) navigator.clipboard.writeText(d.value).catch(function () { }); };
@@ -1066,6 +1128,13 @@
       relateddata: { assignees: wer.map(function (w) { return { id: id(), type: 'Person', dataelements: { name: w[0], fullname: w[1], email: w[0] + '@example.com' } }; }), scopes: scope ? [{ id: scope, type: 'x', identifier: scope }] : [], references: (refs || []).map(function (r) { return { id: r, identifier: r }; }), deliverables: [] } };
       if (scope) (T.scope[scope] = T.scope[scope] || []).push(i); return i; }
     T.fahrwerk = fahrwerk; T.bremse = bremse; T.vorder = vorder; T.sp1 = sp1;
+    // Repräsentationen: native Zeichnung an Leistungselektronik, 3D-Form an Bremsscheibe (keine Zeichnung), V5-Zeichnung zum Bremssattel (xCAD)
+    T.rep = {}; T.xdrw = {};
+    function rep(eltern, titel, typ) { var r = id(), ins = id(); T.it[r] = { id: r, name: 'drw-' + n, title: titel, description: '', type: typ, revision: 'A.1', state: 'RELEASED', owner: 'A. Bauer', created: '2026-09-14T08:12:00Z', modified: '2026-10-21T15:40:00Z' };
+      (T.rep[eltern] = T.rep[eltern] || []).push({ id: ins, type: 'VPMRepInstance', name: titel + '.1', referencedObject: { source: '$3DSpace', type: typ, identifier: r, relativePath: '/…/' + r } }); return r; }
+    T.zle = rep(le, 'Zeichnung Leistungselektronik', 'Drawing'); rep(scheibe, 'Bremsscheibe 3D', '3DShape');
+    var xd = id(); T.xdrw[sattel] = [{ id: xd, type: 'dsxcad:Drawing', dataelements: { title: 'Bremssattel', name: 'Bremssattel.CATDrawing', revision: 'B', state: 'RELEASED', owner: 'A. Bauer', modified: '2026-10-21T15:40:00Z' } }];
+    T.v5[xd] = { typ: 'dsxcad:Drawing', datei: 'Bremssattel.CATDrawing' }; T.xd = xd;
     var is1 = issue('Sensor liefert bei Kälte falsche Werte', 'In Work', [sensor, le], ['cmeier']);
     haenge(is1, 'Reference Document', dok('Foto Fehlerbild', 'Fehlerbild.png'));
     T.is1 = is1;
@@ -1131,17 +1200,20 @@
             var wz = rp[rp.length - 1]; if (!TEST.it[wz]) return;
             (function ab(rid, pf, t) {
               var kk = t < maxZ ? (TEST.kids[rid] || []) : [];
-              if (!kk.length) pfadeZ.push(pf.slice());
+              (TEST.rep[rid] || []).forEach(function (ri) { var rr = ri.referencedObject.identifier; pfadeZ.push(pf.concat([el(ri.id, null), el(rr, TEST.it[rr])])); });
+              if (!kk.length && !(TEST.rep[rid] || []).length) pfadeZ.push(pf.slice());
               kk.forEach(function (ins) { var c = ins.referencedObject.identifier; ab(c, pf.concat([el(ins.id, null), el(c, TEST.it[c])]), t + 1); });
             })(wz, [el(wz, TEST.it[wz])], 0);
           });
           pfadeZ.forEach(function (pp) { res.push({ path: pp }); });
           return ja({ results: res });
         }
+        if ((m = pfad.match(/dseng:EngItem\/([^\/]+)\/dseng:EngRepInstance$/))) { if (S.testZeichFehler) return nein(new Error('404 Not Found')); var rr2 = TEST.rep[m[1]] || []; return ja({ totalItems: rr2.length, member: seite(rr2) }); }
+        if ((m = pfad.match(/dsxcad:(Part|Product)\/([^\/]+)\/dsxcad:Drawing$/))) { if (S.testZeichFehler) return nein(new Error('404 Not Found')); var xx = TEST.xdrw[m[2]] || []; return ja({ totalItems: xx.length, member: xx }); }
         if ((m = pfad.match(/dseng:EngItem\/([^\/]+)\/dseng:EngInstance$/))) { var kk = TEST.kids[m[1]] || []; return ja({ totalItems: kk.length, member: seite(kk) }); }
         if ((m = pfad.match(/dseng:EngItem\/([^\/]+)$/))) { var it = TEST.it[m[1]]; return it ? ja({ totalItems: 1, member: [it] }) : nein(new Error('404 Objekt nicht gefunden')); }
         if (pfad === '/resources/v1/application/CSRF') return ja({ success: true, csrf: { name: 'ENO_CSRF_TOKEN', value: 'TEST-TOKEN' } });
-        if ((m = pfad.match(/dsxcad:(Part|Product)\/([^\/]+)\/dsxcad:AuthoringFile\/DownloadTicket$/))) {
+        if ((m = pfad.match(/dsxcad:(Part|Product|Drawing)\/([^\/]+)\/dsxcad:AuthoringFile\/DownloadTicket$/))) {
           if (methode !== 'POST') return nein(new Error('405'));
           var v = TEST.v5[m[2]];
           if (!v || v.typ !== 'dsxcad:' + m[1]) return nein(new Error('404 kein ' + m[1] + ' im xCAD-Modell'));
