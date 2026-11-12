@@ -1,4 +1,4 @@
-/* 3Deep-Widget, Adapter Version 16.
+/* 3Deep-Widget, Adapter Version 17.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
@@ -42,7 +42,7 @@
     var k = Object.keys(r).filter(function (x) { return Array.isArray(r[x]) && ['masks', 'definitions'].indexOf(x) < 0; });
     return k.length === 1 ? r[k[0]] : [];
   }
-  function sauber(k, v) { if (k === 'csrf') return '(entfernt)'; if (k === 'ticketURL') return String(v).slice(0, 70) + '… (gekürzt)'; return v; }
+  function sauber(k, v) { if (k === 'csrf' || /^(ticket|jobticket|jobTicket)$/.test(k)) return '(entfernt)'; if (k === 'ticketURL') return String(v).slice(0, 70) + '… (gekürzt)'; return v; }
   function datum(t) { if (!t) return ''; var d = new Date(t); return isNaN(d) ? String(t) : d.toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' }); }
   function pool(liste, n, fn) {
     var i = 0, erg = [];
@@ -138,7 +138,39 @@
   function ticketAus(r) {
     var gef = null;
     (function such(o, t) { if (gef || !o || typeof o !== 'object' || t > 6) return; if (o.ticketURL) { gef = o; return; } Object.keys(o).forEach(function (k) { such(o[k], t + 1); }); })(r, 0);
-    return gef ? { url: gef.ticketURL, name: gef.filename || gef.fileName || gef.title || '' } : null;
+    if (!gef) return null;
+    return { url: gef.ticketURL, name: gef.filename || gef.fileName || gef.title || '', ticket: gef.ticket || gef.jobticket || gef.jobTicket || '',
+      param: gef.ticketparam || gef.ticketParam || '__fcs__jobTicket', felder: Object.keys(gef).join(', ') };
+  }
+  // Ticket-Download beim FCS: steht das Ticket nicht schon in der Adresse, wird es als Formularfeld (POST) mitgeschickt.
+  // Ohne Ticket antwortet das FCS mit „Error ticket is null.“ (auf der Plattform gesehen, Adapter 16).
+  function fcsWeg(t) {
+    if (!t.ticket || t.url.indexOf(t.param + '=') >= 0) return 'link';
+    return 'post';
+  }
+  function fcsSenden(t) {
+    var f = document.createElement('form'); f.method = 'POST'; f.action = t.url; f.target = '_blank'; f.style.display = 'none';
+    f.setAttribute('accept-charset', 'UTF-8');
+    var i = document.createElement('input'); i.type = 'hidden'; i.name = t.param; i.value = t.ticket; f.appendChild(i);
+    (S.root || document.body).appendChild(f);
+    try { f.submit(); } finally { setTimeout(function () { if (f.parentNode) f.parentNode.removeChild(f); }, 2000); }
+  }
+  function zeigeDownload(t, quelle) {
+    var st = q('.td-st'); st.style.color = '#c9d4e8';
+    var weg = fcsWeg(t), name = esc(t.name || 'herunterladen');
+    if (weg === 'link') {
+      st.innerHTML = 'Datei bereit: <a class="td-dl" target="_blank" rel="noopener" style="color:#8ec1ff">' + name + '</a>' + (quelle ? ' – ' + esc(quelle) : '') + ' (startet der Download nicht von selbst, hier klicken)';
+      var a = q('.td-dl'); a.href = t.url; if (t.name) a.setAttribute('download', t.name);
+      try { a.click(); } catch (e) { }
+      return 'Link';
+    }
+    var get = t.url + (t.url.indexOf('?') < 0 ? '?' : '&') + encodeURIComponent(t.param) + '=' + encodeURIComponent(t.ticket);
+    st.innerHTML = 'Datei bereit: <button class="td-dlp" style="background:#2563d6;color:#fff;border:0;border-radius:6px;padding:2px 8px;cursor:pointer;font:inherit">⬇ ' + name + '</button>' + (quelle ? ' – ' + esc(quelle) : '') +
+      ' (startet der Download nicht von selbst: Knopf drücken; klappt das nicht: <a class="td-dlg" target="_blank" rel="noopener" style="color:#8ec1ff">Weg 2</a>)';
+    q('.td-dlp').onclick = function () { S.dlWeg = 'Knopf (POST)'; fcsSenden(t); diagnose(); };
+    var g = q('.td-dlg'); g.href = get; g.onclick = function () { S.dlWeg = 'Weg 2 (Ticket in der Adresse)'; setTimeout(diagnose, 50); };
+    try { fcsSenden(t); } catch (e) { }
+    return 'Formular (POST, Feld ' + t.param + ')';
   }
   function postMitCsrf(pfad, body) {
     return csrf().then(function (tok) { return hole(pfad, {}, false, 'POST', { ENO_CSRF_TOKEN: tok, 'Content-Type': 'application/json' }, body || {}); });
@@ -180,13 +212,15 @@
         }
       } catch (e) { wege.push('Derived Outputs: ' + e.message); }
     }
-    S.cadInfo.push((name || id) + ' [' + id + ', Typ ' + (typ || '?') + ']: ' + (t ? 'ok über ' + quelle + ', Datei ' + (t.name || '?') : 'keine Datei') + (wege.length ? ' | ' + wege.join(' | ') : ''));
+    if (!t) {
+      S.cadInfo.push((name || id) + ' [' + id + ', Typ ' + (typ || '?') + ']: keine Datei' + (wege.length ? ' | ' + wege.join(' | ') : ''));
+      if (S.cadInfo.length > 30) S.cadInfo.shift();
+      status('Zu „' + (name || id) + '“ gibt es keine herunterladbare Datei (weder CAD-Datei wie .CATPart noch abgeleitetes Format wie STEP). Details unter „Diagnose“.', true); return;
+    }
+    var weg = zeigeDownload(t, quelle);
+    S.cadInfo.push((name || id) + ' [' + id + ', Typ ' + (typ || '?') + ']: ok über ' + quelle + ', Datei ' + (t.name || '?') + ', übergeben per ' + weg + ', Felder der Antwort: ' + t.felder +
+      ', Ticket ' + (t.ticket ? 'vorhanden (' + t.ticket.length + ' Zeichen)' : 'fehlt') + ', Adresse ' + String(t.url).split('?')[0].slice(0, 80) + (String(t.url).indexOf('?') >= 0 ? ' (mit Parametern)' : ' (ohne Parameter)') + (wege.length ? ' | ' + wege.join(' | ') : ''));
     if (S.cadInfo.length > 30) S.cadInfo.shift();
-    if (!t) { status('Zu „' + (name || id) + '“ gibt es keine herunterladbare Datei (weder CAD-Datei wie .CATPart noch abgeleitetes Format wie STEP). Details unter „Diagnose“.', true); return; }
-    var st = q('.td-st'); st.style.color = '#c9d4e8';
-    st.innerHTML = 'Datei bereit: <a class="td-dl" target="_blank" rel="noopener" style="color:#8ec1ff">' + esc(t.name || 'herunterladen') + '</a> – ' + esc(quelle) + ' (startet der Download nicht von selbst, hier klicken)';
-    var a = q('.td-dl'); a.href = t.url; if (t.name) a.setAttribute('download', t.name);
-    try { a.click(); } catch (e) { }
   }
 
   // ---------- die einzelnen Abfragen ----------
@@ -852,7 +886,7 @@
     } catch (e) { status('Laden fehlgeschlagen: ' + e.message + ' (Details unter „Diagnose“)', true); } finally { S.laeuft = false; S.frist = 0; diagnose(); }
   }
   function diagnoseText() {
-    var z = ['3Deep-Widget Diagnose (Adapter 16, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
+    var z = ['3Deep-Widget Diagnose (Adapter 17, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
       '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-'), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), ''];
     if (S.wurzelInfo) { z.push('', 'Produkte im Bookmark:'); S.wurzelInfo.forEach(function (w) { z.push('  ' + w); }); }
     if (S.issueInfo) {
@@ -866,7 +900,7 @@
     if (S.personInfo) { var pp = S.personInfo; z.push('', 'Person: ' + (pp.voll || '-') + ', Benutzername ' + (pp.login || '-') + ' (aus ' + pp.quelle + (pp.fehler ? ', pno-Fehler: ' + pp.fehler : '') + ')' + (pp.issues ? ', ' + pp.issues : '')); }
     if (S.zqInfo && S.zqInfo.length) { z.push('', 'Zone Query (Attribute):'); S.zqInfo.forEach(function (c) { z.push('  ' + c); }); }
     if (S.expandInfo && S.expandInfo.length) { z.push('', 'Produktstruktur:'); S.expandInfo.forEach(function (c) { z.push('  ' + c); }); }
-    if (S.cadInfo.length) { z.push('', 'Downloads von Bauteilen/Baugruppen:'); S.cadInfo.forEach(function (c) { z.push('  ' + c); }); }
+    if (S.cadInfo.length) { z.push('', 'Downloads von Bauteilen/Baugruppen:'); S.cadInfo.forEach(function (c) { z.push('  ' + c); }); if (S.dlWeg) z.push('  zuletzt von Hand gewählt: ' + S.dlWeg); }
     z.push('', '=== Ab hier nur bei Bedarf: alle Aufrufe ===', 'Aufrufe:');
     S.log.forEach(function (l) { z.push(l.zeit + '  ' + (l.ok ? 'ok    ' : 'FEHLER') + '  ' + l.aufruf + '  ' + l.info + '  ' + l.ms + ' ms'); });
     z.push('', 'Erste Antwort je Aufrufart (gekürzt):');
@@ -1111,7 +1145,7 @@
           if (methode !== 'POST') return nein(new Error('405'));
           var v = TEST.v5[m[2]];
           if (!v || v.typ !== 'dsxcad:' + m[1]) return nein(new Error('404 kein ' + m[1] + ' im xCAD-Modell'));
-          return ja({ ticketURL: 'data:text/plain;charset=utf-8,' + encodeURIComponent('Beispiel-CAD-Datei aus dem 3Deep-Testmodus: ' + v.datei), ticket: 'T', filename: v.datei + '.txt' });
+          return ja({ ticketURL: S.testFcs || 'https://eu1-dfcs.3dexperience.example/fcs/servlet/fcs/checkout', ticket: 'TICKET-' + m[2], filename: v.datei, jobticket: 'JOB-' + m[2] });
         }
         if (pfad === DSDO + 'dsdo:DerivedOutputs/Locate') {
           if (methode !== 'POST') return nein(new Error('405'));
@@ -1121,7 +1155,7 @@
         if ((m = pfad.match(/dsdo:DerivedOutputs\/([^\/]+)\/dsdo:DerivedOutputFiles\/([^\/]+)\/DownloadTicket$/))) {
           if (methode !== 'POST') return nein(new Error('405'));
           var fname = m[2] === 'F2' ? 'Kuehlkoerper.stp' : 'Kuehlkoerper.cgr';
-          return ja({ success: true, statusCode: 200, data: { doid: m[1], dataelements: { ticketURL: 'data:text/plain;charset=utf-8,' + encodeURIComponent('Beispiel-Derived-Output: ' + fname), ticket: 'T', filename: fname + '.txt' } } });
+          return ja({ success: true, statusCode: 200, data: { doid: m[1], dataelements: { ticketURL: S.testFcs || 'https://eu1-dfcs.3dexperience.example/fcs/servlet/fcs/checkout', ticket: 'TICKET-DO-' + m[2], filename: fname } } });
         }
         if ((m = pfad.match(/documents\/([^\/]+)\/files\/DownloadTicket$/))) {
           if (methode !== 'PUT') return nein(new Error('405'));
