@@ -1,4 +1,4 @@
-/* 3Deep-Widget, Adapter Version 8.
+/* 3Deep-Widget, Adapter Version 9.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
@@ -40,7 +40,7 @@
   // ---------- Zugriff auf die Plattform ----------
   function muster(pfad) { return pfad.replace(/\/[0-9A-Fa-f]{16,}(?=\/|$)/g, '/{ID}'); }
   function protokoll(pfad, params, ok, antwort, ms) {
-    var m = muster(pfad) + (params && params.$mask ? ' [' + params.$mask + ']' : '') + (params && params.parentRelName ? ' [' + params.parentRelName + ']' : '');
+    var m = muster(pfad) + (params && params.$mask ? ' [' + params.$mask + ']' : '') + (params && params.$fields ? ' [$fields=' + params.$fields + ']' : '') + (params && params.parentRelName ? ' [' + params.parentRelName + ']' : '');
     S.log.push({ zeit: new Date().toLocaleTimeString('de-DE'), aufruf: m, ok: ok, info: ok ? mitglieder(antwort).length + ' Einträge' : String(antwort), ms: ms });
     if (S.log.length > 400) S.log.shift();
     if (ok && !S.roh[m]) { var t = ''; try { t = JSON.stringify(antwort, sauber, 1); } catch (e) { t = String(antwort); } S.roh[m] = t.length > 6000 ? t.slice(0, 6000) + '\n… (gekürzt)' : t; }
@@ -167,7 +167,13 @@
     }
     return seite(0);
   }
-  function issueDetail(id) { return hole(ISS + '/' + encodeURIComponent(id), {}).then(function (r) { return mitglieder(r)[0] || (r && (r.id || r.title) ? r : null); }); }
+  // Die Zusatzangaben eines Issues (Mitglieder, betroffene Objekte, Kontexte) kommen nur auf Anforderung über $fields
+  var ISSFELDER = ['members,affectedItems,resolvedBy,resolution,contexts', 'all', ''], issVar = 0;
+  function issueDetail(id) {
+    var v = issVar, p = ISSFELDER[v] ? { $fields: ISSFELDER[v] } : {};
+    return hole(ISS + '/' + encodeURIComponent(id), p).then(function (r) { return mitglieder(r)[0] || (r && (r.id || r.title) ? r : null); },
+      function (e) { if (v < ISSFELDER.length - 1) { if (issVar === v) issVar = v + 1; return issueDetail(id); } throw e; });
+  }
   // alle 32-stelligen IDs irgendwo in einer Antwort (Rückfall, wenn die erwarteten Felder fehlen)
   function alleIds(o, aus) {
     aus = aus || [];
@@ -476,19 +482,20 @@
     } catch (e) { status('Laden fehlgeschlagen: ' + e.message + ' (Details unter „Diagnose“)', true); } finally { S.laeuft = false; diagnose(); }
   }
   function diagnoseText() {
-    var z = ['3Deep-Widget Diagnose, ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
-      '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-'), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), '', 'Aufrufe:'];
-    S.log.forEach(function (l) { z.push(l.zeit + '  ' + (l.ok ? 'ok    ' : 'FEHLER') + '  ' + l.aufruf + '  ' + l.info + '  ' + l.ms + ' ms'); });
+    var z = ['3Deep-Widget Diagnose (Adapter 9), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
+      '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-'), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), ''];
     if (S.wurzelInfo) { z.push('', 'Produkte im Bookmark:'); S.wurzelInfo.forEach(function (w) { z.push('  ' + w); }); }
     if (S.issueInfo) {
       var ii = S.issueInfo, nachDatum = function (a, b) { return String(b.d).localeCompare(String(a.d)); };
-      z.push('', 'Issues: ' + ii.gefunden + ' gefunden, ' + ii.gelesen + ' gelesen, ' + ii.mitBezug.length + ' mit betroffenen Objekten');
+      z.push('', 'Issue-Abruf mit $fields=' + (ISSFELDER[issVar] || '(ohne)'), 'Issues: ' + ii.gefunden + ' gefunden, ' + ii.gelesen + ' gelesen, ' + ii.mitBezug.length + ' mit betroffenen Objekten');
       z.push('Neueste Issues:'); ii.alle.slice().sort(nachDatum).slice(0, 8).forEach(function (x) { z.push('  ' + x.d + '  ' + x.t); });
       z.push('Issues mit betroffenen Objekten (neueste zuerst, höchstens 40):');
       ii.mitBezug.slice().sort(nachDatum).slice(0, 40).forEach(function (x) { z.push('  ' + x.d + '  ' + x.t + '  -> ' + (x.ids.join(', ') || '(keine ID erkannt)') + '  Treffer im Bookmark: ' + x.treffer); });
     }
+    z.push('', '=== Ab hier nur bei Bedarf: alle Aufrufe ===', 'Aufrufe:');
+    S.log.forEach(function (l) { z.push(l.zeit + '  ' + (l.ok ? 'ok    ' : 'FEHLER') + '  ' + l.aufruf + '  ' + l.info + '  ' + l.ms + ' ms'); });
     z.push('', 'Erste Antwort je Aufrufart (gekürzt):');
-    Object.keys(S.roh).forEach(function (k) { z.push('--- ' + k, S.roh[k]); });
+    Object.keys(S.roh).sort(function (x, y) { return (/Beispiel|dsiss/.test(y) ? 1 : 0) - (/Beispiel|dsiss/.test(x) ? 1 : 0); }).forEach(function (k) { z.push('--- ' + k, S.roh[k]); });
     return z.join('\n');
   }
   function diagnose() { var d = q('.td-dx'); if (d && d.style.display !== 'none') d.value = diagnoseText(); }
@@ -669,7 +676,9 @@
           return ja({ success: true, data: [{ id: m[1], dataelements: { ticketURL: 'data:text/plain;charset=utf-8,' + encodeURIComponent('Beispieldatei aus dem 3Deep-Testmodus: ' + fn), fileName: fn + '.txt' } }] });
         }
         if (pfad === ISS + '/search') { var ii = Object.keys(TEST.iss).map(function (k) { return eref2('Issue', k); }); return ja({ issue: seite(ii) }); }
-        if ((m = pfad.match(/dsiss\/issue\/([^\/]+)$/))) { return TEST.iss[m[1]] ? ja({ issue: [TEST.iss[m[1]]] }) : nein(new Error('404')); }
+        if ((m = pfad.match(/dsiss\/issue\/([^\/]+)$/))) { var io = TEST.iss[m[1]]; if (!io) return nein(new Error('404'));
+          var flach = {}; Object.keys(io).forEach(function (k) { if (p.$fields || ['members', 'affectedItems', 'contexts'].indexOf(k) < 0) flach[k] = io[k]; });
+          return ja(flach); }
         if (pfad === TSK) { return ja({ success: true, data: Object.keys(TEST.tsk).filter(function (k) { return !(TEST.tsk[k].relateddata.scopes || []).length; }).map(function (k) { return TEST.tsk[k]; }) }); }
         if ((m = pfad.match(/tasks\/scopeId\/([^\/]+)$/))) { return ja({ success: true, data: (TEST.scope[m[1]] || []).map(function (k) { return TEST.tsk[k]; }) }); }
         if ((m = pfad.match(/documents\/parentId\/([^\/]+)$/))) {
