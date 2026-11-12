@@ -1,4 +1,4 @@
-/* 3Deep-Widget, Adapter Version 15.
+/* 3Deep-Widget, Adapter Version 16.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
@@ -362,6 +362,26 @@
     }
     throw new Error(fehl.join(' | '));
   }
+  // Person (Start per Drag&Drop): Benutzername über pno/person/{ID} (Aufruf vermutet), sonst aus dem Drop-Eintrag
+  async function personInfo(p) {
+    var pi = { id: p.id, login: p.login || '', voll: p.name || '', mail: '', quelle: 'Drop-Eintrag' };
+    try {
+      var r = await hole(PNO + '/' + encodeURIComponent(p.id), {}, true), d = (r && (r.name || r.firstname)) ? r : (mitglieder(r)[0] || {});
+      if (d.name) { pi.login = d.name; pi.quelle = 'pno/person/{ID}'; }
+      var voll = d.fullname || [d.firstname, d.lastname].filter(Boolean).join(' '); if (voll) pi.voll = voll;
+      if (d.email) pi.mail = d.email;
+    } catch (e) { pi.fehler = e.message; }
+    if (!pi.login && !pi.voll) pi.login = p.id;
+    return pi;
+  }
+  function rollenVon(d, pi) {
+    var m = d.members || {}, ro = [], gleich = function (x) { x = String(x || '').toLowerCase(); return !!x && ((pi.login && x === pi.login.toLowerCase()) || (pi.voll && x === pi.voll.toLowerCase())); };
+    var namen = function (l) { return (Array.isArray(l) ? l : l ? [l] : []).map(function (x) { return typeof x === 'object' && x ? (x.name || x.login || x.fullname || '') : x; }); };
+    if (namen(m.assignees).some(gleich)) ro.push('Zugewiesen');
+    if (gleich(d.owner) || namen(m.coowners).some(gleich)) ro.push('Besitzer');
+    if (namen(m.contributors).some(gleich)) ro.push('Mitwirkend');
+    return ro;
+  }
   function zqWert(k, v) {
     if (v == null || v === '') return '';
     if (k === 'ds6w:created' || k === 'ds6w:modified') return datum(v);
@@ -369,8 +389,9 @@
   }
 
   // q fehlt: Start beim Bookmark. q.issues = [IDs]: Start bei diesen Issues. q.alleIssues: alle Issues der Plattform.
+  // q.produkte = [IDs]: Start bei Physical Products (nur abwärts). q.person = {id, name}: Start bei einer Person (ihre Issues und Aufgaben).
   async function leseBookmark(bmId, bmTitel, q) {
-    var nodes = [], edges = [], gesehen = {}, hinweise = [];
+    var nodes = [], edges = [], gesehen = {}, hinweise = [], qIss = !!(q && (q.issues || q.alleIssues || q.person)), pi = null;
     var types = {
       folder: { color: '#f5b942', size: 3, shape: 'box', label: 'Bookmark-Folder' },
       asm: { color: '#4f8cff', size: 3.36, label: 'Baugruppe' },
@@ -423,14 +444,22 @@
 
     // 1b. Start bei Issues: Details lesen und die genannten Objekte als Ausgangspunkt nehmen
     var vorIssues = null;
-    if (q) {
-      status(q.alleIssues ? 'Suche alle Issues …' : 'Lese Issue …');
-      var qIds = q.alleIssues ? await issueIds(MAXALLE) : q.issues, qFertig = 0, schon = {};
+    if (q && q.produkte) q.produkte.forEach(function (id) { startProdukte.push({ id: id, bm: null }); });
+    S.personRollen = {}; S.personInfo = null;
+    if (q && q.person) { pi = await personInfo(q.person); S.personInfo = pi; }
+    if (qIss) {
+      status(q.alleIssues ? 'Suche alle Issues …' : q.person ? 'Suche Issues von ' + (pi.voll || pi.login) + ' …' : 'Lese Issue …');
+      var qIds = q.alleIssues ? await issueIds(MAXALLE) : q.person ? await issueIds(MAXISSUES) : q.issues, qFertig = 0, schon = {};
       vorIssues = {}; S.issueZahl = qIds.length;
       await pool(qIds, PARALLEL, async function (iid) {
-        try { var d = await issueDetail(iid); if (d) vorIssues[iid] = d; } catch (e) { }
-        qFertig++; if (qFertig % 10 === 0 || qFertig === qIds.length) status('Lese Issues: ' + qFertig + ' von ' + qIds.length + ' …');
+        try {
+          var d = await issueDetail(iid);
+          if (d && q.person) { var ro = rollenVon(d, pi); if (ro.length) S.personRollen[iid] = ro; else d = null; }
+          if (d) vorIssues[iid] = d;
+        } catch (e) { }
+        qFertig++; if (qFertig % 10 === 0 || qFertig === qIds.length) status((q.person ? 'Prüfe Issues: ' : 'Lese Issues: ') + qFertig + ' von ' + qIds.length + ' …');
       });
+      if (q.person) S.personInfo.issues = Object.keys(vorIssues).length + ' von ' + qIds.length + ' Issues mit Bezug zur Person';
       Object.keys(vorIssues).forEach(function (iid) {
         var d = vorIssues[iid];
         refObjs(d.affectedItems).concat(refObjs(d.contexts)).forEach(function (r) {
@@ -487,7 +516,6 @@
           anzahl++; neu++;
         });
         S.expandInfo.push(wid + ': ' + neu + ' Objekte über expand');
-        melde(true);
       }
       // Details nachladen, wo expand keine Grunddaten geliefert hat
       var ohne = Object.keys(items).filter(function (k) { var d = items[k].det; return (!d || !(d.title || d.name)) && !(zq[k] && (zq[k]['ds6w:label'] || zq[k]['ds6w:identifier'])); });
@@ -512,7 +540,6 @@
       var naechste = [];
       front.forEach(function (id) { items[id].kinder.forEach(function (c) { if (!items[c.id] && naechste.indexOf(c.id) < 0) naechste.push(c.id); }); });
       front = naechste;
-      melde(tiefe === 0);
       if (grenze) break;
     }
     if (grenze || (front.length && maxTiefe === MAXTIEFE)) hinweise.push('Höchstzahl von ' + S.max + ' Objekten erreicht, die Struktur ist unvollständig.');
@@ -541,17 +568,15 @@
           });
         }
         erledigt++;
-        melde(false);
         if (erledigt % 10 === 0 || erledigt === ids.length) status('Lese Spezifikationen und Attachments: ' + erledigt + ' von ' + ids.length + ' Objekten, ' + dokZahl + ' Dokumente …');
       });
       DOKREL.forEach(function (r) { var z = zaehler[r.rel]; if (z.fehler && !z.ok) hinweise.push('Beziehung „' + r.rel + '“ nicht lesbar.'); });
       if (dokGrenze) hinweise.push('Höchstzahl von ' + S.max + ' Objekten erreicht, nicht alle Dokumente gezeigt.');
     }
 
-    melde(true);
     // 2c. Issues, Aufgaben und Personen
     var exKnoten = [], exKanten = [], pers = {}, issues = {}, tasks = {};
-    if (S.mitIssues || q) {
+    if (S.mitIssues || qIss) {
       var ziel = {};   // Plattform-ID -> Knoten-ID in der Darstellung
       ordner.forEach(function (o) { ziel[o.id] = 'bm:' + o.id; });
       Object.keys(items).forEach(function (id) { ziel[id] = id; });
@@ -568,16 +593,18 @@
         if (mail) pers[login].meta['E-Mail'] = mail;
         return pers[login].id;
       };
+      var pId = pi ? person(pi.login || pi.voll, pi.voll, pi.mail) : null;   // Start bei einer Person: sie ist immer dabei
+      var istPerson = function (login, voll) { return !!pi && ((pi.login && login && String(login).toLowerCase() === pi.login.toLowerCase()) || (pi.voll && voll && voll === pi.voll)); };
       var IZ = { CREATE: 'To do', DRAFT: 'To do', ASSIGN: 'To do', 'TO DO': 'To do', ACTIVE: 'In Work', 'IN WORK': 'In Work', 'IN PROGRESS': 'In Work', REVIEW: 'Frozen', 'IN APPROVAL': 'Frozen', 'IN REVIEW': 'Frozen', APPROVED: 'Released', CLOSE: 'Released', CLOSED: 'Released', COMPLETE: 'Released', COMPLETED: 'Released', REJECTED: 'Obsolete' };
       var zustand = function (s) { return IZ[String(s || '').toUpperCase().replace(/_/g, ' ')] || s || ''; };
       // Issues: alle sichtbaren Issues lesen und die behalten, die ein geladenes Objekt betreffen
       try {
-        if (!q) status('Suche Issues …');
-        var iIds = q ? Object.keys(vorIssues) : await issueIds(), iFertig = 0;
+        if (!qIss) status('Suche Issues …');
+        var iIds = qIss ? Object.keys(vorIssues) : await issueIds(), iFertig = 0;
         S.issueInfo = { gefunden: iIds.length, gelesen: 0, mitBezug: [], alle: [] };
         await pool(iIds, PARALLEL, async function (iid) {
-          var d = null; if (q) d = vorIssues[iid]; else { try { d = await issueDetail(iid); } catch (e) { } }
-          iFertig++; if (!q && (iFertig % 10 === 0 || iFertig === iIds.length)) status('Prüfe Issues: ' + iFertig + ' von ' + iIds.length + ' …');
+          var d = null; if (qIss) d = vorIssues[iid]; else { try { d = await issueDetail(iid); } catch (e) { } }
+          iFertig++; if (!qIss && (iFertig % 10 === 0 || iFertig === iIds.length)) status('Prüfe Issues: ' + iFertig + ' von ' + iIds.length + ' …');
           if (!d) return;
           S.issueInfo.gelesen++;
           var roh = refIds(d.affectedItems).concat(refIds(d.contexts));
@@ -588,7 +615,7 @@
           }
           var bez = refIds(d.affectedItems).concat(refIds(d.contexts)).filter(function (x) { return ziel[x]; });
           if (!bez.length) bez = alleIds(d).filter(function (x) { return ziel[x] && x !== iid; });
-          if ((!bez.length && !q) || issues[iid]) return;
+          if ((!bez.length && !qIss) || issues[iid]) return;
           if (!frei2()) { exGrenze = true; return; }
           var m = d.members || {}, meta = { Titel: d.title || '', Name: d.name || '', Status: d.state || '', 'Priorität': d.Priority || d.priority || '', Beschreibung: d.description || '', Besitzer: d.owner || '',
             Zugewiesen: (m.assignees || []).join(', '), 'Geplantes Ende': datum(d['Estimated End Date']), 'Tatsächliches Ende': datum(d['Actual End Date']), 'Collaborative Space': d.collabSpace || d.collabspace || '', Typ: d.type || 'Issue', ID: iid };
@@ -597,10 +624,12 @@
           issues[iid] = n; exKnoten.push(n); ziel[iid] = n.id;
           var doppelt = {}; bez.forEach(function (x) { if (!doppelt[x]) { doppelt[x] = 1; exKanten.push({ from: n.id, to: ziel[x], type: 'betrifft' }); } });
           (m.assignees || []).forEach(function (a) { var p = person(a); if (p) exKanten.push({ from: n.id, to: p, type: 'zuweisung' }); });
+          var ro = S.personRollen[iid] || [];
+          if (pId && ro.length && ro.indexOf('Zugewiesen') < 0) exKanten.push({ from: n.id, to: pId, type: 'zuweisung', label: ro.join(', '), meta: { Rolle: ro.join(', ') } });
         });
-        if (iIds.length >= (q ? MAXALLE : MAXISSUES)) hinweise.push('Nur die ersten ' + iIds.length + ' Issues der Plattform gelesen.');
+        if (iIds.length >= (q && q.alleIssues ? MAXALLE : MAXISSUES)) hinweise.push('Nur die ersten ' + iIds.length + ' Issues der Plattform gelesen.');
         // Attachments direkt am Issue
-        if (S.mitDok || q) {
+        if (S.mitDok || qIss) {
           var aIds = Object.keys(issues), aFertig = 0, aOk = 0, aFehler = 0;
           await pool(aIds, PARALLEL, async function (iid) {
             if (aFehler >= 3 && !aOk) return;
@@ -621,7 +650,8 @@
         var tid = t.id || t.identifier, e = t.dataelements || {}, rd = t.relateddata || {}; if (!tid) return;
         var bez = refIds(rd.scopes).concat(refIds(rd.references)).concat(refIds(rd.deliverables)).concat(refIds(rd.contents)).filter(function (x) { return ziel[x]; });
         if (t._scope && ziel[t._scope]) bez.push(t._scope);
-        if (!bez.length) return;
+        var fuerPerson = pId && (Array.isArray(rd.assignees) ? rd.assignees : []).some(function (a) { var ad = (a && a.dataelements) || {}; return istPerson(ad.name || a.name, ad.fullname); });
+        if (!bez.length && !fuerPerson) return;
         if (!tasks[tid]) {
           if (!frei2()) { exGrenze = true; return; }
           var meta = { Titel: e.title || '', Status: e.state || e.status || '', Beschreibung: e.description || '', 'Fällig am': datum(e.dueDate), 'Geplanter Start': datum(e.estimatedStartDate), 'Fertig in %': e.percentComplete != null && e.percentComplete !== '' ? e.percentComplete + ' %' : '',
@@ -648,14 +678,13 @@
       exKnoten.forEach(function (n) { delete n._k; });
     }
 
-    melde(true);
     // 3. übrige Bookmark-Inhalte (Dokumente usw.)
     await pool(andere, PARALLEL, async function (a) {
       if (doks[a.id]) return;
       if (/Document/i.test(a.typ)) { try { a.det = await dokument(a.id); } catch (e) { } }
     });
 
-    // 4. Knoten und Beziehungen (auch für Zwischenstände während des Lesens)
+    // 4. Knoten und Beziehungen
     function baue(nodes, edges, gesehen) {
       var verwendet = {}; Object.keys(items).forEach(function (id) { items[id].kinder.forEach(function (c) { verwendet[c.id] = (verwendet[c.id] || 0) + 1; }); });
       var fehlend = 0;
@@ -706,15 +735,6 @@
       (exKanten || []).forEach(function (k) { if (vorhanden[k.from] && vorhanden[k.to]) edges.push(k); });
       return { nodes: nodes, edges: edges, fehlend: fehlend };
     }
-    // Zwischenstand an die Darstellung (schrittweiser Aufbau), höchstens alle 1,5 s
-    function melde(sofort) {
-      if (!S.mitAufbau || (!sofort && Date.now() - S.letzteMeldung < 1500)) return;
-      var g = {}; Object.keys(gesehen).forEach(function (k) { g[k] = gesehen[k]; });
-      var z = baue(nodes.slice(), edges.slice(), g); if (!z.nodes.length) return;
-      S.letzteMeldung = Date.now();
-      sende({ quelle: '3deep-adapter', daten: { types: types, relTypes: relTypes, nodes: z.nodes, edges: z.edges, maxObjects: Math.max(500, z.nodes.length) }, lauf: S.lauf, start: !S.zwischen, ergaenzen: true, steuerung: S.zwischen ? undefined : 'game' });
-      S.zwischen = true;
-    }
     var fertigD = baue(nodes, edges, gesehen), fehlend = fertigD.fehlend;
     S.wurzelInfo = (S.wurzeln || []).map(function (id) { var d = (items[id] && items[id].det) || {}; return (d.title || '?') + ' ' + (d.revision || '') + ' [' + id + ']'; });
     if (S.frist && Date.now() > S.frist) { hinweise = hinweise.filter(function (h) { return !/nicht lesbar/.test(h); }); hinweise.push('Zeitlimit von ' + FRIST_ALLE + ' s erreicht, das Ergebnis ist unvollständig.'); }
@@ -732,6 +752,70 @@
     if (m.download) { download(m.download, m.name); return; }
     if (m.bereit) { S.bereit = true; if (S.wartend) sende(S.wartend); else sende({ quelle: '3deep-adapter', steuerung: 'game' }); }
   });
+
+  // ---------- Drag & Drop aus 3DEXPERIENCE (Format 3DXContent: {protocol:'3DXContent', data:{items:[{objectId, objectType, displayName, displayType, …}]}}) ----------
+  function dropArt(it) {
+    var t = String(it.objectType || it.type || '') + ' ' + String(it.displayType || '');
+    if (/Issue/i.test(t)) return 'issue';
+    if (/Person/i.test(t)) return 'person';
+    if (/Bookmark|Workspace/i.test(t)) return 'bm';
+    if (/VPMReference|Physical ?Product|dsxcad|CATPart|CATProduct|Engineering ?Item|3DShape|Product|Part/i.test(t)) return 'produkt';
+    return '';
+  }
+  function dropLesen(roh) {
+    var d = roh;
+    if (typeof d === 'string') { var t = d.trim(); if (!t) return { fehler: 'Leere Übergabe.' }; try { d = JSON.parse(t); } catch (e) { return { fehler: 'Kein 3DEXPERIENCE-Objekt erkannt (Inhalt ist kein JSON).' }; } }
+    if (!d || typeof d !== 'object') return { fehler: 'Kein 3DEXPERIENCE-Objekt erkannt.' };
+    var items = (d.data && d.data.items) || d.items || (d.objectId ? [d] : null);
+    if (!Array.isArray(items) || !items.length) return { fehler: 'Kein Objekt in der Übergabe gefunden.' };
+    if (items.length > 1) return { fehler: 'Bitte nur EIN Objekt ablegen (' + items.length + ' erhalten). Es wurde nichts geladen.' };
+    var it = items[0] || {}, id = it.objectId || it.physicalid || it.id, art = dropArt(it), titel = it.displayName || it.objectTitle || it.title || id;
+    if (!id) return { fehler: 'Objekt ohne ID erhalten.' };
+    if (!art) return { fehler: 'Objekttyp „' + (it.displayType || it.objectType || '?') + '“ wird nicht unterstützt. Möglich: Physical Product, Bookmark, Issue, Person.' };
+    return { art: art, id: id, title: titel, typ: it.objectType || '', anzeige: it.displayType || '', ctx: it.contextId || '' };
+  }
+  function dropWarnung(text) {
+    status(text, true);
+    var z = q('.td-dz'); if (!z) return;
+    z.style.borderColor = '#ff8a8a'; z.style.color = '#ff8a8a'; z.textContent = '⚠ ' + (/EIN Objekt/.test(text) ? 'Nur ein Objekt!' : 'Nicht erkannt');
+    clearTimeout(S.dzUhr); S.dzUhr = setTimeout(dropRuhe, 4000);
+  }
+  function dropRuhe() { var z = q('.td-dz'); if (!z) return; z.style.borderColor = '#5b7bb8'; z.style.color = '#9fb4dc'; z.style.background = 'transparent'; z.textContent = '⤓ Objekt hierher ziehen'; }
+  function dropEmpfang(roh) {
+    var txt = typeof roh === 'string' ? roh : (function () { try { return JSON.stringify(roh); } catch (e) { return String(roh); } })();
+    if (S.letzterDrop && S.letzterDrop.t === txt && Date.now() - S.letzterDrop.z < 800) return;   // Plattformmodul und Browser melden denselben Drop
+    S.letzterDrop = { t: txt, z: Date.now() };
+    var e = dropLesen(roh);
+    S.dropInfo = ['Übergabe: ' + String(txt).slice(0, 1500), e.fehler ? 'Ergebnis: ' + e.fehler : 'Erkannt: ' + e.art + ' „' + e.title + '“ [' + e.id + '], Typ ' + (e.typ || '-') + ' / ' + (e.anzeige || '-')];
+    clearTimeout(S.dzUhr); dropRuhe(); diagnose();
+    if (e.fehler) { dropWarnung(e.fehler); return; }
+    if (S.laeuft) { dropWarnung('Es wird noch geladen, bitte warten und dann erneut ablegen.'); return; }
+    if (e.art === 'produkt' && /dsxcad/i.test(e.typ)) S.cadTyp[e.id] = e.typ;
+    laden({ drop: e });
+  }
+  function dropEinrichten(z) {
+    z.addEventListener('dragenter', function (ev) { ev.preventDefault(); z.style.background = '#1e3358'; });
+    z.addEventListener('dragover', function (ev) { ev.preventDefault(); try { ev.dataTransfer.dropEffect = 'copy'; } catch (x) { } });
+    z.addEventListener('dragleave', function () { z.style.background = 'transparent'; });
+    z.addEventListener('drop', function (ev) {
+      ev.preventDefault(); z.style.background = 'transparent';
+      var dt = ev.dataTransfer, t = '';
+      try { t = dt.getData('text/plain') || dt.getData('text') || dt.getData('Text') || ''; } catch (x) { }
+      if (!t && dt && dt.files && dt.files.length) { dropWarnung('Dateien werden nicht unterstützt. Bitte ein Objekt aus einer 3DEXPERIENCE-Suche ziehen.'); return; }
+      dropEmpfang(t);
+    });
+  }
+  // Plattformmodul für Drag & Drop (nur im 3DDashboard; zusätzlich zum Browser-Drop, doppelte Meldungen fängt dropEmpfang ab)
+  function dropPlattform(z) {
+    if (window.require) {
+      try {
+        window.require(['DS/DataDragAndDrop/DataDragAndDrop'], function (DnD) {
+          if (DnD && typeof DnD.droppable === 'function') DnD.droppable(z, { drop: function (data) { z.style.background = 'transparent'; dropEmpfang(data); },
+            enter: function () { z.style.background = '#1e3358'; }, leave: function () { z.style.background = 'transparent'; } });
+        }, function () { });
+      } catch (x) { }
+    }
+  }
 
   // ---------- Bedienung ----------
   async function suchen() {
@@ -752,21 +836,23 @@
   }
   async function laden(sonder) {
     if (S.laeuft) return;
-    var b = sonder ? { title: 'Alle Issues' } : S.treffer[+q('.td-tr').value]; if (!b) return;
+    var b = sonder ? (sonder.drop || { title: 'Alle Issues' }) : S.treffer[+q('.td-tr').value]; if (!b) return;
     try {
       S.laeuft = true; S.max = Math.max(10, parseInt(S.maxText, 10) || 1500); S.mitDok = q('.td-dk').checked; S.mitIssues = q('.td-ia').checked; S.mitExpand = q('.td-ex').checked; S.mitZone = q('.td-zq').checked;
-      S.aufrufe = 0; S.frist = 0; S.lauf = (S.lauf || 0) + 1; S.zwischen = false; S.letzteMeldung = 0; S.mitAufbau = q('.td-au').checked;
+      S.aufrufe = 0; S.frist = 0;
       var t0 = Date.now(), erg;
       if (sonder && sonder.alleIssues) { S.frist = t0 + FRIST_ALLE * 1000; S.max = Math.max(S.max, 5000); erg = await leseBookmark(null, null, { alleIssues: true, struktur: false }); }
       else if (b.art === 'issue') erg = await leseBookmark(null, null, { issues: [b.id], struktur: q('.td-sk').checked });
+      else if (b.art === 'produkt') erg = await leseBookmark(null, null, { produkte: [b.id], struktur: true });
+      else if (b.art === 'person') erg = await leseBookmark(null, null, { person: { id: b.id, name: b.title }, struktur: q('.td-sk').checked });
       else erg = await leseBookmark(b.id, b.title || b.name || '');
       S.frist = 0;
-      sende({ quelle: '3deep-adapter', daten: erg.daten, name: b.title || 'Daten', lauf: S.lauf, start: !S.zwischen, ergaenzen: S.zwischen, fertig: true, steuerung: S.zwischen ? undefined : 'game' });
+      sende({ quelle: '3deep-adapter', daten: erg.daten, name: b.title || 'Daten', steuerung: 'game' });
       status(erg.daten.nodes.length + ' Objekte, ' + erg.daten.edges.length + ' Beziehungen aus „' + (b.title || b.id) + '“ in ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s, ' + S.aufrufe + ' Abfragen.' + (erg.hinweise.length ? ' Hinweis: ' + erg.hinweise.join(' ') : ''), erg.hinweise.length > 0);
     } catch (e) { status('Laden fehlgeschlagen: ' + e.message + ' (Details unter „Diagnose“)', true); } finally { S.laeuft = false; S.frist = 0; diagnose(); }
   }
   function diagnoseText() {
-    var z = ['3Deep-Widget Diagnose (Adapter 15, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
+    var z = ['3Deep-Widget Diagnose (Adapter 16, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
       '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-'), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), ''];
     if (S.wurzelInfo) { z.push('', 'Produkte im Bookmark:'); S.wurzelInfo.forEach(function (w) { z.push('  ' + w); }); }
     if (S.issueInfo) {
@@ -776,6 +862,8 @@
       z.push('Issues mit betroffenen Objekten (neueste zuerst, höchstens 40):');
       ii.mitBezug.slice().sort(nachDatum).slice(0, 40).forEach(function (x) { z.push('  ' + x.d + '  ' + x.t + '  -> ' + (x.ids.join(', ') || '(keine ID erkannt)') + '  Treffer im Bookmark: ' + x.treffer); });
     }
+    if (S.dropInfo) { z.push('', 'Letzter Drop:'); S.dropInfo.forEach(function (c) { z.push('  ' + c); }); }
+    if (S.personInfo) { var pp = S.personInfo; z.push('', 'Person: ' + (pp.voll || '-') + ', Benutzername ' + (pp.login || '-') + ' (aus ' + pp.quelle + (pp.fehler ? ', pno-Fehler: ' + pp.fehler : '') + ')' + (pp.issues ? ', ' + pp.issues : '')); }
     if (S.zqInfo && S.zqInfo.length) { z.push('', 'Zone Query (Attribute):'); S.zqInfo.forEach(function (c) { z.push('  ' + c); }); }
     if (S.expandInfo && S.expandInfo.length) { z.push('', 'Produktstruktur:'); S.expandInfo.forEach(function (c) { z.push('  ' + c); }); }
     if (S.cadInfo.length) { z.push('', 'Downloads von Bauteilen/Baugruppen:'); S.cadInfo.forEach(function (c) { z.push('  ' + c); }); }
@@ -802,7 +890,6 @@
       '<button class="td-la" style="' + knopf + ';background:#2563d6;display:none">Laden</button>' +
       '<label title="Produktstruktur mit einer Abfrage je Produkt lesen (expand, schneller); aus = Ebene für Ebene wie bisher" style="display:flex;align-items:center;gap:4px"><input class="td-ex" type="checkbox" checked="checked" />Schnell</label>' +
       '<label title="Attribute aller Strukturobjekte (z. B. Teilenummer) mit einer Abfrage nachlesen (Zone Query); aus = wie bisher" style="display:flex;align-items:center;gap:4px"><input class="td-zq" type="checkbox" checked="checked" />Attribute</label>' +
-      '<label title="Bild während des Lesens schrittweise aufbauen; aus = erst am Ende zeigen" style="display:flex;align-items:center;gap:4px"><input class="td-au" type="checkbox" checked="checked" />Aufbau</label>' +
       '<label title="Spezifikationen und Attachments der Objekte mitlesen" style="display:flex;align-items:center;gap:4px"><input class="td-dk" type="checkbox" />Dokumente</label>' +
       '<label title="Issues, Aufgaben und Personen zu den Objekten mitlesen" style="display:flex;align-items:center;gap:4px"><input class="td-ia" type="checkbox" />Issues/Aufgaben</label>' +
       '<label class="td-skl" title="Produktstruktur der betroffenen Objekte abwärts mitlesen" style="display:none;align-items:center;gap:4px"><input class="td-sk" type="checkbox" />Struktur</label>' +
@@ -810,6 +897,7 @@
       '<select class="td-cx" title="Security Context" style="' + feld + ';max-width:240px;display:none"></select>' +
       '<input class="td-ci" type="text" placeholder="Security Context: Rolle.Organisation.Collaborative Space" title="Security Context von Hand" style="' + feld + ';width:330px;display:none" />' +
       '<button class="td-db" style="' + knopf + '">Diagnose</button>' +
+      '<div class="td-dz" title="Ein Objekt aus einer 3DEXPERIENCE-Suche hierher ziehen: Physical Product (Struktur abwärts), Bookmark, Issue oder Person" style="border:2px dashed #5b7bb8;border-radius:6px;padding:3px 10px;color:#9fb4dc;white-space:nowrap">⤓ Objekt hierher ziehen</div>' +
       '<span class="td-mo" style="padding:2px 8px;border-radius:10px;background:#5a4410;color:#ffd98a;display:none">Testmodus: Beispieldaten</span>' +
       '<span class="td-st" style="flex:1;min-width:200px;color:#c9d4e8">Starte …</span></div>' +
       '<div class="td-dp" style="display:none;padding:6px 8px;background:#121c30;border-bottom:1px solid #26344f">' +
@@ -829,6 +917,7 @@
     q('.td-cx').onchange = function (e) { S.ctx = e.target.value; };
     q('.td-ci').onchange = function (e) { S.ctx = e.target.value.trim(); try { localStorage.setItem('3deep_ctx', S.ctx); } catch (x) { } if (S.ctx) status('Security Context gesetzt. Bookmark-Namen eingeben und „Suchen“ drücken.'); };
     S.frame = q('.td-fr');
+    dropEinrichten(q('.td-dz'));
   }
   function ladeDarstellung() {
     S.frame.src = S.viewerUrl;
@@ -852,6 +941,7 @@
     var w = window.widget;
     baueOberflaeche(w.body || document.body);
     S.live = true;
+    dropPlattform(q('.td-dz'));
     S.maxText = w.getValue('MaxObjekte');
     var basis = w.getValue('ViewerUrl') || '';
     if (!basis) basis = window.__3deep.basis + 'datenraum3d.html?v=' + DARSTELLUNG;
@@ -932,15 +1022,19 @@
     haenge(le, 'SpecificationDocument', sp1); haenge(antrieb, 'SpecificationDocument', sp1); haenge(bremse, 'SpecificationDocument', sp2); haenge(sensor, 'SpecificationDocument', sp3);
     haenge(fahrwerk, 'PLMDocConnection', dok('Präsentation Fahrwerk', 'Fahrwerk.pptx')); haenge(sensor, 'PLMDocConnection', dok('Datenblatt Sensor', 'Datenblatt.pdf')); haenge(le, 'PLMDocConnection', dok('Messprotokoll', 'Messung.xlsx'));
     var d1 = id(); T.doc[d1] = { id: d1, type: 'Document', dataelements: { title: 'Lastenheft Elektroantrieb.pdf', name: 'DOC-0001', revision: '1.1', state: 'RELEASED', stateNLS: 'Released', description: 'Spezifikation' } };
-    T.iss = {}; T.tsk = {}; T.scope = {};
+    T.iss = {}; T.tsk = {}; T.scope = {}; T.pers = {};
+    function pers(login, vor, nach) { var i = id(); T.pers[i] = { id: i, name: login, firstname: vor, lastname: nach, email: login + '@example.com' }; return i; }
+    T.cmeier = pers('cmeier', 'C.', 'Meier'); T.abauer = pers('abauer', 'A.', 'Bauer'); T.fremd = pers('xnobody', 'X.', 'Niemand');
     function eref(typ, i) { return { source: '$3DSpace', type: typ, identifier: i, relativePath: '/…/' + i }; }
     function issue(titel, state, betrifft, wer) { var i = id(); T.iss[i] = { id: i, type: 'Issue', name: 'ISS-' + n, title: titel, description: 'Beispiel-Issue', state: state, owner: 'abauer', organization: 'Company Name', collabSpace: 'Common Space', Priority: 'High', 'Estimated End Date': '2026-12-01T00:00:00Z',
       members: { coowners: [], assignees: wer, contributors: [] }, affectedItems: [{ elements: betrifft.map(function (b) { return eref('VPMReference', b); }) }], contexts: [] }; return i; }
     function aufgabe(titel, state, scope, wer, refs) { var i = id(); T.tsk[i] = { id: i, type: 'Task', identifier: i, dataelements: { title: titel, state: state, description: 'Beispielaufgabe', dueDate: '2026-11-30T00:00:00Z', percentComplete: '40', originated: '2026-10-01T08:00:00Z' },
       relateddata: { assignees: wer.map(function (w) { return { id: id(), type: 'Person', dataelements: { name: w[0], fullname: w[1], email: w[0] + '@example.com' } }; }), scopes: scope ? [{ id: scope, type: 'x', identifier: scope }] : [], references: (refs || []).map(function (r) { return { id: r, identifier: r }; }), deliverables: [] } };
       if (scope) (T.scope[scope] = T.scope[scope] || []).push(i); return i; }
+    T.fahrwerk = fahrwerk; T.bremse = bremse; T.vorder = vorder; T.sp1 = sp1;
     var is1 = issue('Sensor liefert bei Kälte falsche Werte', 'In Work', [sensor, le], ['cmeier']);
     haenge(is1, 'Reference Document', dok('Foto Fehlerbild', 'Fehlerbild.png'));
+    T.is1 = is1;
     issue('Issue ohne Bezug zum Bookmark', 'Create', ['FFFF0000FFFF0000FFFF0000FFFF0000'], ['cmeier']);
     aufgabe('Sensor neu qualifizieren', 'Active', is1, [['abauer', 'A. Bauer']]);
     aufgabe('Bremssattel-Zeichnung prüfen', 'Create', bremse, [['cmeier', 'C. Meier'], ['abauer', 'A. Bauer']]);
@@ -1044,6 +1138,7 @@
           return ja({ success: true, data: (TEST.rel[m[1] + '|' + p.parentRelName] || []).map(function (i) { return TEST.doc[i]; }) });
         }
         if ((m = pfad.match(/documents\/([^\/]+)$/))) { var d = TEST.doc[m[1]]; return d ? ja({ success: true, data: [d] }) : nein(new Error('404')); }
+        if ((m = pfad.match(/pno\/person\/([^\/]+)$/))) { var pr = TEST.pers[m[1]]; return pr ? ja(pr) : nein(new Error('404 Person nicht gefunden')); }
         if (pfad === PNO) return ja({ name: 'abauer', preferredcredentials: { role: { name: 'VPLMProjectLeader' }, organization: { name: 'Company Name' }, collabspace: { name: 'Common Space' } },
           collabspaces: [{ name: 'Common Space', couples: [{ role: { name: 'VPLMProjectLeader' }, organization: { name: 'Company Name' } }, { role: { name: 'VPLMCreator' }, organization: { name: 'Company Name' } }] }] });
         nein(new Error('Testmodus kennt diesen Aufruf nicht: ' + pfad));
@@ -1059,7 +1154,8 @@
   }
 
   // ---------- Einstieg (vom Lader index.html aufgerufen) ----------
-  window.__3deep = { S: S, testGet: testGet, leseBookmark: leseBookmark, basis: '',
+  window.__3deep = { S: S, testGet: testGet, leseBookmark: leseBookmark, dropLesen: dropLesen, basis: '',
+    testDaten: function () { if (!TEST) TEST = testDaten(); return TEST; },
     start: function (live, basis) {
       if (S.root) return; this.basis = basis || '';
       try { if (live) startLive(); else startTest(); }
