@@ -1,4 +1,4 @@
-/* 3Deep-Widget, Adapter Version 13.
+/* 3Deep-Widget, Adapter Version 14.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
@@ -683,7 +683,7 @@
     } catch (e) { status('Laden fehlgeschlagen: ' + e.message + ' (Details unter „Diagnose“)', true); } finally { S.laeuft = false; S.frist = 0; diagnose(); }
   }
   function diagnoseText() {
-    var z = ['3Deep-Widget Diagnose (Adapter 13, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
+    var z = ['3Deep-Widget Diagnose (Adapter 14, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
       '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-'), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), ''];
     if (S.wurzelInfo) { z.push('', 'Produkte im Bookmark:'); S.wurzelInfo.forEach(function (w) { z.push('  ' + w); }); }
     if (S.issueInfo) {
@@ -718,8 +718,8 @@
       '<button class="td-la" style="' + knopf + ';background:#2563d6;display:none">Laden</button>' +
       '<label title="Produktstruktur mit einer Abfrage je Produkt lesen (expand, schneller); aus = Ebene für Ebene wie bisher" style="display:flex;align-items:center;gap:4px"><input class="td-ex" type="checkbox" checked="checked" />Schnell</label>' +
       '<label title="Bild während des Lesens schrittweise aufbauen; aus = erst am Ende zeigen" style="display:flex;align-items:center;gap:4px"><input class="td-au" type="checkbox" checked="checked" />Aufbau</label>' +
-      '<label title="Spezifikationen und Attachments der Objekte mitlesen" style="display:flex;align-items:center;gap:4px"><input class="td-dk" type="checkbox" checked="checked" />Dokumente</label>' +
-      '<label title="Issues, Aufgaben und Personen zu den Objekten mitlesen" style="display:flex;align-items:center;gap:4px"><input class="td-ia" type="checkbox" checked="checked" />Issues/Aufgaben</label>' +
+      '<label title="Spezifikationen und Attachments der Objekte mitlesen" style="display:flex;align-items:center;gap:4px"><input class="td-dk" type="checkbox" />Dokumente</label>' +
+      '<label title="Issues, Aufgaben und Personen zu den Objekten mitlesen" style="display:flex;align-items:center;gap:4px"><input class="td-ia" type="checkbox" />Issues/Aufgaben</label>' +
       '<label class="td-skl" title="Produktstruktur der betroffenen Objekte abwärts mitlesen" style="display:none;align-items:center;gap:4px"><input class="td-sk" type="checkbox" />Struktur</label>' +
       '<button class="td-ai" title="Entwicklerfunktion (Performancetest): alle Issues der Plattform mit ihren Objekten, Zeitlimit ' + FRIST_ALLE + ' s" style="' + knopf + ';background:#5a3d10">Alle Issues</button>' +
       '<select class="td-cx" title="Security Context" style="' + feld + ';max-width:240px;display:none"></select>' +

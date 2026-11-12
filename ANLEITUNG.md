@@ -1,4 +1,4 @@
-# 3Deep-Widget: Einrichtung und Bedienung (Stand Adapter Version 13, Darstellung Version 68)
+# 3Deep-Widget: Einrichtung und Bedienung (Stand Adapter Version 14, Darstellung Version 68)
 
 ## Dateien (alle im selben Ordner auf GitHub Pages)
 - `widget.html` – kleiner Lader für das 3DDashboard. **Diese Adresse** trägt man im Dashboard ein.
@@ -22,7 +22,7 @@ Hosting: Repository `kodoiii/3Deep` (öffentlich), Adresse `https://kodoiii.gith
 - Auswahl „Bookmark | Issue“: womit begonnen wird. Namen oder Titel eingeben, „Suchen“, Treffer wählen, „Laden“.
 - Häkchen „Schnell“: Produktstruktur mit einer Abfrage je Produkt lesen (expand); geht das nicht, liest das Widget automatisch Ebene für Ebene. Aus = immer Ebene für Ebene (zum Vergleich).
 - Häkchen „Aufbau“: Das Bild baut sich schon während des Lesens auf; bereits gezeigte Objekte bleiben an ihrem Platz, am Ende ordnet sich das Netz einmal weich neu. Solange man nicht selbst klickt, scrollt oder eine Taste drückt, rahmt die Kamera den wachsenden Raum.
-- Häkchen „Dokumente“: Spezifikationen und Attachments mitlesen. „Issues/Aufgaben“: Issues, Aufgaben, Personen mitlesen.
+- Häkchen „Dokumente“: Spezifikationen und Attachments mitlesen. „Issues/Aufgaben“: Issues, Aufgaben, Personen mitlesen. Beide sind seit Adapter 14 standardmäßig aus (schneller Aufbau nur mit Bookmark und Produktstruktur); bei Bedarf einschalten und neu laden. Beim Start über ein Issue werden dessen Objekte, Dokumente und Zuweisungen immer gelesen.
 - Häkchen „Struktur“ (nur bei Start mit Issue): Produktstruktur der betroffenen Objekte abwärts.
 - Knopf „Alle Issues“: Entwicklerfunktion für Performancetests, Zeitlimit 180 s.
 - Dokument anklicken → „⬇ Datei herunterladen“.
