@@ -1,4 +1,4 @@
-# 3Deep-Widget: Einrichtung und Bedienung (Stand Adapter Version 18, Darstellung Version 68)
+# 3Deep-Widget: Einrichtung und Bedienung (Stand Adapter Version 19, Darstellung Version 68)
 
 ## Dateien (alle im selben Ordner auf GitHub Pages)
 - `widget.html` – kleiner Lader für das 3DDashboard. **Diese Adresse** trägt man im Dashboard ein.
@@ -28,7 +28,7 @@ Hosting: Repository `kodoiii/3Deep` (öffentlich), Adresse `https://kodoiii.gith
 - Dokument anklicken → „⬇ Datei herunterladen“.
 - Bauteil oder Baugruppe anklicken → „⬇ Datei herunterladen“: zuerst die CAD-Datei (z. B. CATIA V5 .CATPart/.CATProduct), sonst ein abgeleitetes Format (STEP bevorzugt, dann 3DXML usw.). Gibt es beides nicht, meldet die Statuszeile das; Einzelheiten unter „Diagnose“ (Abschnitt „Downloads von Bauteilen/Baugruppen“).
 - In die 3D-Ansicht klicken, dann W A S D bewegen, Maus umsehen, Leertaste/E hoch, Q/C runter, Umschalt schneller, Esc gibt die Maus frei.
-- Auswahlfeld mit dem Security Context, falls mehrere vorhanden sind.
+- Security Context: wird automatisch gewählt (bevorzugter, sonst erster der eigenen Kontexte; reicht zum Lesen). Kein Auswahlfeld mehr; die Diagnose nennt den gewählten Kontext.
 
 ## Wenn etwas nicht geht
 „Diagnose“ → „Kopieren“. Oben steht die Zusammenfassung, darunter alle Aufrufe und die erste Antwort je Aufrufart. Vor dem Weitergeben auf Vertrauliches prüfen.

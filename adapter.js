@@ -1,4 +1,4 @@
-/* 3Deep-Widget, Adapter Version 18.
+/* 3Deep-Widget, Adapter Version 19.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
@@ -955,8 +955,8 @@
     } catch (e) { status('Laden fehlgeschlagen: ' + e.message + ' (Details unter „Diagnose“)', true); } finally { S.laeuft = false; diagnose(); }
   }
   function diagnoseText() {
-    var z = ['3Deep-Widget Diagnose (Adapter 18, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
-      '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-'), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), ''];
+    var z = ['3Deep-Widget Diagnose (Adapter 19, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
+      '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-') + (S.ctxZahl ? ' (automatisch gewählt, ' + S.ctxZahl + ' verfügbar)' : ''), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), ''];
     if (S.wurzelInfo) { z.push('', 'Produkte im Bookmark:'); S.wurzelInfo.forEach(function (w) { z.push('  ' + w); }); }
     if (S.issueInfo) {
       var ii = S.issueInfo, nachDatum = function (a, b) { return String(b.d).localeCompare(String(a.d)); };
@@ -997,7 +997,6 @@
       '<label title="Spezifikationen und Attachments der Objekte mitlesen" style="display:flex;align-items:center;gap:4px"><input class="td-dk" type="checkbox" />Dokumente</label>' +
       '<label title="Zeichnungen (Drawings) der Strukturobjekte suchen und anzeigen" style="display:flex;align-items:center;gap:4px"><input class="td-zg" type="checkbox" />Zeichnungen</label>' +
       '<label title="Issues, Aufgaben und Personen zu den Objekten mitlesen" style="display:flex;align-items:center;gap:4px"><input class="td-ia" type="checkbox" />Issues/Aufgaben</label>' +
-      '<select class="td-cx" title="Security Context" style="' + feld + ';max-width:240px;display:none"></select>' +
       '<input class="td-ci" type="text" placeholder="Security Context: Rolle.Organisation.Collaborative Space" title="Security Context von Hand" style="' + feld + ';width:330px;display:none" />' +
       '<button class="td-db" style="' + knopf + '">Diagnose</button>' +
       '<span class="td-mo" style="padding:2px 8px;border-radius:10px;background:#5a4410;color:#ffd98a;display:none">Testmodus: Beispieldaten</span>' +
@@ -1010,7 +1009,6 @@
     q('.td-su').addEventListener('keydown', function (e) { if (e.key === 'Enter') suchen(); });
     q('.td-db').onclick = function () { var p = q('.td-dp'), d = q('.td-dx'), auf = p.style.display === 'none'; p.style.display = auf ? '' : 'none'; d.style.display = auf ? '' : 'none'; diagnose(); };
     q('.td-dc').onclick = function () { var d = q('.td-dx'); d.value = diagnoseText(); d.select(); try { document.execCommand('copy'); } catch (e) { } if (navigator.clipboard) navigator.clipboard.writeText(d.value).catch(function () { }); };
-    q('.td-cx').onchange = function (e) { S.ctx = e.target.value; };
     q('.td-ci').onchange = function (e) { S.ctx = e.target.value.trim(); try { localStorage.setItem('3deep_ctx', S.ctx); } catch (x) { } if (S.ctx) status('Security Context gesetzt. Bookmark-Namen eingeben und „Suchen“ drücken.'); };
     S.frame = q('.td-fr');
     dropEinrichten(q('.td-dz'));
@@ -1054,9 +1052,7 @@
         var fest = (w.getValue('SecurityContext') || '').trim();
         if (fest) { S.ctx = fest; status('Bereit. Bookmark-Namen eingeben und „Suchen“ drücken.'); return; }
         kontexte().then(function (k) {
-          var sel = q('.td-cx'); S.ctx = k.bevorzugt;
-          sel.innerHTML = k.liste.map(function (c) { return '<option' + (c === k.bevorzugt ? ' selected="selected"' : '') + '>' + esc(c) + '</option>'; }).join('');
-          if (k.liste.length > 1) sel.style.display = '';
+          S.ctx = k.bevorzugt; S.ctxZahl = k.liste.length;   // automatisch: bevorzugter, sonst erster Kontext (kein Auswahlfeld, Wunsch des Nutzers)
           if (!S.ctx) ctxVonHand('Kein Security Context gefunden.'); else status('Bereit. Bookmark-Namen eingeben und „Suchen“ drücken.');
         }, function (e) { ctxVonHand('Security Context nicht ermittelbar (' + e.message + ').'); }).then(diagnose);
       }
