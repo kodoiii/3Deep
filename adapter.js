@@ -1,4 +1,4 @@
-/* 3Deep-Widget, Adapter Version 9.
+/* 3Deep-Widget, Adapter Version 10.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
@@ -11,7 +11,7 @@
   var PNO = '/resources/modeler/pno/person';
   var ISS = '/resources/v1/modeler/dsiss/issue';
   var TSK = '/resources/v1/modeler/tasks';
-  var MAXISSUES = 400;
+  var MAXISSUES = 400, MAXALLE = 3000, FRIST_ALLE = 180;   // Sekunden für die Entwicklerfunktion „Alle Issues“
   var SEITE = 50, PARALLEL = 8, MAXTIEFE = 12;
   // Dokument-Beziehungen eines Objekts: Name der Beziehung -> Art in der Darstellung
   var DOKREL = [{ rel: 'SpecificationDocument', art: 'spec' }, { rel: 'PLMDocConnection', art: 'praes' }, { rel: 'Reference Document', art: 'praes' }];
@@ -67,6 +67,8 @@
   function hole(pfad, params, ohneKontext, methode, kopfPlus) {
     var p = {}; Object.keys(params || {}).forEach(function (k) { p[k] = params[k]; });
     if (S.tenant) p.tenant = S.tenant;
+    if (S.frist && Date.now() > S.frist) return Promise.reject(new Error('Zeitlimit erreicht'));
+    S.aufrufe = (S.aufrufe || 0) + 1;
     var t0 = Date.now(), anfrage = S.live ? liveGet(pfad, p, ohneKontext, methode, kopfPlus) : testGet(pfad, p, methode);
     return anfrage.then(function (d) { protokoll(pfad, p, true, d, Date.now() - t0); return d; },
       function (e) { protokoll(pfad, p, false, e.message || e, Date.now() - t0); throw new Error(muster(pfad).split('/').slice(-2).join('/') + ': ' + (e.message || e)); });
@@ -156,13 +158,13 @@
   function dokumenteZu(id, rel) {
     return hole(DOC + '/parentId/' + encodeURIComponent(id), { parentRelName: rel, parentDirection: 'from', $include: 'files' }).then(mitglieder);
   }
-  function issueIds() {
-    var alles = [];
+  function issueIds(grenze, text) {
+    var alles = []; grenze = grenze || MAXISSUES;
     function seite(skip) {
-      return hole(ISS + '/search', { $searchStr: '*', $top: 100, $skip: skip }).then(function (r) {
+      return hole(ISS + '/search', { $searchStr: text || '*', $top: 100, $skip: skip }).then(function (r) {
         var m = mitglieder(r).map(function (x) { return x.identifier || x.id; }).filter(Boolean), neu = m.filter(function (x) { return alles.indexOf(x) < 0; });
         alles = alles.concat(neu);
-        return (!neu.length || m.length < 20 || alles.length >= MAXISSUES) ? alles.slice(0, MAXISSUES) : seite(skip + m.length);
+        return (!neu.length || m.length < 20 || alles.length >= grenze) ? alles.slice(0, grenze) : seite(skip + m.length);
       });
     }
     return seite(0);
@@ -172,7 +174,7 @@
   function issueDetail(id) {
     var v = issVar, p = ISSFELDER[v] ? { $fields: ISSFELDER[v] } : {};
     return hole(ISS + '/' + encodeURIComponent(id), p).then(function (r) { return mitglieder(r)[0] || (r && (r.id || r.title) ? r : null); },
-      function (e) { if (v < ISSFELDER.length - 1) { if (issVar === v) issVar = v + 1; return issueDetail(id); } throw e; });
+      function (e) { if (!/Zeitlimit/.test(e.message) && v < ISSFELDER.length - 1) { if (issVar === v) issVar = v + 1; return issueDetail(id); } throw e; });
   }
   // alle 32-stelligen IDs irgendwo in einer Antwort (Rückfall, wenn die erwarteten Felder fehlen)
   function alleIds(o, aus) {
@@ -187,7 +189,7 @@
     var p = {}; Object.keys(params || {}).forEach(function (k) { p[k] = params[k]; });
     if (!taskInclude) return hole(pfad, p).then(mitglieder);
     var mit = {}; Object.keys(p).forEach(function (k) { mit[k] = p[k]; }); mit.$include = 'all';
-    return hole(pfad, mit).then(mitglieder, function () { taskInclude = false; return hole(pfad, p).then(mitglieder); });
+    return hole(pfad, mit).then(mitglieder, function (e) { if (/Zeitlimit/.test(e.message)) throw e; taskInclude = false; return hole(pfad, p).then(mitglieder); });
   }
   function refIds(liste) {
     var ids = [];
@@ -197,6 +199,15 @@
       var i = x.identifier || x.id || (x.dataelements || {}).objectId; if (i) ids.push(i);
     });
     return ids;
+  }
+  function refObjs(liste) {
+    var aus = [];
+    (Array.isArray(liste) ? liste : []).forEach(function (x) {
+      if (!x) return;
+      if (Array.isArray(x.elements)) { aus = aus.concat(refObjs(x.elements)); return; }
+      var i = x.identifier || x.id || (x.dataelements || {}).objectId; if (i) aus.push({ id: i, typ: x.type || '', pfad: x.relativePath || '' });
+    });
+    return aus;
   }
   function dokMeta(d, typ, id) {
     var e = (d && d.dataelements) || d || {}, dateien = [], anz = 0;
@@ -213,7 +224,8 @@
   function istProdukt(t) { return /VPMReference|EngItem|Physical ?Product/i.test(t || ''); }
   function istOrdner(t) { return /Workspace ?Vault|Bookmark|Workspace/i.test(t || ''); }
 
-  async function leseBookmark(bmId, bmTitel) {
+  // q fehlt: Start beim Bookmark. q.issues = [IDs]: Start bei diesen Issues. q.alleIssues: alle Issues der Plattform.
+  async function leseBookmark(bmId, bmTitel, q) {
     var nodes = [], edges = [], gesehen = {}, hinweise = [];
     var types = {
       folder: { color: '#f5b942', size: 3, shape: 'box', label: 'Bookmark-Folder' },
@@ -238,7 +250,7 @@
     function typFuer(name) {
       var key = 't_' + String(name || 'Objekt').replace(/[^A-Za-z0-9]+/g, '_');
       if (!types[key]) {
-        if (/Document/i.test(name)) types[key] = { color: '#c9a227', size: 1.3, shape: 'book', label: 'Dokument (im Bookmark)' };
+        if (/Document/i.test(name)) types[key] = { color: '#c9a227', size: 1.3, shape: 'book', label: q ? 'Dokument' : 'Dokument (im Bookmark)' };
         else if (/Drawing/i.test(name)) types[key] = { color: '#9aa5b1', size: 0.9, label: 'Zeichnung' };
         else if (/Issue/i.test(name)) types[key] = { color: '#ff4d6d', size: 2.2, shape: 'torus', label: 'Issue' };
         else types[key] = { color: palette[pi++ % palette.length], size: 1.3, label: String(name || 'Objekt') };
@@ -247,7 +259,7 @@
     }
 
     // 1. Bookmark-Ordner (samt Unterordnern, soweit sie als Inhalt geliefert werden)
-    var startProdukte = [], ordner = [{ id: bmId, titel: bmTitel, eltern: null }], oi = 0, andere = [];
+    var startProdukte = [], ordner = q ? [] : [{ id: bmId, titel: bmTitel, eltern: null }], oi = 0, andere = [];
     while (oi < ordner.length && ordner.length < 200) {
       var o = ordner[oi++];
       status('Lese Bookmark „' + (o.titel || o.id) + '“ …');
@@ -265,11 +277,32 @@
       });
     }
 
+    // 1b. Start bei Issues: Details lesen und die genannten Objekte als Ausgangspunkt nehmen
+    var vorIssues = null;
+    if (q) {
+      status(q.alleIssues ? 'Suche alle Issues …' : 'Lese Issue …');
+      var qIds = q.alleIssues ? await issueIds(MAXALLE) : q.issues, qFertig = 0, schon = {};
+      vorIssues = {}; S.issueZahl = qIds.length;
+      await pool(qIds, PARALLEL, async function (iid) {
+        try { var d = await issueDetail(iid); if (d) vorIssues[iid] = d; } catch (e) { }
+        qFertig++; if (qFertig % 10 === 0 || qFertig === qIds.length) status('Lese Issues: ' + qFertig + ' von ' + qIds.length + ' …');
+      });
+      Object.keys(vorIssues).forEach(function (iid) {
+        var d = vorIssues[iid];
+        refObjs(d.affectedItems).concat(refObjs(d.contexts)).forEach(function (r) {
+          if (schon[r.id] || vorIssues[r.id]) return; schon[r.id] = 1;
+          if (/Document/i.test(r.typ) || /\/documents\//.test(r.pfad)) andere.push({ id: r.id, typ: 'Document', bm: null, titel: '' });
+          else if (istOrdner(r.typ) || /Project|Space|Route|Task|Issue|Person|Change/i.test(r.typ)) andere.push({ id: r.id, typ: r.typ, bm: null, titel: '' });
+          else startProdukte.push({ id: r.id, bm: null });
+        });
+      });
+    }
+    var maxTiefe = q ? (q.struktur ? MAXTIEFE : 0) : MAXTIEFE;
     S.wurzeln = startProdukte.map(function (p) { return p.id; });
     // 2. Produktstruktur abwärts, Ebene für Ebene
     var items = {}, anzahl = 0, grenze = false;
     var front = []; startProdukte.forEach(function (p) { if (front.indexOf(p.id) < 0) front.push(p.id); });
-    for (var tiefe = 0; front.length && tiefe <= MAXTIEFE; tiefe++) {
+    for (var tiefe = 0; front.length && tiefe <= maxTiefe; tiefe++) {
       var frei = S.max - anzahl - nodes.length - andere.length;
       if (front.length > frei) { front = front.slice(0, Math.max(0, frei)); grenze = true; }
       front.forEach(function (id) { items[id] = { id: id, kinder: [], det: null, tiefe: tiefe }; });
@@ -284,7 +317,7 @@
       front = naechste;
       if (grenze) break;
     }
-    if (grenze || front.length) hinweise.push('Höchstzahl von ' + S.max + ' Objekten erreicht, die Struktur ist unvollständig.');
+    if (grenze || (front.length && maxTiefe === MAXTIEFE)) hinweise.push('Höchstzahl von ' + S.max + ' Objekten erreicht, die Struktur ist unvollständig.');
 
     // 2b. Spezifikationen und Attachments der Objekte
     var doks = {}, dokKanten = [], dokZahl = 0, dokGrenze = false;
@@ -315,7 +348,7 @@
 
     // 2c. Issues, Aufgaben und Personen
     var exKnoten = [], exKanten = [], pers = {}, issues = {}, tasks = {};
-    if (S.mitIssues) {
+    if (S.mitIssues || q) {
       var ziel = {};   // Plattform-ID -> Knoten-ID in der Darstellung
       ordner.forEach(function (o) { ziel[o.id] = 'bm:' + o.id; });
       Object.keys(items).forEach(function (id) { ziel[id] = id; });
@@ -336,12 +369,12 @@
       var zustand = function (s) { return IZ[String(s || '').toUpperCase().replace(/_/g, ' ')] || s || ''; };
       // Issues: alle sichtbaren Issues lesen und die behalten, die ein geladenes Objekt betreffen
       try {
-        status('Suche Issues …');
-        var iIds = await issueIds(), iFertig = 0;
+        if (!q) status('Suche Issues …');
+        var iIds = q ? Object.keys(vorIssues) : await issueIds(), iFertig = 0;
         S.issueInfo = { gefunden: iIds.length, gelesen: 0, mitBezug: [], alle: [] };
         await pool(iIds, PARALLEL, async function (iid) {
-          var d = null; try { d = await issueDetail(iid); } catch (e) { }
-          iFertig++; if (iFertig % 10 === 0 || iFertig === iIds.length) status('Prüfe Issues: ' + iFertig + ' von ' + iIds.length + ' …');
+          var d = null; if (q) d = vorIssues[iid]; else { try { d = await issueDetail(iid); } catch (e) { } }
+          iFertig++; if (!q && (iFertig % 10 === 0 || iFertig === iIds.length)) status('Prüfe Issues: ' + iFertig + ' von ' + iIds.length + ' …');
           if (!d) return;
           S.issueInfo.gelesen++;
           var roh = refIds(d.affectedItems).concat(refIds(d.contexts));
@@ -352,7 +385,7 @@
           }
           var bez = refIds(d.affectedItems).concat(refIds(d.contexts)).filter(function (x) { return ziel[x]; });
           if (!bez.length) bez = alleIds(d).filter(function (x) { return ziel[x] && x !== iid; });
-          if (!bez.length || issues[iid]) return;
+          if ((!bez.length && !q) || issues[iid]) return;
           if (!frei2()) { exGrenze = true; return; }
           var m = d.members || {}, meta = { Titel: d.title || '', Name: d.name || '', Status: d.state || '', 'Priorität': d.Priority || d.priority || '', Beschreibung: d.description || '', Besitzer: d.owner || '',
             Zugewiesen: (m.assignees || []).join(', '), 'Geplantes Ende': datum(d['Estimated End Date']), 'Tatsächliches Ende': datum(d['Actual End Date']), 'Collaborative Space': d.collabSpace || d.collabspace || '', Typ: d.type || 'Issue', ID: iid };
@@ -362,7 +395,22 @@
           var doppelt = {}; bez.forEach(function (x) { if (!doppelt[x]) { doppelt[x] = 1; exKanten.push({ from: n.id, to: ziel[x], type: 'betrifft' }); } });
           (m.assignees || []).forEach(function (a) { var p = person(a); if (p) exKanten.push({ from: n.id, to: p, type: 'zuweisung' }); });
         });
-        if (iIds.length >= MAXISSUES) hinweise.push('Nur die ersten ' + MAXISSUES + ' Issues der Plattform geprüft.');
+        if (iIds.length >= (q ? MAXALLE : MAXISSUES)) hinweise.push('Nur die ersten ' + iIds.length + ' Issues der Plattform gelesen.');
+        // Attachments direkt am Issue
+        if (S.mitDok || q) {
+          var aIds = Object.keys(issues), aFertig = 0, aOk = 0, aFehler = 0;
+          await pool(aIds, PARALLEL, async function (iid) {
+            if (aFehler >= 3 && !aOk) return;
+            var liste = []; try { liste = await dokumenteZu(iid, 'Reference Document'); aOk++; } catch (e) { aFehler++; }
+            liste.forEach(function (d) {
+              var did = d && (d.id || d.identifier); if (!did) return;
+              if (!doks[did]) { if (!frei2()) { exGrenze = true; return; } doks[did] = { d: d, art: 'praes' }; dokZahl++; ziel[did] = 'o:' + did; }
+              dokKanten.push({ from: 'o:' + did, to: 'i:' + iid, type: 'praes', meta: { Beziehung: 'Reference Document' } });
+            });
+            aFertig++; if (aFertig % 10 === 0 || aFertig === aIds.length) status('Lese Attachments der Issues: ' + aFertig + ' von ' + aIds.length + ' …');
+          });
+          if (aFehler && !aOk) hinweise.push('Attachments der Issues nicht lesbar.');
+        }
       } catch (e) { hinweise.push('Issues nicht lesbar (' + e.message + ').'); }
       // Aufgaben: eigene Aufgaben des Benutzers und Aufgaben mit einem geladenen Objekt als Kontext
       var nimmTask = function (t) {
@@ -386,7 +434,7 @@
         bez.forEach(function (x) { if (!tasks[tid]._k[x]) { tasks[tid]._k[x] = 1; exKanten.push({ from: tasks[tid].id, to: ziel[x], type: 'aufgabe' }); } });
       };
       try { status('Lese Aufgaben …'); (await taskAufruf(TSK, { showProjectTasks: 'true' })).forEach(nimmTask); } catch (e) { hinweise.push('Eigene Aufgaben nicht lesbar (' + e.message + ').'); }
-      var sIds = ordner.map(function (o) { return o.id; }).concat(Object.keys(items)).concat(Object.keys(issues)), sOk = 0, sFehler = 0, sFertig = 0;
+      var sIds = (q && q.alleIssues ? [] : ordner.map(function (o) { return o.id; }).concat(Object.keys(items))).concat(Object.keys(issues)), sOk = 0, sFehler = 0, sFertig = 0;
       await pool(sIds, PARALLEL, async function (sid) {
         if (sFehler >= 3 && !sOk) return;
         try { var l = await taskAufruf(TSK + '/scopeId/' + encodeURIComponent(sid), {}); sOk++; l.forEach(function (t) { if (t) { t._scope = sid; nimmTask(t); } }); } catch (e) { sFehler++; }
@@ -419,7 +467,7 @@
       nodes.push(n);
       kinder.forEach(function (c) { var e = { from: c.id, to: id, type: 'struktur' }; if (c.n > 1) { e.label = '×' + c.n; e.meta = { Instanzen: String(c.n) }; } edges.push(e); });
     });
-    startProdukte.forEach(function (p) { if (items[p.id]) { var key = p.id + '>' + p.bm; if (!gesehen[key]) { gesehen[key] = 1; edges.push({ from: p.id, to: 'bm:' + p.bm, type: 'inhalt' }); } } });
+    startProdukte.forEach(function (p) { if (items[p.id] && p.bm) { var key = p.id + '>' + p.bm; if (!gesehen[key]) { gesehen[key] = 1; edges.push({ from: p.id, to: 'bm:' + p.bm, type: 'inhalt' }); } } });
     Object.keys(doks).forEach(function (did) {
       var x = dokMeta(doks[did].d, 'Document', did), n = { id: 'o:' + did, type: doks[did].art, name: x.name, meta: x.meta, dl: true };
       if (x.state) n.state = ZUSTAND[String(x.state).toUpperCase().replace(/ /g, '_')] || x.state;
@@ -437,12 +485,13 @@
         if (d.state) n.state = ZUSTAND[d.state] || d.state;
         nodes.push(n);
       }
-      edges.push({ from: id, to: 'bm:' + a.bm, type: 'inhalt' });
+      if (a.bm) edges.push({ from: id, to: 'bm:' + a.bm, type: 'inhalt' });
     });
     exKnoten.forEach(function (n) { nodes.push(n); });
     var vorhanden = {}; nodes.forEach(function (n) { vorhanden[n.id] = 1; });
     exKanten.forEach(function (k) { if (vorhanden[k.from] && vorhanden[k.to]) edges.push(k); });
     S.wurzelInfo = (S.wurzeln || []).map(function (id) { var d = (items[id] && items[id].det) || {}; return (d.title || '?') + ' ' + (d.revision || '') + ' [' + id + ']'; });
+    if (S.frist && Date.now() > S.frist) { hinweise = hinweise.filter(function (h) { return !/nicht lesbar/.test(h); }); hinweise.push('Zeitlimit von ' + FRIST_ALLE + ' s erreicht, das Ergebnis ist unvollständig.'); }
     if (fehlend) hinweise.push(fehlend + ' Objekte ohne Detaildaten (keine Leserechte oder kein Engineering Item).');
     return { daten: { types: types, relTypes: relTypes, nodes: nodes, edges: edges, maxObjects: Math.max(500, nodes.length) }, hinweise: hinweise };
   }
@@ -461,28 +510,37 @@
   // ---------- Bedienung ----------
   async function suchen() {
     if (S.laeuft) return;
-    var text = q('.td-su').value.trim(), sel = q('.td-tr');
+    var text = q('.td-su').value.trim(), sel = q('.td-tr'), iss = q('.td-ar').value === 'iss', was = iss ? 'Issue' : 'Bookmark';
     try {
-      S.laeuft = true; status('Suche Bookmarks …');
-      if (/^[0-9A-Fa-f]{20,}$/.test(text)) S.treffer = [{ id: text, title: 'ID ' + text }];
-      else S.treffer = await sucheBookmarks(text);
+      S.laeuft = true; S.frist = 0; status('Suche ' + was + 's …');
+      if (/^[0-9A-Fa-f]{20,}$/.test(text)) S.treffer = [{ id: text, title: 'ID ' + text, art: iss ? 'issue' : 'bm' }];
+      else if (iss) {
+        var ids = await issueIds(60, text), liste = [];
+        await pool(ids, PARALLEL, async function (iid) { try { var d = await issueDetail(iid); if (d) liste.push({ id: iid, art: 'issue', title: (d.name ? d.name + '  ' : '') + (d.title || ''), owner: d.owner || '', d: d['Creation Date'] || '' }); } catch (e) { } });
+        S.treffer = liste.sort(function (x, y) { return String(y.d).localeCompare(String(x.d)); });
+      } else S.treffer = await sucheBookmarks(text);
       sel.innerHTML = S.treffer.map(function (b, i) { return '<option value="' + i + '">' + esc(b.title || b.name || b.id) + (b.owner ? ' (' + esc(b.owner) + ')' : '') + '</option>'; }).join('');
       sel.style.display = S.treffer.length ? '' : 'none'; q('.td-la').style.display = S.treffer.length ? '' : 'none';
-      status(S.treffer.length ? S.treffer.length + ' Bookmark(s) gefunden. Auswählen und „Laden“ drücken.' : 'Kein Bookmark gefunden.', !S.treffer.length);
+      status(S.treffer.length ? S.treffer.length + ' ' + was + '(s) gefunden' + (iss && S.treffer.length >= 60 ? ' (nur die ersten 60, Suchtext eingrenzen)' : '') + '. Auswählen und „Laden“ drücken.' : 'Kein ' + was + ' gefunden.', !S.treffer.length);
     } catch (e) { status('Suche fehlgeschlagen: ' + e.message, true); } finally { S.laeuft = false; diagnose(); }
   }
-  async function laden() {
+  async function laden(sonder) {
     if (S.laeuft) return;
-    var b = S.treffer[+q('.td-tr').value]; if (!b) return;
+    var b = sonder ? { title: 'Alle Issues' } : S.treffer[+q('.td-tr').value]; if (!b) return;
     try {
       S.laeuft = true; S.max = Math.max(10, parseInt(S.maxText, 10) || 1500); S.mitDok = q('.td-dk').checked; S.mitIssues = q('.td-ia').checked;
-      var t0 = Date.now(), erg = await leseBookmark(b.id, b.title || b.name || '');
-      sende({ quelle: '3deep-adapter', daten: erg.daten, name: b.title || 'Bookmark', steuerung: 'game' });
-      status(erg.daten.nodes.length + ' Objekte, ' + erg.daten.edges.length + ' Beziehungen aus „' + (b.title || b.id) + '“ in ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s.' + (erg.hinweise.length ? ' Hinweis: ' + erg.hinweise.join(' ') : ''), erg.hinweise.length > 0);
-    } catch (e) { status('Laden fehlgeschlagen: ' + e.message + ' (Details unter „Diagnose“)', true); } finally { S.laeuft = false; diagnose(); }
+      S.aufrufe = 0; S.frist = 0;
+      var t0 = Date.now(), erg;
+      if (sonder && sonder.alleIssues) { S.frist = t0 + FRIST_ALLE * 1000; S.max = Math.max(S.max, 5000); erg = await leseBookmark(null, null, { alleIssues: true, struktur: false }); }
+      else if (b.art === 'issue') erg = await leseBookmark(null, null, { issues: [b.id], struktur: q('.td-sk').checked });
+      else erg = await leseBookmark(b.id, b.title || b.name || '');
+      S.frist = 0;
+      sende({ quelle: '3deep-adapter', daten: erg.daten, name: b.title || 'Daten', steuerung: 'game' });
+      status(erg.daten.nodes.length + ' Objekte, ' + erg.daten.edges.length + ' Beziehungen aus „' + (b.title || b.id) + '“ in ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s, ' + S.aufrufe + ' Abfragen.' + (erg.hinweise.length ? ' Hinweis: ' + erg.hinweise.join(' ') : ''), erg.hinweise.length > 0);
+    } catch (e) { status('Laden fehlgeschlagen: ' + e.message + ' (Details unter „Diagnose“)', true); } finally { S.laeuft = false; S.frist = 0; diagnose(); }
   }
   function diagnoseText() {
-    var z = ['3Deep-Widget Diagnose (Adapter 9), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
+    var z = ['3Deep-Widget Diagnose (Adapter 10), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
       '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-'), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), ''];
     if (S.wurzelInfo) { z.push('', 'Produkte im Bookmark:'); S.wurzelInfo.forEach(function (w) { z.push('  ' + w); }); }
     if (S.issueInfo) {
@@ -508,12 +566,15 @@
       '<div class="td-w" style="position:fixed;left:0;top:0;right:0;bottom:0;display:flex;flex-direction:column;background:#0b1220;color:#e8eefc;font:13px/1.35 system-ui,Segoe UI,Arial,sans-serif">' +
       '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 8px;background:#121c30;border-bottom:1px solid #26344f">' +
       '<b style="margin-right:4px">3Deep</b>' +
+      '<select class="td-ar" title="Womit beginnen?" style="' + feld + '"><option value="bm">Bookmark</option><option value="iss">Issue</option></select>' +
       '<input class="td-su" type="text" placeholder="Bookmark-Name oder ID" style="' + feld + ';width:190px" />' +
       '<button class="td-sb" style="' + knopf + '">Suchen</button>' +
       '<select class="td-tr" style="' + feld + ';max-width:260px;display:none"></select>' +
       '<button class="td-la" style="' + knopf + ';background:#2563d6;display:none">Laden</button>' +
       '<label title="Spezifikationen und Attachments der Objekte mitlesen" style="display:flex;align-items:center;gap:4px"><input class="td-dk" type="checkbox" checked="checked" />Dokumente</label>' +
       '<label title="Issues, Aufgaben und Personen zu den Objekten mitlesen" style="display:flex;align-items:center;gap:4px"><input class="td-ia" type="checkbox" checked="checked" />Issues/Aufgaben</label>' +
+      '<label class="td-skl" title="Produktstruktur der betroffenen Objekte abwärts mitlesen" style="display:none;align-items:center;gap:4px"><input class="td-sk" type="checkbox" />Struktur</label>' +
+      '<button class="td-ai" title="Entwicklerfunktion (Performancetest): alle Issues der Plattform mit ihren Objekten, Zeitlimit ' + FRIST_ALLE + ' s" style="' + knopf + ';background:#5a3d10">Alle Issues</button>' +
       '<select class="td-cx" title="Security Context" style="' + feld + ';max-width:240px;display:none"></select>' +
       '<input class="td-ci" type="text" placeholder="Security Context: Rolle.Organisation.Collaborative Space" title="Security Context von Hand" style="' + feld + ';width:330px;display:none" />' +
       '<button class="td-db" style="' + knopf + '">Diagnose</button>' +
@@ -523,7 +584,13 @@
       '<div style="margin-bottom:4px">Protokoll aller Abfragen. Zum Weitergeben: „Kopieren“ drücken, vorher Vertrauliches prüfen. <button class="td-dc" style="' + knopf + '">Kopieren</button></div>' +
       '<textarea class="td-dx" readonly="readonly" style="' + feld + ';width:100%;height:180px;box-sizing:border-box;font:12px monospace;display:none"></textarea></div>' +
       '<iframe class="td-fr" title="3Deep Darstellung" allow="fullscreen" style="flex:1;width:100%;border:0;background:#0b1220"></iframe></div>';
-    q('.td-sb').onclick = suchen; q('.td-la').onclick = laden;
+    q('.td-sb').onclick = suchen; q('.td-la').onclick = function () { laden(); };
+    q('.td-ai').onclick = function () { laden({ alleIssues: true }); };
+    q('.td-ar').onchange = function (e) {
+      var iss = e.target.value === 'iss';
+      q('.td-su').placeholder = iss ? 'Issue-Titel, Name oder ID (leer = alle)' : 'Bookmark-Name oder ID';
+      q('.td-skl').style.display = iss ? 'flex' : 'none'; S.treffer = []; q('.td-tr').style.display = 'none'; q('.td-la').style.display = 'none';
+    };
     q('.td-su').addEventListener('keydown', function (e) { if (e.key === 'Enter') suchen(); });
     q('.td-db').onclick = function () { var p = q('.td-dp'), d = q('.td-dx'), auf = p.style.display === 'none'; p.style.display = auf ? '' : 'none'; d.style.display = auf ? '' : 'none'; diagnose(); };
     q('.td-dc').onclick = function () { var d = q('.td-dx'); d.value = diagnoseText(); d.select(); try { document.execCommand('copy'); } catch (e) { } if (navigator.clipboard) navigator.clipboard.writeText(d.value).catch(function () { }); };
@@ -638,6 +705,7 @@
       relateddata: { assignees: wer.map(function (w) { return { id: id(), type: 'Person', dataelements: { name: w[0], fullname: w[1], email: w[0] + '@example.com' } }; }), scopes: scope ? [{ id: scope, type: 'x', identifier: scope }] : [], references: (refs || []).map(function (r) { return { id: r, identifier: r }; }), deliverables: [] } };
       if (scope) (T.scope[scope] = T.scope[scope] || []).push(i); return i; }
     var is1 = issue('Sensor liefert bei Kälte falsche Werte', 'In Work', [sensor, le], ['cmeier']);
+    haenge(is1, 'Reference Document', dok('Foto Fehlerbild', 'Fehlerbild.png'));
     issue('Issue ohne Bezug zum Bookmark', 'Create', ['FFFF0000FFFF0000FFFF0000FFFF0000'], ['cmeier']);
     aufgabe('Sensor neu qualifizieren', 'Active', is1, [['abauer', 'A. Bauer']]);
     aufgabe('Bremssattel-Zeichnung prüfen', 'Create', bremse, [['cmeier', 'C. Meier'], ['abauer', 'A. Bauer']]);
@@ -675,14 +743,13 @@
           var dd = TEST.doc[m[1]], fn = (((dd || {}).relateddata || {}).files || [{}])[0].dataelements; fn = (fn && fn.title) || 'Beispiel.txt';
           return ja({ success: true, data: [{ id: m[1], dataelements: { ticketURL: 'data:text/plain;charset=utf-8,' + encodeURIComponent('Beispieldatei aus dem 3Deep-Testmodus: ' + fn), fileName: fn + '.txt' } }] });
         }
-        if (pfad === ISS + '/search') { var ii = Object.keys(TEST.iss).map(function (k) { return eref2('Issue', k); }); return ja({ issue: seite(ii) }); }
+        if (pfad === ISS + '/search') { var st = String(p.$searchStr || '*').toLowerCase().replace(/\*/g, ''); var ii = Object.keys(TEST.iss).filter(function (k) { return !st || (TEST.iss[k].title + ' ' + TEST.iss[k].name).toLowerCase().indexOf(st) >= 0; }).map(function (k) { return eref2('Issue', k); }); return ja({ issue: seite(ii) }); }
         if ((m = pfad.match(/dsiss\/issue\/([^\/]+)$/))) { var io = TEST.iss[m[1]]; if (!io) return nein(new Error('404'));
           var flach = {}; Object.keys(io).forEach(function (k) { if (p.$fields || ['members', 'affectedItems', 'contexts'].indexOf(k) < 0) flach[k] = io[k]; });
           return ja(flach); }
         if (pfad === TSK) { return ja({ success: true, data: Object.keys(TEST.tsk).filter(function (k) { return !(TEST.tsk[k].relateddata.scopes || []).length; }).map(function (k) { return TEST.tsk[k]; }) }); }
         if ((m = pfad.match(/tasks\/scopeId\/([^\/]+)$/))) { return ja({ success: true, data: (TEST.scope[m[1]] || []).map(function (k) { return TEST.tsk[k]; }) }); }
         if ((m = pfad.match(/documents\/parentId\/([^\/]+)$/))) {
-          if (p.parentRelName === 'Reference Document') return nein(new Error('400 Relationship not supported'));
           return ja({ success: true, data: (TEST.rel[m[1] + '|' + p.parentRelName] || []).map(function (i) { return TEST.doc[i]; }) });
         }
         if ((m = pfad.match(/documents\/([^\/]+)$/))) { var d = TEST.doc[m[1]]; return d ? ja({ success: true, data: [d] }) : nein(new Error('404')); }
