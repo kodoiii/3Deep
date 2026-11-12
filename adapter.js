@@ -1,4 +1,4 @@
-/* 3Deep-Widget, Adapter Version 6.
+/* 3Deep-Widget, Adapter Version 7.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
@@ -22,7 +22,13 @@
   function q(sel) { return S.root.querySelector(sel); }
   function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function status(t, fehler) { var e = q('.td-st'); if (e) { e.textContent = t; e.style.color = fehler ? '#ff8a8a' : '#c9d4e8'; } }
-  function mitglieder(r) { if (Array.isArray(r)) return r; if (r && Array.isArray(r.member)) return r.member; if (r && Array.isArray(r.data)) return r.data; return []; }
+  function mitglieder(r) {
+    if (Array.isArray(r)) return r; if (!r || typeof r !== 'object') return [];
+    if (Array.isArray(r.member)) return r.member; if (Array.isArray(r.data)) return r.data; if (Array.isArray(r.issue)) return r.issue;
+    var k = Object.keys(r).filter(function (x) { return Array.isArray(r[x]) && ['masks', 'definitions'].indexOf(x) < 0; });
+    return k.length === 1 ? r[k[0]] : [];
+  }
+  function sauber(k, v) { if (k === 'csrf') return '(entfernt)'; if (k === 'ticketURL') return String(v).slice(0, 70) + '… (gekürzt)'; return v; }
   function datum(t) { if (!t) return ''; var d = new Date(t); return isNaN(d) ? String(t) : d.toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' }); }
   function pool(liste, n, fn) {
     var i = 0, erg = [];
@@ -37,7 +43,7 @@
     var m = muster(pfad) + (params && params.$mask ? ' [' + params.$mask + ']' : '') + (params && params.parentRelName ? ' [' + params.parentRelName + ']' : '');
     S.log.push({ zeit: new Date().toLocaleTimeString('de-DE'), aufruf: m, ok: ok, info: ok ? mitglieder(antwort).length + ' Einträge' : String(antwort), ms: ms });
     if (S.log.length > 400) S.log.shift();
-    if (ok && !S.roh[m]) { var t = ''; try { t = JSON.stringify(antwort, null, 1); } catch (e) { t = String(antwort); } S.roh[m] = t.length > 6000 ? t.slice(0, 6000) + '\n… (gekürzt)' : t; }
+    if (ok && !S.roh[m]) { var t = ''; try { t = JSON.stringify(antwort, sauber, 1); } catch (e) { t = String(antwort); } S.roh[m] = t.length > 6000 ? t.slice(0, 6000) + '\n… (gekürzt)' : t; }
     if (!ok && !S.roh['FEHLER ' + m]) S.roh['FEHLER ' + m] = String(antwort);
   }
   function liveGet(pfad, params, ohneKontext, methode, kopfPlus) {
@@ -154,13 +160,22 @@
     var alles = [];
     function seite(skip) {
       return hole(ISS + '/search', { $searchStr: '*', $top: 100, $skip: skip }).then(function (r) {
-        var m = mitglieder(r).map(function (x) { return x.identifier || x.id; }).filter(Boolean); alles = alles.concat(m);
-        return (m.length < 100 || alles.length >= MAXISSUES) ? alles.slice(0, MAXISSUES) : seite(skip + m.length);
+        var m = mitglieder(r).map(function (x) { return x.identifier || x.id; }).filter(Boolean), neu = m.filter(function (x) { return alles.indexOf(x) < 0; });
+        alles = alles.concat(neu);
+        return (!neu.length || m.length < 20 || alles.length >= MAXISSUES) ? alles.slice(0, MAXISSUES) : seite(skip + m.length);
       });
     }
     return seite(0);
   }
-  function issueDetail(id) { return hole(ISS + '/' + encodeURIComponent(id), {}).then(function (r) { return mitglieder(r)[0] || (r && r.id ? r : null); }); }
+  function issueDetail(id) { return hole(ISS + '/' + encodeURIComponent(id), {}).then(function (r) { return mitglieder(r)[0] || (r && (r.id || r.title) ? r : null); }); }
+  // alle 32-stelligen IDs irgendwo in einer Antwort (Rückfall, wenn die erwarteten Felder fehlen)
+  function alleIds(o, aus) {
+    aus = aus || [];
+    if (typeof o === 'string') { if (/^[0-9A-Fa-f]{32}$/.test(o)) aus.push(o); }
+    else if (Array.isArray(o)) o.forEach(function (x) { alleIds(x, aus); });
+    else if (o && typeof o === 'object') Object.keys(o).forEach(function (k) { alleIds(o[k], aus); });
+    return aus;
+  }
   var taskInclude = true;
   function taskAufruf(pfad, params) {
     var p = {}; Object.keys(params || {}).forEach(function (k) { p[k] = params[k]; });
@@ -321,6 +336,7 @@
           iFertig++; if (iFertig % 10 === 0 || iFertig === iIds.length) status('Prüfe Issues: ' + iFertig + ' von ' + iIds.length + ' …');
           if (!d) return;
           var bez = refIds(d.affectedItems).concat(refIds(d.contexts)).filter(function (x) { return ziel[x]; });
+          if (!bez.length) bez = alleIds(d).filter(function (x) { return ziel[x] && x !== iid; });
           if (!bez.length || issues[iid]) return;
           if (!frei2()) { exGrenze = true; return; }
           var m = d.members || {}, meta = { Titel: d.title || '', Name: d.name || '', Status: d.state || '', 'Priorität': d.Priority || d.priority || '', Beschreibung: d.description || '', Besitzer: d.owner || '',
@@ -451,7 +467,7 @@
   }
   function diagnoseText() {
     var z = ['3Deep-Widget Diagnose, ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
-      '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-'), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), '', 'Aufrufe:'];
+      '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-'), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), '', 'Aufrufe:'];
     S.log.forEach(function (l) { z.push(l.zeit + '  ' + (l.ok ? 'ok    ' : 'FEHLER') + '  ' + l.aufruf + '  ' + l.info + '  ' + l.ms + ' ms'); });
     z.push('', 'Erste Antwort je Aufrufart (gekürzt):');
     Object.keys(S.roh).forEach(function (k) { z.push('--- ' + k, S.roh[k]); });
@@ -634,8 +650,8 @@
           var dd = TEST.doc[m[1]], fn = (((dd || {}).relateddata || {}).files || [{}])[0].dataelements; fn = (fn && fn.title) || 'Beispiel.txt';
           return ja({ success: true, data: [{ id: m[1], dataelements: { ticketURL: 'data:text/plain;charset=utf-8,' + encodeURIComponent('Beispieldatei aus dem 3Deep-Testmodus: ' + fn), fileName: fn + '.txt' } }] });
         }
-        if (pfad === ISS + '/search') { var ii = Object.keys(TEST.iss).map(function (k) { return eref2('Issue', k); }); return ja({ totalItems: ii.length, member: seite(ii) }); }
-        if ((m = pfad.match(/dsiss\/issue\/([^\/]+)$/))) { return TEST.iss[m[1]] ? ja({ totalItems: 1, member: [TEST.iss[m[1]]] }) : nein(new Error('404')); }
+        if (pfad === ISS + '/search') { var ii = Object.keys(TEST.iss).map(function (k) { return eref2('Issue', k); }); return ja({ issue: seite(ii) }); }
+        if ((m = pfad.match(/dsiss\/issue\/([^\/]+)$/))) { return TEST.iss[m[1]] ? ja({ issue: [TEST.iss[m[1]]] }) : nein(new Error('404')); }
         if (pfad === TSK) { return ja({ success: true, data: Object.keys(TEST.tsk).filter(function (k) { return !(TEST.tsk[k].relateddata.scopes || []).length; }).map(function (k) { return TEST.tsk[k]; }) }); }
         if ((m = pfad.match(/tasks\/scopeId\/([^\/]+)$/))) { return ja({ success: true, data: (TEST.scope[m[1]] || []).map(function (k) { return TEST.tsk[k]; }) }); }
         if ((m = pfad.match(/documents\/parentId\/([^\/]+)$/))) {
