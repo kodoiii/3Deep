@@ -1,4 +1,4 @@
-# 3Deep-Widget: Einrichtung und Bedienung (Stand Adapter Version 10)
+# 3Deep-Widget: Einrichtung und Bedienung (Stand Adapter Version 11)
 
 ## Dateien (alle im selben Ordner auf GitHub Pages)
 - `widget.html` – kleiner Lader für das 3DDashboard. **Diese Adresse** trägt man im Dashboard ein.
@@ -24,6 +24,7 @@ Hosting: Repository `kodoiii/3Deep` (öffentlich), Adresse `https://kodoiii.gith
 - Häkchen „Struktur“ (nur bei Start mit Issue): Produktstruktur der betroffenen Objekte abwärts.
 - Knopf „Alle Issues“: Entwicklerfunktion für Performancetests, Zeitlimit 180 s.
 - Dokument anklicken → „⬇ Datei herunterladen“.
+- Bauteil oder Baugruppe anklicken → „⬇ Datei herunterladen“: zuerst die CAD-Datei (z. B. CATIA V5 .CATPart/.CATProduct), sonst ein abgeleitetes Format (STEP bevorzugt, dann 3DXML usw.). Gibt es beides nicht, meldet die Statuszeile das; Einzelheiten unter „Diagnose“ (Abschnitt „Downloads von Bauteilen/Baugruppen“).
 - In die 3D-Ansicht klicken, dann W A S D bewegen, Maus umsehen, Leertaste/E hoch, Q/C runter, Umschalt schneller, Esc gibt die Maus frei.
 - Auswahlfeld mit dem Security Context, falls mehrere vorhanden sind.
 
@@ -39,5 +40,6 @@ Hosting: Repository `kodoiii/3Deep` (öffentlich), Adresse `https://kodoiii.gith
 | Issues mit betroffenen Objekten (`$fields`), Personen aus Zuweisungen | auf der Plattform bestätigt |
 | Start bei einem Issue, Attachments direkt am Issue, „Alle Issues“ | nur mit Beispieldaten getestet |
 | Aufgaben mit Bezug zu einem Objekt | Abruf läuft, noch kein Treffer gesehen |
+| Download von Bauteilen/Baugruppen: CAD-Datei über `dsxcad … AuthoringFile/DownloadTicket`, sonst Derived Output über `dsdo:DerivedOutputs/Locate` | laut DS-SDK, nur mit Beispieldaten getestet |
 | Unterordner eines Bookmarks | vermutet |
 | WASD mit eingefangener Maus, SpaceMouse im Dashboard | offen |

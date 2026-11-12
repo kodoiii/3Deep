@@ -1,4 +1,4 @@
-/* 3Deep-Widget, Adapter Version 10.
+/* 3Deep-Widget, Adapter Version 11.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
@@ -11,12 +11,15 @@
   var PNO = '/resources/modeler/pno/person';
   var ISS = '/resources/v1/modeler/dsiss/issue';
   var TSK = '/resources/v1/modeler/tasks';
+  var XCAD = '/resources/v1/modeler/dsxcad/', DSDO = '/resources/v1/modeler/dsdo/';
+  // bevorzugte abgeleitete Formate (Derived Outputs) für den Download von Bauteilen
+  var CADFORMATE = ['STEP', 'STP', '3DXML', 'JT', 'IGES', 'IGS', 'STL', 'CGR', 'PDF'];
   var MAXISSUES = 400, MAXALLE = 3000, FRIST_ALLE = 180;   // Sekunden für die Entwicklerfunktion „Alle Issues“
   var SEITE = 50, PARALLEL = 8, MAXTIEFE = 12;
   // Dokument-Beziehungen eines Objekts: Name der Beziehung -> Art in der Darstellung
   var DOKREL = [{ rel: 'SpecificationDocument', art: 'spec' }, { rel: 'PLMDocConnection', art: 'praes' }, { rel: 'Reference Document', art: 'praes' }];
   var S = { live: false, WAF: null, space: '', tenant: '', ctx: '', root: null, log: [], roh: {}, bereit: false, wartend: null,
-    frame: null, viewerUrl: '', max: 1500, laeuft: false, treffer: [], dateien: {}, csrf: '' };
+    frame: null, viewerUrl: '', max: 1500, laeuft: false, treffer: [], dateien: {}, csrf: '', cad: {}, cadTyp: {}, cadInfo: [] };
 
   // ---------- kleine Helfer ----------
   function q(sel) { return S.root.querySelector(sel); }
@@ -46,7 +49,7 @@
     if (ok && !S.roh[m]) { var t = ''; try { t = JSON.stringify(antwort, sauber, 1); } catch (e) { t = String(antwort); } S.roh[m] = t.length > 6000 ? t.slice(0, 6000) + '\n… (gekürzt)' : t; }
     if (!ok && !S.roh['FEHLER ' + m]) S.roh['FEHLER ' + m] = String(antwort);
   }
-  function liveGet(pfad, params, ohneKontext, methode, kopfPlus) {
+  function liveGet(pfad, params, ohneKontext, methode, kopfPlus, body) {
     var qs = Object.keys(params).map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]); }).join('&');
     var kopf = { Accept: 'application/json' };
     if (!ohneKontext && S.ctx) kopf.SecurityContext = S.ctx;
@@ -56,7 +59,7 @@
       function fehler(e, d) { if (fertig) return; fertig = true; var t = (d && (d.message || d.error)) || (e && e.message) || String(e); nein(new Error(t)); }
       try {
         S.WAF.authenticatedRequest(S.space + pfad + (qs ? '?' + qs : ''), {
-          method: methode || 'GET', type: 'json', headers: kopf, timeout: 30000,
+          method: methode || 'GET', type: 'json', headers: kopf, timeout: 30000, data: body == null ? undefined : JSON.stringify(body),
           onComplete: function (d) { if (fertig) return; fertig = true; if (typeof d === 'string') { try { d = d ? JSON.parse(d) : {}; } catch (e) { } } ja(d || {}); },
           onFailure: fehler, onPassportError: function (e) { fehler(e || new Error('Anmeldung (3DPassport) fehlgeschlagen')); },
           onTimeout: function () { fehler(new Error('keine Antwort nach 30 s')); }
@@ -64,12 +67,12 @@
       } catch (e) { fehler(e); }
     });
   }
-  function hole(pfad, params, ohneKontext, methode, kopfPlus) {
+  function hole(pfad, params, ohneKontext, methode, kopfPlus, body) {
     var p = {}; Object.keys(params || {}).forEach(function (k) { p[k] = params[k]; });
     if (S.tenant) p.tenant = S.tenant;
     if (S.frist && Date.now() > S.frist) return Promise.reject(new Error('Zeitlimit erreicht'));
     S.aufrufe = (S.aufrufe || 0) + 1;
-    var t0 = Date.now(), anfrage = S.live ? liveGet(pfad, p, ohneKontext, methode, kopfPlus) : testGet(pfad, p, methode);
+    var t0 = Date.now(), anfrage = S.live ? liveGet(pfad, p, ohneKontext, methode, kopfPlus, body) : testGet(pfad, p, methode, body);
     return anfrage.then(function (d) { protokoll(pfad, p, true, d, Date.now() - t0); return d; },
       function (e) { protokoll(pfad, p, false, e.message || e, Date.now() - t0); throw new Error(muster(pfad).split('/').slice(-2).join('/') + ': ' + (e.message || e)); });
   }
@@ -104,6 +107,7 @@
   }
   async function download(knotenId, name) {
     var docId = String(knotenId || '').replace(/^o:/, ''), info = S.dateien[docId];
+    if (docId && !info && S.cad[docId]) { await cadDownload(docId, name); diagnose(); return; }
     if (!docId || !info) { status('Zu diesem Objekt ist keine Datei bekannt.', true); return; }
     if (!info.n) { status('„' + (name || docId) + '“ enthält keine Datei.', true); return; }
     try {
@@ -114,6 +118,64 @@
       try { a.click(); } catch (e) { }
     } catch (e) { status('Download fehlgeschlagen: ' + e.message, true); }
     diagnose();
+  }
+
+  // ---------- Datei eines Bauteils/einer Baugruppe herunterladen ----------
+  // Weg 1: CAD-Datei eines xCAD-Objekts (z. B. CATIA V5 .CATPart/.CATProduct) über dsxcad AuthoringFile/DownloadTicket.
+  // Weg 2: abgeleitete Formate (Derived Outputs, z. B. STEP oder 3DXML) über dsdo Locate + DownloadTicket.
+  // Beide Aufrufe laut DS-SDK ws3dx-dotnet (POST mit CSRF-Token), auf der Plattform noch unbestätigt.
+  function ticketAus(r) {
+    var gef = null;
+    (function such(o, t) { if (gef || !o || typeof o !== 'object' || t > 6) return; if (o.ticketURL) { gef = o; return; } Object.keys(o).forEach(function (k) { such(o[k], t + 1); }); })(r, 0);
+    return gef ? { url: gef.ticketURL, name: gef.filename || gef.fileName || gef.title || '' } : null;
+  }
+  function postMitCsrf(pfad, body) {
+    return csrf().then(function (tok) { return hole(pfad, {}, false, 'POST', { ENO_CSRF_TOKEN: tok, 'Content-Type': 'application/json' }, body || {}); });
+  }
+  function abgeleiteteDateien(r) {
+    var liste = [];
+    (function such(o, t) {
+      if (!o || typeof o !== 'object' || t > 8) return;
+      if (Array.isArray(o)) { o.forEach(function (x) { such(x, t + 1); }); return; }
+      var k = Object.keys(o).filter(function (x) { return /^derivedoutputfiles$/i.test(x); })[0];
+      if (k && Array.isArray(o[k])) o[k].forEach(function (f) { if (f && f.id) liste.push({ doId: o.id || o.doid || '', id: f.id, name: f.filename || f.fileName || '', fmt: String(f.format || '').toUpperCase() }); });
+      Object.keys(o).forEach(function (x) { if (x !== k) such(o[x], t + 1); });
+    })(r, 0);
+    function rang(f) { var e = (f.fmt || (f.name.split('.').pop() || '')).toUpperCase(), i = CADFORMATE.indexOf(e); return i < 0 ? 99 : i; }
+    return liste.filter(function (f) { return f.doId; }).sort(function (a, b) { return rang(a) - rang(b); });
+  }
+  async function cadDownload(id, name) {
+    var typ = S.cadTyp[id] || '', wege = [], t = null, quelle = '';
+    status('Suche Datei zu „' + (name || id) + '“ …');
+    try { await csrf(true); } catch (e) { status('Download fehlgeschlagen: ' + e.message, true); return; }
+    var arten = /Product/i.test(typ) ? ['Product', 'Part'] : ['Part', 'Product'];
+    for (var i = 0; i < arten.length && !t; i++) {
+      try {
+        t = ticketAus(await postMitCsrf(XCAD + 'dsxcad:' + arten[i] + '/' + encodeURIComponent(id) + '/dsxcad:AuthoringFile/DownloadTicket', {}));
+        if (t) quelle = 'CAD-Datei (dsxcad:' + arten[i] + ')'; else wege.push('dsxcad:' + arten[i] + ': keine Download-Adresse');
+      } catch (e) { wege.push('dsxcad:' + arten[i] + ': ' + e.message); }
+    }
+    if (!t) {
+      try {
+        var r = await postMitCsrf(DSDO + 'dsdo:DerivedOutputs/Locate', { referencedObject: [{ source: S.space || '$3DSpace', type: (typ && !/dsxcad/i.test(typ)) ? typ : 'VPMReference', identifier: id, relativePath: ENG + '/' + id }] });
+        var dateien = abgeleiteteDateien(r);
+        if (!dateien.length) wege.push('Derived Outputs: keine vorhanden');
+        for (var j = 0; j < dateien.length && !t; j++) {
+          var f = dateien[j];
+          try {
+            t = ticketAus(await postMitCsrf(DSDO + 'dsdo:DerivedOutputs/' + encodeURIComponent(f.doId) + '/dsdo:DerivedOutputFiles/' + encodeURIComponent(f.id) + '/DownloadTicket', {}));
+            if (t) { quelle = 'abgeleitetes Format ' + (f.fmt || '') + ' (Derived Output)'; if (!t.name) t.name = f.name; }
+          } catch (e) { wege.push('Derived Output ' + (f.name || f.id) + ': ' + e.message); }
+        }
+      } catch (e) { wege.push('Derived Outputs: ' + e.message); }
+    }
+    S.cadInfo.push((name || id) + ' [' + id + ', Typ ' + (typ || '?') + ']: ' + (t ? 'ok über ' + quelle + ', Datei ' + (t.name || '?') : 'keine Datei') + (wege.length ? ' | ' + wege.join(' | ') : ''));
+    if (S.cadInfo.length > 30) S.cadInfo.shift();
+    if (!t) { status('Zu „' + (name || id) + '“ gibt es keine herunterladbare Datei (weder CAD-Datei wie .CATPart noch abgeleitetes Format wie STEP). Details unter „Diagnose“.', true); return; }
+    var st = q('.td-st'); st.style.color = '#c9d4e8';
+    st.innerHTML = 'Datei bereit: <a class="td-dl" target="_blank" rel="noopener" style="color:#8ec1ff">' + esc(t.name || 'herunterladen') + '</a> – ' + esc(quelle) + ' (startet der Download nicht von selbst, hier klicken)';
+    var a = q('.td-dl'); a.href = t.url; if (t.name) a.setAttribute('download', t.name);
+    try { a.click(); } catch (e) { }
   }
 
   // ---------- die einzelnen Abfragen ----------
@@ -147,7 +209,7 @@
   function instanzen(id) {
     return alleSeiten(ENG + '/' + encodeURIComponent(id) + '/dseng:EngInstance', { $mask: 'dsmveng:EngInstanceMask.Details' }).then(function (m) {
       var zahl = {}, folge = [];
-      m.forEach(function (inst) { var k = (inst.referencedObject || {}).identifier; if (!k) return; if (!zahl[k]) { zahl[k] = 0; folge.push(k); } zahl[k]++; });
+      m.forEach(function (inst) { var ro = inst.referencedObject || {}, k = ro.identifier; if (!k) return; if (ro.type && !S.cadTyp[k]) S.cadTyp[k] = ro.type; if (!zahl[k]) { zahl[k] = 0; folge.push(k); } zahl[k]++; });
       return folge.map(function (k) { return { id: k, n: zahl[k] }; });
     });
   }
@@ -271,7 +333,7 @@
       inh.items.forEach(function (it) {
         var ro = (it && it.referencedObject) || it || {}, id = ro.identifier || ro.id, typ = ro.type || it.type || '';
         if (!id) return;
-        if (istProdukt(typ)) { startProdukte.push({ id: id, bm: o.id }); }
+        if (istProdukt(typ)) { startProdukte.push({ id: id, bm: o.id }); if (typ && !S.cadTyp[id]) S.cadTyp[id] = typ; }
         else if (istOrdner(typ)) { if (!ordner.some(function (x) { return x.id === id; })) ordner.push({ id: id, titel: ro.title || it.title || '', eltern: o.id }); }
         else andere.push({ id: id, typ: typ, bm: o.id, titel: ro.title || it.title || ro.name || it.name || '' });
       });
@@ -462,7 +524,8 @@
         Besitzer: d.owner || '', Organisation: d.organization || '', 'Collaborative Space': d.collabspace || '', Erstellt: datum(d.created), 'Geändert': datum(d.modified), Typ: d.type || 'VPMReference',
         'Direkte Kinder': String(it.kinder.length), Verwendungen: String(verwendet[id] || 0), ID: id };
       Object.keys(meta).forEach(function (k) { if (meta[k] === '') delete meta[k]; });
-      var n = { id: id, type: it.kinder.length ? 'asm' : 'part', name: d.title || d.name || ('Objekt ' + id.slice(-6)), meta: meta };
+      var n = { id: id, type: it.kinder.length ? 'asm' : 'part', name: d.title || d.name || ('Objekt ' + id.slice(-6)), meta: meta, dl: true };
+      S.cad[id] = 1; if (d.type && (!S.cadTyp[id] || /^VPMReference$/i.test(S.cadTyp[id]))) S.cadTyp[id] = /dsxcad/i.test(S.cadTyp[id] || '') ? S.cadTyp[id] : d.type;
       if (d.state) n.state = ZUSTAND[d.state] || d.state;
       nodes.push(n);
       kinder.forEach(function (c) { var e = { from: c.id, to: id, type: 'struktur' }; if (c.n > 1) { e.label = '×' + c.n; e.meta = { Instanzen: String(c.n) }; } edges.push(e); });
@@ -540,7 +603,7 @@
     } catch (e) { status('Laden fehlgeschlagen: ' + e.message + ' (Details unter „Diagnose“)', true); } finally { S.laeuft = false; S.frist = 0; diagnose(); }
   }
   function diagnoseText() {
-    var z = ['3Deep-Widget Diagnose (Adapter 10), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
+    var z = ['3Deep-Widget Diagnose (Adapter 11), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
       '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-'), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), ''];
     if (S.wurzelInfo) { z.push('', 'Produkte im Bookmark:'); S.wurzelInfo.forEach(function (w) { z.push('  ' + w); }); }
     if (S.issueInfo) {
@@ -550,6 +613,7 @@
       z.push('Issues mit betroffenen Objekten (neueste zuerst, höchstens 40):');
       ii.mitBezug.slice().sort(nachDatum).slice(0, 40).forEach(function (x) { z.push('  ' + x.d + '  ' + x.t + '  -> ' + (x.ids.join(', ') || '(keine ID erkannt)') + '  Treffer im Bookmark: ' + x.treffer); });
     }
+    if (S.cadInfo.length) { z.push('', 'Downloads von Bauteilen/Baugruppen:'); S.cadInfo.forEach(function (c) { z.push('  ' + c); }); }
     z.push('', '=== Ab hier nur bei Bedarf: alle Aufrufe ===', 'Aufrufe:');
     S.log.forEach(function (l) { z.push(l.zeit + '  ' + (l.ok ? 'ok    ' : 'FEHLER') + '  ' + l.aufruf + '  ' + l.info + '  ' + l.ms + ' ms'); });
     z.push('', 'Erste Antwort je Aufrufart (gekürzt):');
@@ -674,20 +738,23 @@
   var TEST = null;
   function testDaten() {
     var n = 0; function id() { n++; return ('A1B2C3D4E5F6' + ('00000000000000000000' + n.toString(16).toUpperCase()).slice(-20)); }
-    var T = { bm: {}, it: {}, kids: {}, doc: {} };
+    var T = { bm: {}, it: {}, kids: {}, doc: {}, v5: {}, dout: {} };
+    function v5(i, endung) { T.v5[i] = { typ: endung === 'CATProduct' ? 'dsxcad:Product' : 'dsxcad:Part', datei: T.it[i].title + '.' + endung }; return i; }
     function item(titel, state, kinder) {
       var i = id(); T.it[i] = { id: i, name: 'prd-R1132100000000-' + ('00000000' + n).slice(-8), title: titel, description: 'Beispielobjekt ' + titel, type: 'VPMReference', revision: 'A.1', state: state || 'IN_WORK',
         owner: 'A. Bauer', organization: 'Company Name', collabspace: 'Common Space', created: '2026-09-14T08:12:00Z', modified: '2026-10-21T15:40:00Z', cestamp: 'C0FFEE' + n, isManufacturable: true,
         'dseng:EnterpriseReference': { partNumber: 'P-' + (1000 + n) } };
-      T.kids[i] = (kinder || []).map(function (k, j) { return { id: id(), name: titel + '.' + (j + 1), type: 'VPMInstance', referencedObject: { source: '$3DSpace', type: 'VPMReference', identifier: k, relativePath: ENG + '/' + k } }; });
+      T.kids[i] = (kinder || []).map(function (k, j) { return { id: id(), name: titel + '.' + (j + 1), type: 'VPMInstance', referencedObject: { source: '$3DSpace', type: (T.v5[k] && T.v5[k].typ) || 'VPMReference', identifier: k, relativePath: ENG + '/' + k } }; });
       return i;
     }
     var sensor = item('Temperatursensor', 'RELEASED');
     var schraube = item('Schraube M6x20', 'RELEASED');
-    var bremse = item('Bremsanlage vorn', 'IN_WORK', [item('Bremsscheibe', 'RELEASED'), item('Bremssattel', 'FROZEN'), sensor, schraube, schraube, schraube, schraube]);
+    var scheibe = v5(item('Bremsscheibe', 'RELEASED'), 'CATPart'), sattel = v5(item('Bremssattel', 'FROZEN'), 'CATPart');
+    var bremse = v5(item('Bremsanlage vorn', 'IN_WORK', [scheibe, sattel, sensor, schraube, schraube, schraube, schraube]), 'CATProduct');
     var vorder = item('Vorderachse', 'IN_WORK', [bremse, item('Querlenker', 'IN_WORK'), item('Radlager', 'RELEASED')]);
     var fahrwerk = item('Fahrwerk', 'IN_WORK', [vorder, item('Hinterachse', 'FROZEN', [item('Achsträger', 'FROZEN'), item('Stoßdämpfer', 'RELEASED')]), item('Lenkung', 'IN_WORK', [item('Lenkgetriebe', 'IN_WORK')])]);
-    var le = item('Leistungselektronik', 'IN_WORK', [item('Wechselrichter-Modul', 'IN_WORK', [item('Leiterplatte', 'IN_WORK'), item('Kühlkörper', 'RELEASED')]), sensor, schraube, schraube]);
+    var kuehl = item('Kühlkörper', 'RELEASED'); T.dout[kuehl] = 'Kuehlkoerper';
+    var le = item('Leistungselektronik', 'IN_WORK', [item('Wechselrichter-Modul', 'IN_WORK', [item('Leiterplatte', 'IN_WORK'), kuehl]), sensor, schraube, schraube]);
     var antrieb = item('Elektroantrieb', 'IN_WORK', [item('E-Motor', 'FROZEN', [le, item('Rotor', 'RELEASED'), item('Stator', 'RELEASED')]), item('Thermomanagement', 'IN_WORK', [item('Kühlmittelpumpe', 'OBSOLETE')])]);
     var lose = item('Ladekabel Typ 2', 'RELEASED');
     T.rel = {};
@@ -719,7 +786,7 @@
     return T;
   }
   function eref2(typ, i) { return { source: '$3DSpace', type: typ, identifier: i, relativePath: '/…/' + i }; }
-  function testGet(pfad, p, methode) {
+  function testGet(pfad, p, methode, body) {
     if (!TEST) TEST = testDaten();
     return new Promise(function (ja, nein) {
       setTimeout(function () {
@@ -738,6 +805,22 @@
         if ((m = pfad.match(/dseng:EngItem\/([^\/]+)\/dseng:EngInstance$/))) { var kk = TEST.kids[m[1]] || []; return ja({ totalItems: kk.length, member: seite(kk) }); }
         if ((m = pfad.match(/dseng:EngItem\/([^\/]+)$/))) { var it = TEST.it[m[1]]; return it ? ja({ totalItems: 1, member: [it] }) : nein(new Error('404 Objekt nicht gefunden')); }
         if (pfad === '/resources/v1/application/CSRF') return ja({ success: true, csrf: { name: 'ENO_CSRF_TOKEN', value: 'TEST-TOKEN' } });
+        if ((m = pfad.match(/dsxcad:(Part|Product)\/([^\/]+)\/dsxcad:AuthoringFile\/DownloadTicket$/))) {
+          if (methode !== 'POST') return nein(new Error('405'));
+          var v = TEST.v5[m[2]];
+          if (!v || v.typ !== 'dsxcad:' + m[1]) return nein(new Error('404 kein ' + m[1] + ' im xCAD-Modell'));
+          return ja({ ticketURL: 'data:text/plain;charset=utf-8,' + encodeURIComponent('Beispiel-CAD-Datei aus dem 3Deep-Testmodus: ' + v.datei), ticket: 'T', filename: v.datei + '.txt' });
+        }
+        if (pfad === DSDO + 'dsdo:DerivedOutputs/Locate') {
+          if (methode !== 'POST') return nein(new Error('405'));
+          var rid = (((body || {}).referencedObject || [])[0] || {}).identifier, dn = TEST.dout[rid];
+          return ja({ totalItems: dn ? 1 : 0, member: dn ? [{ id: 'D0' + rid.slice(-8), referencedObject: eref2('VPMReference', rid), derivedoutputfiles: [{ id: 'F1', filename: dn + '.cgr', format: 'CGR' }, { id: 'F2', filename: dn + '.stp', format: 'STEP' }] }] : [] });
+        }
+        if ((m = pfad.match(/dsdo:DerivedOutputs\/([^\/]+)\/dsdo:DerivedOutputFiles\/([^\/]+)\/DownloadTicket$/))) {
+          if (methode !== 'POST') return nein(new Error('405'));
+          var fname = m[2] === 'F2' ? 'Kuehlkoerper.stp' : 'Kuehlkoerper.cgr';
+          return ja({ success: true, statusCode: 200, data: { doid: m[1], dataelements: { ticketURL: 'data:text/plain;charset=utf-8,' + encodeURIComponent('Beispiel-Derived-Output: ' + fname), ticket: 'T', filename: fname + '.txt' } } });
+        }
         if ((m = pfad.match(/documents\/([^\/]+)\/files\/DownloadTicket$/))) {
           if (methode !== 'PUT') return nein(new Error('405'));
           var dd = TEST.doc[m[1]], fn = (((dd || {}).relateddata || {}).files || [{}])[0].dataelements; fn = (fn && fn.title) || 'Beispiel.txt';
