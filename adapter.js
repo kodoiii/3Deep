@@ -1,4 +1,4 @@
-/* 3Deep-Widget, Adapter Version 7.
+/* 3Deep-Widget, Adapter Version 8.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
@@ -259,6 +259,7 @@
       });
     }
 
+    S.wurzeln = startProdukte.map(function (p) { return p.id; });
     // 2. Produktstruktur abwärts, Ebene für Ebene
     var items = {}, anzahl = 0, grenze = false;
     var front = []; startProdukte.forEach(function (p) { if (front.indexOf(p.id) < 0) front.push(p.id); });
@@ -331,10 +332,18 @@
       try {
         status('Suche Issues …');
         var iIds = await issueIds(), iFertig = 0;
+        S.issueInfo = { gefunden: iIds.length, gelesen: 0, mitBezug: [], alle: [] };
         await pool(iIds, PARALLEL, async function (iid) {
           var d = null; try { d = await issueDetail(iid); } catch (e) { }
           iFertig++; if (iFertig % 10 === 0 || iFertig === iIds.length) status('Prüfe Issues: ' + iFertig + ' von ' + iIds.length + ' …');
           if (!d) return;
+          S.issueInfo.gelesen++;
+          var roh = refIds(d.affectedItems).concat(refIds(d.contexts));
+          S.issueInfo.alle.push({ t: d.title || d.name || iid, d: d['Creation Date'] || '' });
+          if (roh.length || d.affectedItems || d.contexts) {
+            S.issueInfo.mitBezug.push({ t: d.title || d.name || iid, d: d['Creation Date'] || '', ids: roh, treffer: roh.filter(function (x) { return ziel[x]; }).length });
+            if (!S.roh['Beispiel: Issue mit betroffenen Objekten']) { var bt = JSON.stringify(d, sauber, 1); S.roh['Beispiel: Issue mit betroffenen Objekten'] = bt.length > 5000 ? bt.slice(0, 5000) + '\n… (gekürzt)' : bt; }
+          }
           var bez = refIds(d.affectedItems).concat(refIds(d.contexts)).filter(function (x) { return ziel[x]; });
           if (!bez.length) bez = alleIds(d).filter(function (x) { return ziel[x] && x !== iid; });
           if (!bez.length || issues[iid]) return;
@@ -427,6 +436,7 @@
     exKnoten.forEach(function (n) { nodes.push(n); });
     var vorhanden = {}; nodes.forEach(function (n) { vorhanden[n.id] = 1; });
     exKanten.forEach(function (k) { if (vorhanden[k.from] && vorhanden[k.to]) edges.push(k); });
+    S.wurzelInfo = (S.wurzeln || []).map(function (id) { var d = (items[id] && items[id].det) || {}; return (d.title || '?') + ' ' + (d.revision || '') + ' [' + id + ']'; });
     if (fehlend) hinweise.push(fehlend + ' Objekte ohne Detaildaten (keine Leserechte oder kein Engineering Item).');
     return { daten: { types: types, relTypes: relTypes, nodes: nodes, edges: edges, maxObjects: Math.max(500, nodes.length) }, hinweise: hinweise };
   }
@@ -469,6 +479,14 @@
     var z = ['3Deep-Widget Diagnose, ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
       '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-'), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), '', 'Aufrufe:'];
     S.log.forEach(function (l) { z.push(l.zeit + '  ' + (l.ok ? 'ok    ' : 'FEHLER') + '  ' + l.aufruf + '  ' + l.info + '  ' + l.ms + ' ms'); });
+    if (S.wurzelInfo) { z.push('', 'Produkte im Bookmark:'); S.wurzelInfo.forEach(function (w) { z.push('  ' + w); }); }
+    if (S.issueInfo) {
+      var ii = S.issueInfo, nachDatum = function (a, b) { return String(b.d).localeCompare(String(a.d)); };
+      z.push('', 'Issues: ' + ii.gefunden + ' gefunden, ' + ii.gelesen + ' gelesen, ' + ii.mitBezug.length + ' mit betroffenen Objekten');
+      z.push('Neueste Issues:'); ii.alle.slice().sort(nachDatum).slice(0, 8).forEach(function (x) { z.push('  ' + x.d + '  ' + x.t); });
+      z.push('Issues mit betroffenen Objekten (neueste zuerst, höchstens 40):');
+      ii.mitBezug.slice().sort(nachDatum).slice(0, 40).forEach(function (x) { z.push('  ' + x.d + '  ' + x.t + '  -> ' + (x.ids.join(', ') || '(keine ID erkannt)') + '  Treffer im Bookmark: ' + x.treffer); });
+    }
     z.push('', 'Erste Antwort je Aufrufart (gekürzt):');
     Object.keys(S.roh).forEach(function (k) { z.push('--- ' + k, S.roh[k]); });
     return z.join('\n');
