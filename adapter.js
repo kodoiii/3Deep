@@ -1,4 +1,4 @@
-/* 3Deep-Widget, Adapter Version 21.
+/* 3Deep-Widget, Adapter Version 22.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
@@ -35,7 +35,7 @@
   // ---------- kleine Helfer ----------
   function q(sel) { return S.root.querySelector(sel); }
   function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
-  function status(t, fehler) { var e = q('.td-st'); if (e) { e.textContent = t; e.style.color = fehler ? '#ff8a8a' : '#c9d4e8'; } }
+  function status(t, fehler) { var e = q('.td-st'); if (e) { e.textContent = t; e.style.color = fehler ? '#cc092f' : '#3d3d3d'; } }
   function mitglieder(r) {
     if (Array.isArray(r)) return r; if (!r || typeof r !== 'object') return [];
     if (Array.isArray(r.member)) return r.member; if (Array.isArray(r.data)) return r.data; if (Array.isArray(r.issue)) return r.issue;
@@ -123,7 +123,7 @@
     try {
       status('Fordere Download für „' + (name || docId) + '“ an …');
       var t = await ticket(docId, info.n > 1, String(name || 'Dokument').replace(/[^A-Za-z0-9._ -]+/g, '_').slice(0, 60) + '.zip');
-      var st = q('.td-st'); st.style.color = '#c9d4e8'; st.innerHTML = 'Datei bereit: <a class="td-dl" target="_blank" rel="noopener" style="color:#8ec1ff">' + esc(t.name || 'herunterladen') + '</a> (startet der Download nicht von selbst, hier klicken)';
+      var st = q('.td-st'); st.style.color = '#3d3d3d'; st.innerHTML = 'Datei bereit: <a class="td-dl" target="_blank" rel="noopener" style="color:#368ec4">' + esc(t.name || 'herunterladen') + '</a> (startet der Download nicht von selbst, hier klicken)';
       var a = q('.td-dl'); a.href = t.url; if (t.name) a.setAttribute('download', t.name);
       try { a.click(); } catch (e) { }
     } catch (e) { status('Download fehlgeschlagen: ' + e.message, true); }
@@ -155,17 +155,17 @@
     try { f.submit(); } finally { setTimeout(function () { if (f.parentNode) f.parentNode.removeChild(f); }, 2000); }
   }
   function zeigeDownload(t, quelle) {
-    var st = q('.td-st'); st.style.color = '#c9d4e8';
+    var st = q('.td-st'); st.style.color = '#3d3d3d';
     var weg = fcsWeg(t), name = esc(t.name || 'herunterladen');
     if (weg === 'link') {
-      st.innerHTML = 'Datei bereit: <a class="td-dl" target="_blank" rel="noopener" style="color:#8ec1ff">' + name + '</a>' + (quelle ? ' – ' + esc(quelle) : '') + ' (startet der Download nicht von selbst, hier klicken)';
+      st.innerHTML = 'Datei bereit: <a class="td-dl" target="_blank" rel="noopener" style="color:#368ec4">' + name + '</a>' + (quelle ? ' – ' + esc(quelle) : '') + ' (startet der Download nicht von selbst, hier klicken)';
       var a = q('.td-dl'); a.href = t.url; if (t.name) a.setAttribute('download', t.name);
       try { a.click(); } catch (e) { }
       return 'Link';
     }
     var get = t.url + (t.url.indexOf('?') < 0 ? '?' : '&') + encodeURIComponent(t.param) + '=' + encodeURIComponent(t.ticket);
-    st.innerHTML = 'Datei bereit: <button class="td-dlp" style="background:#2563d6;color:#fff;border:0;border-radius:6px;padding:2px 8px;cursor:pointer;font:inherit">⬇ ' + name + '</button>' + (quelle ? ' – ' + esc(quelle) : '') +
-      ' (startet der Download nicht von selbst: Knopf drücken; klappt das nicht: <a class="td-dlg" target="_blank" rel="noopener" style="color:#8ec1ff">Weg 2</a>)';
+    st.innerHTML = 'Datei bereit: <button class="td-dlp" style="background:#368ec4;color:#fff;border:0;border-radius:4px;padding:2px 8px;cursor:pointer;font:inherit">⬇ ' + name + '</button>' + (quelle ? ' – ' + esc(quelle) : '') +
+      ' (startet der Download nicht von selbst: Knopf drücken; klappt das nicht: <a class="td-dlg" target="_blank" rel="noopener" style="color:#368ec4">Weg 2</a>)';
     q('.td-dlp').onclick = function () { S.dlWeg = 'Knopf (POST)'; fcsSenden(t); diagnose(); };
     var g = q('.td-dlg'); g.href = get; g.onclick = function () { S.dlWeg = 'Weg 2 (Ticket in der Adresse)'; setTimeout(diagnose, 50); };
     try { fcsSenden(t); } catch (e) { }
@@ -894,10 +894,10 @@
   function dropWarnung(text) {
     status(text, true);
     var z = q('.td-dz'); if (!z) return;
-    z.style.borderColor = '#ff8a8a'; z.style.color = '#ff8a8a'; z.textContent = '⚠ ' + (/EIN Objekt/.test(text) ? 'Nur ein Objekt!' : 'Nicht erkannt');
+    z.style.borderColor = '#cc092f'; z.style.color = '#cc092f'; z.textContent = '⚠ ' + (/EIN Objekt/.test(text) ? 'Nur ein Objekt!' : 'Nicht erkannt');
     clearTimeout(S.dzUhr); S.dzUhr = setTimeout(dropRuhe, 4000);
   }
-  function dropRuhe() { var z = q('.td-dz'); if (!z) return; z.style.borderColor = '#5b7bb8'; z.style.color = '#9fb4dc'; z.style.background = 'transparent'; z.textContent = '⤓ Objekt hierher ziehen'; }
+  function dropRuhe() { var z = q('.td-dz'); if (!z) return; z.style.borderColor = '#368ec4'; z.style.color = '#368ec4'; z.style.background = 'transparent'; z.textContent = '⤓ Objekt hierher ziehen'; }
   function dropEmpfang(roh) {
     var txt = typeof roh === 'string' ? roh : (function () { try { return JSON.stringify(roh); } catch (e) { return String(roh); } })();
     if (S.letzterDrop && S.letzterDrop.t === txt && Date.now() - S.letzterDrop.z < 800) return;   // Plattformmodul und Browser melden denselben Drop
@@ -911,7 +911,7 @@
     laden({ drop: e });
   }
   function dropEinrichten(z) {
-    z.addEventListener('dragenter', function (ev) { ev.preventDefault(); z.style.background = '#1e3358'; });
+    z.addEventListener('dragenter', function (ev) { ev.preventDefault(); z.style.background = '#e5f1f9'; });
     z.addEventListener('dragover', function (ev) { ev.preventDefault(); try { ev.dataTransfer.dropEffect = 'copy'; } catch (x) { } });
     z.addEventListener('dragleave', function () { z.style.background = 'transparent'; });
     z.addEventListener('drop', function (ev) {
@@ -928,7 +928,7 @@
       try {
         window.require(['DS/DataDragAndDrop/DataDragAndDrop'], function (DnD) {
           if (DnD && typeof DnD.droppable === 'function') DnD.droppable(z, { drop: function (data) { z.style.background = 'transparent'; dropEmpfang(data); },
-            enter: function () { z.style.background = '#1e3358'; }, leave: function () { z.style.background = 'transparent'; } });
+            enter: function () { z.style.background = '#e5f1f9'; }, leave: function () { z.style.background = 'transparent'; } });
         }, function () { });
       } catch (x) { }
     }
@@ -973,7 +973,7 @@
     S.neuUhr = setTimeout(function () { if (S.laeuft) { S.nachladen = true; return; } S.neuLaden = (S.neuLaden || 0) + 1; laden({ drop: S.zuletzt }); }, S.neuVerzug);
   }
   function diagnoseText() {
-    var z = ['3Deep-Widget Diagnose (Adapter 21, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
+    var z = ['3Deep-Widget Diagnose (Adapter 22, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
       '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-') + (S.ctxZahl ? ' (automatisch gewählt, ' + S.ctxZahl + ' verfügbar)' : ''), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), ''];
     if (S.wurzelInfo) { z.push('', 'Produkte im Bookmark:'); S.wurzelInfo.forEach(function (w) { z.push('  ' + w); }); }
     if (S.issueInfo) {
@@ -1005,17 +1005,16 @@
 
   function baueOberflaeche(root) {
     S.root = root;
-    var knopf = 'background:#2b3d63;color:#e8eefc;border:0;border-radius:6px;padding:5px 10px;cursor:pointer;font:inherit';
-    var feld = 'background:#0d1526;color:#e8eefc;border:1px solid #3a4a68;border-radius:6px;padding:5px 8px;font:inherit';
+    var knopf = 'background:#fff;color:#3d3d3d;border:1px solid #b4b6ba;border-radius:4px;padding:4px 10px;cursor:pointer;font:inherit';
+    var feld = 'background:#fff;color:#3d3d3d;border:1px solid #b4b6ba;border-radius:4px;padding:4px 8px;font:inherit';
     root.innerHTML =
-      '<div class="td-w" style="position:fixed;left:0;top:0;right:0;bottom:0;display:flex;flex-direction:column;background:#0b1220;color:#e8eefc;font:13px/1.35 system-ui,Segoe UI,Arial,sans-serif">' +
-      '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 8px;background:#121c30;border-bottom:1px solid #26344f">' +
-      '<b style="margin-right:4px">3Deep</b>' +
-      '<div class="td-dz" title="Ein Objekt aus einer 3DEXPERIENCE-Suche hierher ziehen: Physical Product (Struktur abwärts), Bookmark, Issue oder Person" style="border:2px dashed #5b7bb8;border-radius:6px;padding:3px 10px;color:#9fb4dc;white-space:nowrap">⤓ Objekt hierher ziehen</div>' +
+      '<div class="td-w" style="position:fixed;left:0;top:0;right:0;bottom:0;display:flex;flex-direction:column;background:#0b1220;color:#3d3d3d;font:13px/1.35 system-ui,Segoe UI,Arial,sans-serif">' +
+      '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 8px;background:#f4f5f6;border-bottom:1px solid #d1d4d4;accent-color:#368ec4">' +
+      '<div class="td-dz" title="Ein Objekt aus einer 3DEXPERIENCE-Suche hierher ziehen: Physical Product (Struktur abwärts), Bookmark, Issue oder Person" style="border:2px dashed #368ec4;border-radius:4px;padding:3px 10px;color:#368ec4;white-space:nowrap">⤓ Objekt hierher ziehen</div>' +
       '<input class="td-su" type="text" placeholder="Bookmark-Name oder ID" title="Bookmark nach Name oder ID suchen" style="' + feld + ';width:190px" />' +
       '<button class="td-sb" style="' + knopf + '">Suchen</button>' +
       '<select class="td-tr" style="' + feld + ';max-width:260px;display:none"></select>' +
-      '<button class="td-la" style="' + knopf + ';background:#2563d6;display:none">Laden</button>' +
+      '<button class="td-la" style="' + knopf + ';background:#368ec4;border-color:#368ec4;color:#fff;display:none">Laden</button>' +
       '<label title="Produktstruktur mit einer Abfrage je Produkt lesen (expand, schneller); aus = Ebene für Ebene wie bisher" style="display:flex;align-items:center;gap:4px"><input class="td-ex" type="checkbox" checked="checked" />Schnell</label>' +
       '<label title="Attribute aller Strukturobjekte (z. B. Teilenummer) mit einer Abfrage nachlesen (Zone Query); aus = wie bisher" style="display:flex;align-items:center;gap:4px"><input class="td-zq" type="checkbox" checked="checked" />Attribute</label>' +
       '<label title="Spezifikationen und Attachments der Objekte mitlesen" style="display:flex;align-items:center;gap:4px"><input class="td-dk" type="checkbox" />Dokumente</label>' +
@@ -1023,9 +1022,9 @@
       '<label title="Issues, Aufgaben und Personen zu den Objekten mitlesen" style="display:flex;align-items:center;gap:4px"><input class="td-ia" type="checkbox" />Issues/Aufgaben</label>' +
       '<input class="td-ci" type="text" placeholder="Security Context: Rolle.Organisation.Collaborative Space" title="Security Context von Hand" style="' + feld + ';width:330px;display:none" />' +
       '<button class="td-db" style="' + knopf + '">Diagnose</button>' +
-      '<span class="td-mo" style="padding:2px 8px;border-radius:10px;background:#5a4410;color:#ffd98a;display:none">Testmodus: Beispieldaten</span>' +
-      '<span class="td-st" style="flex:1;min-width:200px;color:#c9d4e8">Starte …</span></div>' +
-      '<div class="td-dp" style="display:none;padding:6px 8px;background:#121c30;border-bottom:1px solid #26344f">' +
+      '<span class="td-mo" style="padding:2px 8px;border-radius:10px;background:#fff3cd;color:#7a5c00;border:1px solid #e6cf7a;display:none">Testmodus: Beispieldaten</span>' +
+      '<span class="td-st" style="flex:1;min-width:200px;color:#3d3d3d">Starte …</span></div>' +
+      '<div class="td-dp" style="display:none;padding:6px 8px;background:#f4f5f6;border-bottom:1px solid #d1d4d4">' +
       '<div style="margin-bottom:4px">Protokoll aller Abfragen. Zum Weitergeben: „Kopieren“ drücken, vorher Vertrauliches prüfen. <button class="td-dc" style="' + knopf + '">Kopieren</button> <button class="td-ir" title="Zwischenspeicher der Issue-Details leeren; beim nächsten Laden werden alle Issues neu gelesen" style="' + knopf + '">Issues neu lesen</button></div>' +
       '<textarea class="td-dx" readonly="readonly" style="' + feld + ';width:100%;height:180px;box-sizing:border-box;font:12px monospace;display:none"></textarea></div>' +
       '<iframe class="td-fr" title="3Deep Darstellung" allow="fullscreen" style="flex:1;width:100%;border:0;background:#0b1220"></iframe></div>';
