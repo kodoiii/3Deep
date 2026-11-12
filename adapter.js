@@ -1,4 +1,4 @@
-/* 3Deep-Widget, Adapter Version 22.
+/* 3Deep-Widget, Adapter Version 23.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
@@ -973,7 +973,7 @@
     S.neuUhr = setTimeout(function () { if (S.laeuft) { S.nachladen = true; return; } S.neuLaden = (S.neuLaden || 0) + 1; laden({ drop: S.zuletzt }); }, S.neuVerzug);
   }
   function diagnoseText() {
-    var z = ['3Deep-Widget Diagnose (Adapter 22, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
+    var z = ['3Deep-Widget Diagnose (Adapter 23, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
       '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-') + (S.ctxZahl ? ' (automatisch gewählt, ' + S.ctxZahl + ' verfügbar)' : ''), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), ''];
     if (S.wurzelInfo) { z.push('', 'Produkte im Bookmark:'); S.wurzelInfo.forEach(function (w) { z.push('  ' + w); }); }
     if (S.issueInfo) {
@@ -1009,7 +1009,7 @@
     var feld = 'background:#fff;color:#3d3d3d;border:1px solid #b4b6ba;border-radius:4px;padding:4px 8px;font:inherit';
     root.innerHTML =
       '<div class="td-w" style="position:fixed;left:0;top:0;right:0;bottom:0;display:flex;flex-direction:column;background:#0b1220;color:#3d3d3d;font:13px/1.35 system-ui,Segoe UI,Arial,sans-serif">' +
-      '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 8px;background:#f4f5f6;border-bottom:1px solid #d1d4d4;accent-color:#368ec4">' +
+      '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 10px;background:#fff;border-bottom:1px solid #e2e4e3;accent-color:#368ec4">' +
       '<div class="td-dz" title="Ein Objekt aus einer 3DEXPERIENCE-Suche hierher ziehen: Physical Product (Struktur abwärts), Bookmark, Issue oder Person" style="border:2px dashed #368ec4;border-radius:4px;padding:3px 10px;color:#368ec4;white-space:nowrap">⤓ Objekt hierher ziehen</div>' +
       '<input class="td-su" type="text" placeholder="Bookmark-Name oder ID" title="Bookmark nach Name oder ID suchen" style="' + feld + ';width:190px" />' +
       '<button class="td-sb" style="' + knopf + '">Suchen</button>' +
