@@ -2,6 +2,7 @@
 <html lang="de"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>3Deep – Datenraum in 3D</title>
+<meta name="3deep-darstellung" content="67">
 <style>
 :root{--fg:#e6edf3;--panel:rgba(15,22,41,.86);--mut:#9fb0c4}
 html,body{margin:0;height:100%;background:linear-gradient(180deg,#d4ecff 0%,#93c3ea 55%,#5088c0 100%) fixed;color:var(--fg);font:13px/1.4 system-ui,sans-serif;overflow:hidden}
@@ -80,6 +81,7 @@ html{--lg:#0e2a4a;--lgh:rgba(255,255,255,.85)}html.space{--lg:#dbe7ff;--lgh:rgba
 <div id="err" style="color:#ff9aa8;margin-top:4px"></div>
 <div class="m" style="margin-top:6px">Format: <code>{types:{Typ:{color,size,shape,label}}, relTypes:{Typ:{color,directed}}, nodes:[{id,type,name,meta:{…}}], edges:[{from,to,type,directed}]}</code> – size = Kugeldurchmesser, shape = sphere (Standard), dodecahedron, torus, box, book, bust (Person), starfish (Seestern) oder octopus. Knoten optional mit state: In Work, Frozen, Released, Obsolete oder To do. Den Mindestabstand bestimmt der größte Durchmesser (oder optional spacing). Weitere optionale Felder: axes (Vorlagen fürs Wertediagramm: name, x, y, z, zinv, note), stateTitle und stateNames (eigene Statusnamen, z. B. Vertragsstatus), attr (bevorzugtes Gruppierungsattribut). Zahlen in meta (z. B. „12.500 €“, „34 %“) können im Wertediagramm auf Achsen gelegt werden. Am einfachsten: Demo-JSON speichern und anpassen. CSV: Der Export aus dem Bookmark-Editor (Spalten Level, Title, Type, Maturity State …) wird direkt eingelesen.</div>
 </details>
+<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 67</div>
 </div>
 <div id="det" class="pn"></div></div>
 <div id="dcap"></div><div id="dfade" style="position:fixed;inset:0;background:#0b1424;opacity:0;pointer-events:none;transition:opacity .6s;z-index:14"></div><div id="cross"></div><div id="info"></div>

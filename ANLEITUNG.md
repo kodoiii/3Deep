@@ -1,9 +1,9 @@
-# 3Deep-Widget: Einrichtung und Bedienung (Stand Adapter Version 11)
+# 3Deep-Widget: Einrichtung und Bedienung (Stand Adapter Version 12, Darstellung Version 67)
 
 ## Dateien (alle im selben Ordner auf GitHub Pages)
 - `widget.html` – kleiner Lader für das 3DDashboard. **Diese Adresse** trägt man im Dashboard ein.
 - `adapter.js` – Suchleiste und Adapter für die 3DEXPERIENCE-Schnittstellen.
-- `datenraum3d.html` – die 3D-Darstellung (Version 66, auch lokal per Doppelklick nutzbar).
+- `datenraum3d.html` – die 3D-Darstellung (Version 67, auch lokal per Doppelklick nutzbar). Dieselbe Datei wie lokal und im Artifact; die Version steht unten im Panel.
 - `index.html` – Testseite für den Browser mit Beispieldaten (nicht fürs Dashboard).
 
 Hosting: Repository `kodoiii/3Deep` (öffentlich), Adresse `https://kodoiii.github.io/3Deep/`.
@@ -12,7 +12,7 @@ Hosting: Repository `kodoiii/3Deep` (öffentlich), Adresse `https://kodoiii.gith
 1. Im Repository „Add file → Upload files“, geänderte Dateien hochladen, „Commit changes“.
 2. Zwei bis drei Minuten warten.
 3. `https://kodoiii.github.io/3Deep/` öffnen: Der Testmodus muss laufen.
-4. Im Dashboard das Widget mit dem Kreispfeil neu laden. Die erste Zeile der Diagnose nennt die Adapter-Version.
+4. Im Dashboard das Widget mit dem Kreispfeil neu laden. Die erste Zeile der Diagnose nennt Adapter- und Darstellungsversion, unten im Panel steht „Darstellung Version …“.
 
 ## Ins 3DDashboard aufnehmen
 - Schnell: App „Run your App“ auf ein Tab ziehen, `https://kodoiii.github.io/3Deep/widget.html` eintragen, „Run“.
