@@ -1,4 +1,4 @@
-/* 3Deep-Widget, Adapter Version 25.
+/* 3Deep-Widget, Adapter Version 26.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
@@ -479,6 +479,45 @@
         .filter(function (x) { return x.id && /Drawing|Drw/i.test(x.typ); });
     });
   }
+  // Zeichnungen, die nur per Zeigerbeziehung am Produkt hängen (Adapter 26). Gesichert per Mitschnitt (Relational Explorer, von der Zeichnung aus):
+  // getecosystem direction "out", relations ["v6_cad_document_to"], Link Zeichnung -> Produkt, "ro.xcadbasedependency.v_cadlinktype": "drawing".
+  // Vom Produkt aus (hier): direction "in", relations v6_cad_document_from/_to (vermutet), mehrere Produkte je Aufruf (vermutet, sonst einzeln).
+  var ECOTAX_PRD = 'types/PLMEntity/PLMReference/PLMCoreReference/LPAbstractReference/PHYSICALAbstractReference/VPMReference';
+  async function zeichnungenEco(ids, info) {
+    var tok = ''; try { tok = await csrf(); } catch (e) { }
+    var kopf = { 'Content-Type': 'application/json' }; if (tok) kopf.ENO_CSRF_TOKEN = tok;
+    var gef = [], menge = {}; ids.forEach(function (i) { menge[i] = 1; });
+    function frage(paket) {
+      return hole(ECO, { xrequestedwith: 'xmlhttprequest' }, false, 'POST', kopf, { widgetId: '3Deep', label: '3Deep-' + Date.now(), relations: ['v6_cad_document_from', 'v6_cad_document_to'], lang: 'en',
+        computeWithInstances: false, allRelationsMode: true, publicationsMode: false, attributesForView: ['ds6w:label', 'ds6wg:revision', 'ds6w:status', 'ds6w:type', 'ds6w:modified', 'ds6w:responsible', 'ds6w:identifier'],
+        ghostMode: false, excludedRelations: ['v6_structure_roots_from'], direction: 'in', restrictedMode: false, responseMode: 'ObjectsAndLinks', redirectQueryToSGI: true,
+        items: paket.map(function (i) { return { id: i, relTypesTaxonomies: ECOTAX_PRD, serviceId: '3DSpace', type: (S.cadTyp[i] && !/dsxcad/i.test(S.cadTyp[i])) ? S.cadTyp[i] : 'VPMReference' }; }) }).then(function (r) {
+        var obj = {}; ((r && r.objects) || []).forEach(function (x) { if (x && x.id) obj[x.id] = x; });
+        ((r && r.links) || []).forEach(function (l) {
+          if (!l || !/v6_cad_document/i.test(l.type || '')) return;
+          [[l.source, l.target], [l.target, l.source]].forEach(function (p) {
+            var z = obj[p[0]] || {}, art = String(l['ro.xcadbasedependency.v_cadlinktype'] || '').toLowerCase();
+            if (!menge[p[1]] || menge[p[0]] || !(/Drawing/i.test(z.type || '') || art === 'drawing')) return;
+            var tax = [].concat(z.taxonomies || [], z.relTypesTaxonomies || []).join(' ');
+            gef.push({ id: p[0], el: p[1], typ: z.type || 'Drawing', titel: z['ds6w:label'] || z.name || '', v5: /XCADRepExtension/i.test(tax),
+              a: { 'ds6w:label': z['ds6w:label'] || z.name, 'ds6w:identifier': z['ds6w:identifier'], 'ds6wg:revision': z['ds6wg:revision'] || z.revision, 'ds6w:status': z['ds6w:status'], 'ds6w:modified': z['ds6w:modified'], 'ds6w:responsible': z['ds6w:responsible'] } });
+          });
+        });
+      });
+    }
+    var pakete = []; for (var i = 0; i < ids.length; i += 25) pakete.push(ids.slice(i, i + 25));
+    await pool(pakete, 3, async function (pk) {
+      if (info.fehler >= 3 && !info.ok) return;
+      try { await frage(pk); info.ok += pk.length; info.pakete++; }
+      catch (e) {
+        if (!info.fehlerText) info.fehlerText = e.message;
+        if (pk.length === 1) { info.fehler++; return; }
+        info.einzeln = true;
+        await pool(pk, PARALLEL, async function (id) { if (info.fehler >= 3 && !info.ok) return; try { await frage([id]); info.ok++; } catch (e2) { info.fehler++; } });
+      }
+    });
+    return gef;
+  }
   function zeichnungenXcad(id) {
     var art = /Product/i.test(S.cadTyp[id] || '') ? 'Product' : 'Part';
     return hole(XCAD + 'dsxcad:' + art + '/' + encodeURIComponent(id) + '/dsxcad:Drawing', {}).then(function (r) {
@@ -690,6 +729,12 @@
         }));
         zErl++; if (zErl % 10 === 0 || zErl === ids2.length) status('Suche Zeichnungen: ' + zErl + ' von ' + ids2.length + ' Objekten, ' + zeichZahl + ' gefunden …');
       });
+      var ze = { ok: 0, fehler: 0, pakete: 0, einzeln: false, fehlerText: '' }, vorEco = zeichZahl;
+      status('Suche Zeichnungen per Zeigerbeziehung …');
+      var zl = await zeichnungenEco(ids2, ze);
+      zl.forEach(function (x) { nimm(x, x.el, 'Zeigerbeziehung'); if (zeich[x.id] && x.v5) zeich[x.id].v5 = true; });
+      S.zgInfo.push('Zeigerbeziehung (getecosystem, eingehend): ' + ze.ok + ' Objekte geprüft' + (ze.pakete ? ' in ' + ze.pakete + ' Paketen' : '') + (ze.einzeln ? ', teils einzeln' : '') + ', ' + ze.fehler + ' Fehler, ' +
+        zl.length + ' Verweise, ' + (zeichZahl - vorEco) + ' neue Zeichnungen' + (ze.fehlerText ? ' (erster Fehler: ' + ze.fehlerText + ')' : ''));
       if (mitEng) S.zgInfo.push('EngRepInstance je Objekt: ' + zf.eng.ok + ' ok, ' + zf.eng.fehler + ' Fehler, ' + zf.eng.treffer + ' Zeichnungen' + (zf.eng.fehlerText ? ' (erster Fehler: ' + zf.eng.fehlerText + ')' : ''));
       else S.zgInfo.push('EngRepInstance je Objekt: übersprungen (Zone Query hat Zeichnungen geliefert)');
       S.zgInfo.push('dsxcad Drawing je V5-Objekt (' + xIds.length + ' Objekte): ' + zf.xcad.ok + ' ok, ' + zf.xcad.fehler + ' Fehler, ' + zf.xcad.treffer + ' Zeichnungen' + (zf.xcad.fehlerText ? ' (erster Fehler: ' + zf.xcad.fehlerText + ')' : ''));
@@ -866,7 +911,7 @@
       });
       startProdukte.forEach(function (p) { if (items[p.id] && p.bm) { var key = p.id + '>' + p.bm; if (!gesehen[key]) { gesehen[key] = 1; edges.push({ from: p.id, to: 'bm:' + p.bm, type: 'inhalt' }); } } });
       Object.keys(zeich || {}).forEach(function (zid) {
-        var z = zeich[zid], a = z.a || {}, d = z.d || {}, v5 = /dsxcad/i.test(z.typ);
+        var z = zeich[zid], a = z.a || {}, d = z.d || {}, v5 = /dsxcad/i.test(z.typ) || !!z.v5;
         var meta = { Titel: z.titel || a['ds6w:label'] || d.title || '', Name: a['ds6w:identifier'] || d.name || '', Revision: a['ds6wg:revision'] || d.revision || '', Reifegrad: (a['ds6w:status'] ? String(a['ds6w:status']).split('.').pop() : '') || d.state || '',
           Besitzer: a['ds6w:responsible'] || d.owner || '', 'Geändert': a['ds6w:modified'] ? datum(a['ds6w:modified']) : datum(d.modified), Dateityp: v5 ? 'CATDrawing' : '', Typ: z.typ || 'Drawing', Quelle: z.quelle, ID: zid };
         Object.keys(meta).forEach(function (k) { if (meta[k] === '') delete meta[k]; });
@@ -1020,7 +1065,7 @@
     S.neuUhr = setTimeout(function () { if (S.laeuft) { S.nachladen = true; return; } S.neuLaden = (S.neuLaden || 0) + 1; laden({ drop: S.zuletzt }); }, S.neuVerzug);
   }
   function diagnoseText() {
-    var z = ['3Deep-Widget Diagnose (Adapter 25, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
+    var z = ['3Deep-Widget Diagnose (Adapter 26, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
       '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-') + (S.ctxZahl ? ' (automatisch gewählt, ' + S.ctxZahl + ' verfügbar)' : ''), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), ''];
     if (S.wurzelInfo) { z.push('', 'Produkte im Bookmark:'); S.wurzelInfo.forEach(function (w) { z.push('  ' + w); }); }
     if (S.issueInfo) {
@@ -1229,6 +1274,17 @@
         var skip = +p.$skip || 0, anz = +p.$top || 50, m;
         function seite(a) { return a.slice(skip, skip + anz); }
         if (pfad === ECO) {   // Test (Adapter 25): getecosystem für Bookmark-Ordner; S.testEcoFehler = Fehler, S.testWieReal = Unter-Unterordner „Prüfberichte“ nur hier
+          if ((body || {}).direction === 'in') {   // Test (Adapter 26): Zeichnungen per Zeigerbeziehung; S.testEcoZeichnung = Zeichnung „_Bremsanlage“ (V5) an Bremsanlage vorn
+            if (S.testEcoZeichFehler) return nein(new Error('500 Internal Server Error'));
+            var zo = [], zlk = [];
+            ((body || {}).items || []).forEach(function (it) {
+              zo.push({ id: it.id, type: 'VPMReference' });
+              if (S.testEcoZeichnung && it.id === TEST.bremse) { zo.push({ id: 'ECODRW0001', name: '_Bremsanlage', type: 'Drawing', 'ds6w:label': '_Bremsanlage', 'ds6w:identifier': 'drw-0001', revision: 'A.1', 'ds6w:status': 'VPLM_SMB_Definition.IN_WORK',
+                taxonomies: ['types/PLMEntity/PLMReference/PLMCoreRepReference/VPMRepReference/Drawing', 'interfaces/XCADRepExtension'] });
+                zlk.push({ type: 'v6_cad_document_to', source: 'ECODRW0001', target: it.id, direction: 'in', 'ro.xcadbasedependency.v_cadlinktype': 'drawing' }); }
+            });
+            return ja({ objects: zo, links: zlk });
+          }
           if (S.testEcoFehler) return nein(new Error('404 Not Found'));
           var eid = (((body || {}).items || [])[0] || {}).id, eb = TEST.bm[eid]; if (!eb) return ja({ objects: [], links: [] });
           var obs = [{ id: eb.id, name: eb.title, type: eb.type }], lks = [], rid = function (x) { return (x.referencedObject || x).identifier || (x.referencedObject || x).id; };
