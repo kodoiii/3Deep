@@ -1,4 +1,4 @@
-/* 3Deep-Widget, Adapter Version 24.
+/* 3Deep-Widget, Adapter Version 25.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
@@ -21,6 +21,10 @@
   // Zone Query (laut Doku R2026x: POST /cvservlet/zonequeries): Attribute aller Strukturobjekte mit einer Abfrage. Varianten von viel nach wenig;
   // nur ds6w:label/ds6w:type/physicalid stehen so in der Doku, die übrigen Prädikate sind vermutet.
   var ZQ = '/cvservlet/zonequeries';
+  // Unter-Bookmarks (Adapter 25, gesichert per Mitschnitt des Bookmark Editors): POST enorelnav/v2/navigate/i3dx/getecosystem, direction "out";
+  // Link-Typ workspaces_bookmarks_to = Unterordner, workspaces_folders_to = Objekt im Ordner. Ordner-Typ Wurzel "Workspace", Unterordner "Workspace Vault".
+  var ECO = '/resources/enorelnav/v2/navigate/i3dx/getecosystem';
+  var ECOTAX = { 'Workspace': 'types/Project Management/Workspace', 'Workspace Vault': 'types/Workspace Vault' };
   var ZQATTR = [
     ['physicalid', 'ds6w:label', 'ds6w:identifier', 'ds6w:type', 'ds6w:status', 'ds6w:responsible', 'ds6w:created', 'ds6w:modified', 'ds6w:description', 'ds6wg:revision', 'ds6wg:EnterpriseExtension.V_PartNumber'],
     ['physicalid', 'ds6w:label', 'ds6w:identifier', 'ds6w:type', 'ds6w:status', 'ds6w:responsible', 'ds6w:created', 'ds6w:modified', 'ds6w:description'],
@@ -247,6 +251,23 @@
     if (i && i !== selbst && istOrdner(t) && weg && !aus.some(function (a) { return a.id === i; })) aus.push({ id: i, titel: ro.title || o.title || ro.name || o.name || '', typ: t, feld: weg });
     Object.keys(o).forEach(function (k) { if (!/parent|owner|context|collabspace|organization|project/i.test(k)) ordnerInAntwort(o[k], selbst, weg ? weg + '.' + k : k, aus, tiefe + 1); });
     return aus;
+  }
+  async function unterordnerEco(o) {
+    var tok = ''; try { tok = await csrf(); } catch (e) { }
+    var kopf = { 'Content-Type': 'application/json' }; if (tok) kopf.ENO_CSRF_TOKEN = tok;
+    var typ = o.typ || 'Workspace', eintraege = [{ id: o.id, relTypesTaxonomies: ECOTAX[typ] || ('types/' + typ), serviceId: '3DSpace', type: typ }, { id: o.id }], letzter = null;
+    for (var i = 0; i < eintraege.length; i++) {
+      try {
+        var r = await hole(ECO, { xrequestedwith: 'xmlhttprequest' }, false, 'POST', kopf, { widgetId: '3Deep', label: '3Deep-' + Date.now(), relations: ['workspaces_folders_to', 'workspaces_bookmarks_to'], lang: 'en',
+          computeWithInstances: false, allRelationsMode: true, publicationsMode: false, attributesForView: ['ds6w:label', 'ds6w:type', 'ds6w:identifier'], ghostMode: false,
+          excludedRelations: ['v6_structure_roots_from'], direction: 'out', restrictedMode: false, responseMode: 'ObjectsAndLinks', items: [eintraege[i]], redirectQueryToSGI: true });
+        var obj = {}; ((r && r.objects) || []).forEach(function (x) { if (x && x.id) obj[x.id] = x; });
+        var kinder = ((r && r.links) || []).filter(function (l) { return l && l.type === 'workspaces_bookmarks_to' && l.source === o.id && l.target && l.target !== o.id; }).map(function (l) {
+          var x = obj[l.target] || {}; return { id: l.target, titel: x['ds6w:label'] || x.name || '', typ: x.type || 'Workspace Vault' }; });
+        return { kinder: kinder, objekte: ((r && r.links) || []).filter(function (l) { return l && l.type === 'workspaces_folders_to'; }).length, variante: i };
+      } catch (e) { letzter = e; }
+    }
+    throw letzter;
   }
   function bookmarkInhalt(id) {
     var kopf = null, extra = [];
@@ -508,7 +529,7 @@
     }
 
     // 1. Bookmark-Ordner (samt Unterordnern, soweit sie als Inhalt geliefert werden)
-    var startProdukte = [], ordner = q ? [] : [{ id: bmId, titel: bmTitel, eltern: null }], oi = 0, andere = []; S.bmInfo = [];
+    var startProdukte = [], ordner = q ? [] : [{ id: bmId, titel: bmTitel, eltern: null }], oi = 0, andere = []; S.bmInfo = []; S.ecoFehl = 0;
     while (oi < ordner.length && ordner.length < 200) {
       var o = ordner[oi++];
       status('Lese Bookmark „' + (o.titel || o.id) + '“ …');
@@ -521,15 +542,23 @@
         var ro = (it && it.referencedObject) || it || {}, id = ro.identifier || ro.id, typ = ro.type || it.type || '';
         if (!id) return;
         if (istProdukt(typ)) { startProdukte.push({ id: id, bm: o.id }); if (typ && !S.cadTyp[id]) S.cadTyp[id] = typ; }
-        else if (istOrdner(typ)) { if (!ordner.some(function (x) { return x.id === id; })) ordner.push({ id: id, titel: ro.title || it.title || '', eltern: o.id }); }
+        else if (istOrdner(typ)) { if (!ordner.some(function (x) { return x.id === id; })) ordner.push({ id: id, titel: ro.title || it.title || '', eltern: o.id, typ: typ }); }
         else andere.push({ id: id, typ: typ, bm: o.id, titel: ro.title || it.title || ro.name || it.name || '' });
       });
       var typen = {}, vorher = ordner.length, ausFeld = [];
       inh.items.forEach(function (it) { var ro = (it && it.referencedObject) || it || {}, t = ro.type || it.type || '?'; typen[t] = (typen[t] || 0) + 1; });
-      inh.extra.forEach(function (x) { if (!ordner.some(function (y) { return y.id === x.id; })) { ordner.push({ id: x.id, titel: x.titel, eltern: o.id }); ausFeld.push(x.feld); } });
+      inh.extra.forEach(function (x) { if (!ordner.some(function (y) { return y.id === x.id; })) { ordner.push({ id: x.id, titel: x.titel, eltern: o.id, typ: x.typ }); ausFeld.push(x.feld); } });
+      var eco = '';
+      if (S.ecoFehl < 2 && ordner.length < 200) {
+        try {
+          var ue = await unterordnerEco(o), neu = 0; S.ecoFehl = 0;
+          ue.kinder.forEach(function (x) { if (!ordner.some(function (y) { return y.id === x.id; })) { ordner.push({ id: x.id, titel: x.titel, eltern: o.id, typ: x.typ }); neu++; } });
+          eco = ', getecosystem: ' + ue.kinder.length + ' Unterordner' + (neu < ue.kinder.length ? ' (' + (ue.kinder.length - neu) + ' schon bekannt)' : '') + ', ' + ue.objekte + ' Objekte' + (ue.variante ? ' (nur mit ID)' : '');
+        } catch (e) { S.ecoFehl++; eco = ', getecosystem fehlgeschlagen: ' + String(e.message).slice(0, 160) + (S.ecoFehl >= 2 ? ' (für weitere Ordner übersprungen)' : ''); }
+      } else if (S.ecoFehl >= 2) eco = ', getecosystem übersprungen';
       S.bmInfo.push('„' + (k.title || o.titel || o.id) + '“: ' + inh.items.length + ' Inhalte (' + (Object.keys(typen).map(function (t) { return t + ' ' + typen[t]; }).join(', ') || 'keine') + ')' +
         (ausFeld.length ? ', ' + ausFeld.length + ' Unterordner außerhalb des Inhalts (Feld ' + ausFeld.filter(function (f, i) { return ausFeld.indexOf(f) === i; }).join(', ') + ')' : '') +
-        (o.eltern ? ', Unterordner' : '') + '; Felder des Bookmarks: ' + Object.keys(k).join(', '));
+        eco + (o.eltern ? ', Unterordner' : '') + '; Felder des Bookmarks: ' + Object.keys(k).join(', '));
     }
     if (ordner.length > 1 || S.bmInfo.length) S.bmInfo.unshift(ordner.length + ' Bookmark-Ordner gelesen (' + (ordner.length - 1) + ' Unterordner)' + (ordner.length >= 200 ? ', Grenze 200 erreicht' : ''));
 
@@ -991,7 +1020,7 @@
     S.neuUhr = setTimeout(function () { if (S.laeuft) { S.nachladen = true; return; } S.neuLaden = (S.neuLaden || 0) + 1; laden({ drop: S.zuletzt }); }, S.neuVerzug);
   }
   function diagnoseText() {
-    var z = ['3Deep-Widget Diagnose (Adapter 24, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
+    var z = ['3Deep-Widget Diagnose (Adapter 25, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
       '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-') + (S.ctxZahl ? ' (automatisch gewählt, ' + S.ctxZahl + ' verfügbar)' : ''), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), ''];
     if (S.wurzelInfo) { z.push('', 'Produkte im Bookmark:'); S.wurzelInfo.forEach(function (w) { z.push('  ' + w); }); }
     if (S.issueInfo) {
@@ -1199,6 +1228,17 @@
       setTimeout(function () {
         var skip = +p.$skip || 0, anz = +p.$top || 50, m;
         function seite(a) { return a.slice(skip, skip + anz); }
+        if (pfad === ECO) {   // Test (Adapter 25): getecosystem für Bookmark-Ordner; S.testEcoFehler = Fehler, S.testWieReal = Unter-Unterordner „Prüfberichte“ nur hier
+          if (S.testEcoFehler) return nein(new Error('404 Not Found'));
+          var eid = (((body || {}).items || [])[0] || {}).id, eb = TEST.bm[eid]; if (!eb) return ja({ objects: [], links: [] });
+          var obs = [{ id: eb.id, name: eb.title, type: eb.type }], lks = [], rid = function (x) { return (x.referencedObject || x).identifier || (x.referencedObject || x).id; };
+          eb.items.concat(S.testWieReal && eb.title === 'Dokumente' ? [{ referencedObject: { type: 'Workspace Vault', identifier: TEST.unter2 } }] : []).forEach(function (x) {
+            var t = (x.referencedObject || x).type, i2 = rid(x), u = TEST.bm[i2];
+            if (/Workspace/.test(t)) { obs.push({ id: i2, name: u.title, type: 'Workspace Vault', 'ds6w:label': u.title }); lks.push({ type: 'workspaces_bookmarks_to', source: eb.id, target: i2, direction: 'out' }); }
+            else { obs.push({ id: i2, type: t }); lks.push({ type: 'workspaces_folders_to', source: eb.id, target: i2, direction: 'out' }); }
+          });
+          return ja({ objects: obs, links: lks, info: [{ domain: '3DSpace', success: true }] });
+        }
         if (pfad === BKS + '/search') {
           var s = String(p.$searchStr || '*').toLowerCase().replace(/\*/g, '');
           var alle = Object.keys(TEST.bm).map(function (k) { var b = TEST.bm[k]; return { id: b.id, title: b.title, description: b.description, owner: b.owner, type: b.type }; }).filter(function (b) { return !s || b.title.toLowerCase().indexOf(s) >= 0; });
@@ -1207,6 +1247,7 @@
         if ((m = pfad.match(/dsbks:Bookmark\/([^\/]+)$/))) {
           var b = TEST.bm[m[1]]; if (!b) return nein(new Error('404 Bookmark nicht gefunden'));
           var kopie = {}, its = b.items; Object.keys(b).forEach(function (k) { kopie[k] = b[k]; });
+          if (S.testWieReal) { its = b.items.filter(function (x) { return !/Workspace/.test((x.referencedObject || x).type); }); kopie = { id: b.id, name: b.title }; }
           if (S.testUnterFeld) {   // Test (Adapter 24): Unterordner nicht im Inhalt, sondern in einem eigenen Feld; Eltern-Feld darf nicht nach oben führen
             its = b.items.filter(function (x) { return !/Workspace/.test(x.referencedObject ? x.referencedObject.type : x.type); });
             kopie.subBookmarks = b.items.filter(function (x) { return its.indexOf(x) < 0; }).map(function (x) { var u = TEST.bm[(x.referencedObject || x).identifier || (x.referencedObject || x).id] || {}; return { id: u.id, title: u.title, type: 'Workspace Vault' }; })
