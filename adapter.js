@@ -1,4 +1,4 @@
-/* 3Deep-Widget, Adapter Version 19.
+/* 3Deep-Widget, Adapter Version 20.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
@@ -30,7 +30,7 @@
   var zqVar = 0;
   var DOKREL = [{ rel: 'SpecificationDocument', art: 'spec' }, { rel: 'PLMDocConnection', art: 'praes' }, { rel: 'Reference Document', art: 'praes' }];
   var S = { live: false, WAF: null, space: '', tenant: '', ctx: '', root: null, log: [], roh: {}, bereit: false, wartend: null,
-    frame: null, viewerUrl: '', max: 1500, laeuft: false, treffer: [], dateien: {}, csrf: '', cad: {}, cadTyp: {}, cadInfo: [] };
+    frame: null, viewerUrl: '', max: 1500, issCache: {}, issCacheZ: { treffer: 0, neu: 0 }, issCacheMs: 10 * 60 * 1000, laeuft: false, treffer: [], dateien: {}, csrf: '', cad: {}, cadTyp: {}, cadInfo: [] };
 
   // ---------- kleine Helfer ----------
   function q(sel) { return S.root.querySelector(sel); }
@@ -304,10 +304,18 @@
   }
   // Die Zusatzangaben eines Issues (Mitglieder, betroffene Objekte, Kontexte) kommen nur auf Anforderung über $fields
   var ISSFELDER = ['members,affectedItems,resolvedBy,resolution,contexts', 'all', ''], issVar = 0;
+  // Zwischenspeicher der Issue-Details je Widget-Sitzung (Adapter 20): nur im Arbeitsspeicher, gültig S.issCacheMs (10 min).
+  // Die Issue-Liste (issue/search) wird immer neu gelesen, nur die Details einzelner Issues kommen aus dem Speicher.
   function issueDetail(id) {
+    var c = S.issCache[id];
+    if (c && Date.now() - c.t < S.issCacheMs) { S.issCacheZ.treffer++; return Promise.resolve(c.d); }
+    return issueDetailHolen(id).then(function (d) { if (d) { S.issCache[id] = { d: d, t: Date.now() }; S.issCacheZ.neu++; } return d; });
+  }
+  function issueCacheLeeren() { S.issCache = {}; S.issCacheZ = { treffer: 0, neu: 0 }; }
+  function issueDetailHolen(id) {
     var v = issVar, p = ISSFELDER[v] ? { $fields: ISSFELDER[v] } : {};
     return hole(ISS + '/' + encodeURIComponent(id), p).then(function (r) { return mitglieder(r)[0] || (r && (r.id || r.title) ? r : null); },
-      function (e) { if (!/Zeitlimit/.test(e.message) && v < ISSFELDER.length - 1) { if (issVar === v) issVar = v + 1; return issueDetail(id); } throw e; });
+      function (e) { if (!/Zeitlimit/.test(e.message) && v < ISSFELDER.length - 1) { if (issVar === v) issVar = v + 1; return issueDetailHolen(id); } throw e; });
   }
   // alle 32-stelligen IDs irgendwo in einer Antwort (Rückfall, wenn die erwarteten Felder fehlen)
   function alleIds(o, aus) {
@@ -944,7 +952,7 @@
     var b = sonder ? sonder.drop : S.treffer[+q('.td-tr').value]; if (!b) return;
     try {
       S.laeuft = true; S.max = Math.max(10, parseInt(S.maxText, 10) || 1500); S.mitDok = q('.td-dk').checked; S.mitIssues = q('.td-ia').checked; S.mitExpand = q('.td-ex').checked; S.mitZone = q('.td-zq').checked; S.mitZeich = q('.td-zg').checked;
-      S.aufrufe = 0;
+      S.aufrufe = 0; S.issCacheZ = { treffer: 0, neu: 0 };
       var t0 = Date.now(), erg;
       if (b.art === 'issue') erg = await leseBookmark(null, null, { issues: [b.id], struktur: false });
       else if (b.art === 'produkt') erg = await leseBookmark(null, null, { produkte: [b.id], struktur: true });
@@ -955,7 +963,7 @@
     } catch (e) { status('Laden fehlgeschlagen: ' + e.message + ' (Details unter „Diagnose“)', true); } finally { S.laeuft = false; diagnose(); }
   }
   function diagnoseText() {
-    var z = ['3Deep-Widget Diagnose (Adapter 19, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
+    var z = ['3Deep-Widget Diagnose (Adapter 20, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
       '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-') + (S.ctxZahl ? ' (automatisch gewählt, ' + S.ctxZahl + ' verfügbar)' : ''), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), ''];
     if (S.wurzelInfo) { z.push('', 'Produkte im Bookmark:'); S.wurzelInfo.forEach(function (w) { z.push('  ' + w); }); }
     if (S.issueInfo) {
@@ -964,6 +972,12 @@
       z.push('Neueste Issues:'); ii.alle.slice().sort(nachDatum).slice(0, 8).forEach(function (x) { z.push('  ' + x.d + '  ' + x.t); });
       z.push('Issues mit betroffenen Objekten (neueste zuerst, höchstens 40):');
       ii.mitBezug.slice().sort(nachDatum).slice(0, 40).forEach(function (x) { z.push('  ' + x.d + '  ' + x.t + '  -> ' + (x.ids.join(', ') || '(keine ID erkannt)') + '  Treffer im Bookmark: ' + x.treffer); });
+    }
+    var ic = Object.keys(S.issCache);
+    if (ic.length || S.issCacheZ.treffer) {
+      var alt = ic.reduce(function (m, k) { return Math.min(m, S.issCache[k].t); }, Date.now());
+      z.push('', 'Issue-Zwischenspeicher: ' + ic.length + ' Issues gespeichert (ältestes vor ' + Math.round((Date.now() - alt) / 60000) + ' min, gültig ' + Math.round(S.issCacheMs / 60000) + ' min)',
+        '  letztes Laden: ' + S.issCacheZ.treffer + ' aus dem Zwischenspeicher, ' + S.issCacheZ.neu + ' neu gelesen. „Issues neu lesen“ leert den Speicher.');
     }
     if (S.dropInfo) { z.push('', 'Letzter Drop:'); S.dropInfo.forEach(function (c) { z.push('  ' + c); }); }
     if (S.personInfo) { var pp = S.personInfo; z.push('', 'Person: ' + (pp.voll || '-') + ', Benutzername ' + (pp.login || '-') + ' (aus ' + pp.quelle + (pp.fehler ? ', pno-Fehler: ' + pp.fehler : '') + ')' + (pp.issues ? ', ' + pp.issues : '')); }
@@ -1002,12 +1016,13 @@
       '<span class="td-mo" style="padding:2px 8px;border-radius:10px;background:#5a4410;color:#ffd98a;display:none">Testmodus: Beispieldaten</span>' +
       '<span class="td-st" style="flex:1;min-width:200px;color:#c9d4e8">Starte …</span></div>' +
       '<div class="td-dp" style="display:none;padding:6px 8px;background:#121c30;border-bottom:1px solid #26344f">' +
-      '<div style="margin-bottom:4px">Protokoll aller Abfragen. Zum Weitergeben: „Kopieren“ drücken, vorher Vertrauliches prüfen. <button class="td-dc" style="' + knopf + '">Kopieren</button></div>' +
+      '<div style="margin-bottom:4px">Protokoll aller Abfragen. Zum Weitergeben: „Kopieren“ drücken, vorher Vertrauliches prüfen. <button class="td-dc" style="' + knopf + '">Kopieren</button> <button class="td-ir" title="Zwischenspeicher der Issue-Details leeren; beim nächsten Laden werden alle Issues neu gelesen" style="' + knopf + '">Issues neu lesen</button></div>' +
       '<textarea class="td-dx" readonly="readonly" style="' + feld + ';width:100%;height:180px;box-sizing:border-box;font:12px monospace;display:none"></textarea></div>' +
       '<iframe class="td-fr" title="3Deep Darstellung" allow="fullscreen" style="flex:1;width:100%;border:0;background:#0b1220"></iframe></div>';
     q('.td-sb').onclick = suchen; q('.td-la').onclick = function () { laden(); };
     q('.td-su').addEventListener('keydown', function (e) { if (e.key === 'Enter') suchen(); });
     q('.td-db').onclick = function () { var p = q('.td-dp'), d = q('.td-dx'), auf = p.style.display === 'none'; p.style.display = auf ? '' : 'none'; d.style.display = auf ? '' : 'none'; diagnose(); };
+    q('.td-ir').onclick = function () { var n = Object.keys(S.issCache).length; issueCacheLeeren(); status('Issue-Zwischenspeicher geleert (' + n + ' Issues). Beim nächsten Laden werden alle Issues neu gelesen.'); diagnose(); };
     q('.td-dc').onclick = function () { var d = q('.td-dx'); d.value = diagnoseText(); d.select(); try { document.execCommand('copy'); } catch (e) { } if (navigator.clipboard) navigator.clipboard.writeText(d.value).catch(function () { }); };
     q('.td-ci').onchange = function (e) { S.ctx = e.target.value.trim(); try { localStorage.setItem('3deep_ctx', S.ctx); } catch (x) { } if (S.ctx) status('Security Context gesetzt. Bookmark-Namen eingeben und „Suchen“ drücken.'); };
     S.frame = q('.td-fr');

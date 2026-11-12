@@ -24,6 +24,7 @@ Hosting: Repository `kodoiii/3Deep` (öffentlich), Adresse `https://kodoiii.gith
 - Häkchen „Attribute“ (Standard an): liest die Attribute aller Strukturobjekte (z. B. Teilenummer, Reifegrad, Besitzer) mit einer einzigen Abfrage (Zone Query, `POST /cvservlet/zonequeries`). Klappt das nicht, geht es ohne diese Attribute weiter wie bisher; Ergebnis in der Diagnose unter „Zone Query (Attribute)“.
 - Drop-Feld „⤓ Objekt hierher ziehen“: genau ein Objekt aus einer 3DEXPERIENCE-Suche (z. B. 3DSearch) hineinziehen. Physical Product: das Produkt mit seiner Struktur abwärts (nie nach oben). Bookmark: wie „Laden“. Issue: wie der Issue-Start. Person: ihre Issues (zugewiesen, Besitzer, mitwirkend) mit den betroffenen Objekten und ihre Aufgaben. Mehrere Objekte, andere Typen oder Dateien ergeben eine rote Warnung, es wird dann nichts geladen. Häkchen „Dokumente“, „Issues/Aufgaben“ und „Attribute“ gelten auch hier.
 - Häkchen „Dokumente“: Spezifikationen und Attachments mitlesen. „Issues/Aufgaben“: Issues, Aufgaben, Personen mitlesen. Beide sind seit Adapter 14 standardmäßig aus (schnell, nur Bookmark und Produktstruktur); bei Bedarf einschalten und neu laden. Beim Start über ein Issue werden dessen Objekte, Dokumente und Zuweisungen immer gelesen.
+- Issue-Zwischenspeicher (seit Adapter 20): Die Details der Issues bleiben 10 Minuten im Arbeitsspeicher des Widgets (nicht auf der Festplatte). Nur das erste Laden liest alle Issues, danach nur neue. Die Issue-Liste selbst wird immer neu gelesen. Änderungen an bestehenden Issues erscheinen nach spätestens 10 Minuten oder sofort nach „Diagnose“ → „Issues neu lesen“.
 - Häkchen „Zeichnungen“ (Standard aus): Zeichnungen (Drawings) der Strukturobjekte suchen und als „Zeichnung“ mit Zeichnungslink zum Bauteil zeigen, auch CATIA-V5-Zeichnungen (CATDrawing) mit Download. Erst über die Zone Query (ohne Zusatzabfragen), sonst je Objekt.
 - Dokument anklicken → „⬇ Datei herunterladen“.
 - Bauteil oder Baugruppe anklicken → „⬇ Datei herunterladen“: zuerst die CAD-Datei (z. B. CATIA V5 .CATPart/.CATProduct), sonst ein abgeleitetes Format (STEP bevorzugt, dann 3DXML usw.). Gibt es beides nicht, meldet die Statuszeile das; Einzelheiten unter „Diagnose“ (Abschnitt „Downloads von Bauteilen/Baugruppen“).
@@ -40,6 +41,7 @@ Hosting: Repository `kodoiii/3Deep` (öffentlich), Adresse `https://kodoiii.gith
 | Bookmark, Produktstruktur | auf der Plattform bestätigt |
 | Spezifikationen und Attachments an Teilen, Download | auf der Plattform bestätigt |
 | Issues mit betroffenen Objekten (`$fields`), Personen aus Zuweisungen | auf der Plattform bestätigt |
+| Zwischenspeicher der Issue-Details (Adapter 20) | nur mit Beispieldaten getestet |
 | Start bei einem Issue (per Drag & Drop), Attachments direkt am Issue | nur mit Beispieldaten getestet |
 | Drag & Drop | auf der Plattform bestätigt |
 | Download CATPart/CATProduct (Ticket per POST) | auf der Plattform bestätigt |
