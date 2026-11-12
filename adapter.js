@@ -1,4 +1,4 @@
-/* 3Deep-Widget, Adapter Version 14.
+/* 3Deep-Widget, Adapter Version 15.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
@@ -18,6 +18,16 @@
   var MAXISSUES = 400, MAXALLE = 3000, FRIST_ALLE = 180;   // Sekunden für die Entwicklerfunktion „Alle Issues“
   var SEITE = 50, PARALLEL = 8, MAXTIEFE = 12, EXPANDGRENZE = 10000;   // expand liefert laut DS höchstens 10000 Einträge
   // Dokument-Beziehungen eines Objekts: Name der Beziehung -> Art in der Darstellung
+  // Zone Query (laut Doku R2026x: POST /cvservlet/zonequeries): Attribute aller Strukturobjekte mit einer Abfrage. Varianten von viel nach wenig;
+  // nur ds6w:label/ds6w:type/physicalid stehen so in der Doku, die übrigen Prädikate sind vermutet.
+  var ZQ = '/cvservlet/zonequeries';
+  var ZQATTR = [
+    ['physicalid', 'ds6w:label', 'ds6w:identifier', 'ds6w:type', 'ds6w:status', 'ds6w:responsible', 'ds6w:created', 'ds6w:modified', 'ds6w:description', 'ds6wg:revision', 'ds6wg:EnterpriseExtension.V_PartNumber'],
+    ['physicalid', 'ds6w:label', 'ds6w:identifier', 'ds6w:type', 'ds6w:status', 'ds6w:responsible', 'ds6w:created', 'ds6w:modified', 'ds6w:description'],
+    ['physicalid', 'ds6w:type', 'ds6w:label']];
+  var ZQMETA = { 'ds6w:label': 'Titel', 'ds6w:identifier': 'Name', 'ds6wg:revision': 'Revision', 'ds6w:status': 'Reifegrad', 'ds6w:description': 'Beschreibung',
+    'ds6wg:EnterpriseExtension.V_PartNumber': 'Teilenummer', 'ds6w:responsible': 'Besitzer', 'ds6w:created': 'Erstellt', 'ds6w:modified': 'Geändert' };
+  var zqVar = 0;
   var DOKREL = [{ rel: 'SpecificationDocument', art: 'spec' }, { rel: 'PLMDocConnection', art: 'praes' }, { rel: 'Reference Document', art: 'praes' }];
   var S = { live: false, WAF: null, space: '', tenant: '', ctx: '', root: null, log: [], roh: {}, bereit: false, wartend: null,
     frame: null, viewerUrl: '', max: 1500, laeuft: false, treffer: [], dateien: {}, csrf: '', cad: {}, cadTyp: {}, cadInfo: [] };
@@ -59,7 +69,7 @@
       var fertig = false;
       function fehler(e, d) { if (fertig) return; fertig = true; var t = (d && (d.message || d.error)) || (e && e.message) || String(e); nein(new Error(t)); }
       try {
-        S.WAF.authenticatedRequest(S.space + pfad + (qs ? '?' + qs : ''), {
+        S.WAF.authenticatedRequest((/^https?:/.test(pfad) ? pfad : S.space + pfad) + (qs ? '?' + qs : ''), {
           method: methode || 'GET', type: 'json', headers: kopf, timeout: 30000, data: body == null ? undefined : JSON.stringify(body),
           onComplete: function (d) { if (fertig) return; fertig = true; if (typeof d === 'string') { try { d = d ? JSON.parse(d) : {}; } catch (e) { } } ja(d || {}); },
           onFailure: fehler, onPassportError: function (e) { fehler(e || new Error('Anmeldung (3DPassport) fehlgeschlagen')); },
@@ -314,6 +324,50 @@
   function istProdukt(t) { return /VPMReference|EngItem|Physical ?Product/i.test(t || ''); }
   function istOrdner(t) { return /Workspace ?Vault|Bookmark|Workspace/i.test(t || ''); }
 
+  // Zone Query ohne Raumfilter = Expand über den Index mit frei wählbaren 6W-Attributen; mehrere Wurzeln in einer Abfrage.
+  // Antwort laut Doku: {results:[{attributes:[{name:'did',value},…]}, …, {path:[did,…]}], error?}. Liefert {physicalid: {Prädikat: Wert}}.
+  function zoneAntwort(r) {
+    var res = r && r.results; if (!Array.isArray(res)) throw new Error('keine Ergebnisliste (leere Antwort? Security Context prüfen)');
+    if (res.length === 1 && res[0] && res[0].status) throw new Error(res[0].status);
+    var aus = {}, zahl = 0;
+    res.forEach(function (x) {
+      if (!x || !Array.isArray(x.attributes)) return;
+      var a = {};
+      x.attributes.forEach(function (e) {
+        if (!e || typeof e !== 'object') return;
+        if ('name' in e && 'value' in e) a[e.name] = e.value;
+        else Object.keys(e).forEach(function (k) { a[k] = e[k]; });   // Form {"physicalid":"…"} aus dem Doku-Beispiel
+      });
+      var pid = a.physicalid; if (!pid) return;
+      delete a.did; delete a.physicalid; aus[pid] = a; zahl++;
+    });
+    if (!zahl) throw new Error('keine Attribute in der Antwort');
+    return aus;
+  }
+  async function zoneAttribute(wurzeln, tiefe) {
+    var tok = '', basis = (S.space || '').replace(/\/enovia\/?$/i, ''), versuche = [];
+    try { tok = await csrf(); } catch (e) { }
+    for (var v = zqVar; v < ZQATTR.length; v++) versuche.push({ v: v, pfad: ZQ });
+    if (S.live && basis && basis !== S.space) versuche.push({ v: ZQATTR.length - 1, pfad: basis + ZQ, ohneEnovia: true });
+    var fehl = [];
+    for (var i = 0; i < versuche.length; i++) {
+      var w = versuche[i], kopf = { 'Content-Type': 'application/json' }; if (tok) kopf.ENO_CSRF_TOKEN = tok;
+      try {
+        var r = await hole(w.pfad, {}, false, 'POST', kopf, { root_path_physicalid: wurzeln.map(function (x) { return [x]; }), label: '3Deep.' + Date.now(),
+          expand_iter: String(tiefe), select_bo: ZQATTR[w.v], select_rel: ['physicalid'], max_count_path: '50000' });
+        var a = zoneAntwort(r);
+        zqVar = w.v;
+        return { attr: a, variante: w.v, ohneEnovia: !!w.ohneEnovia, fehl: fehl, fehler: r.error ? (r.error.errorMessage || JSON.stringify(r.error)).slice(0, 200) : '' };
+      } catch (e) { fehl.push('Variante ' + (w.v + 1) + (w.ohneEnovia ? ' ohne /enovia' : '') + ': ' + e.message); }
+    }
+    throw new Error(fehl.join(' | '));
+  }
+  function zqWert(k, v) {
+    if (v == null || v === '') return '';
+    if (k === 'ds6w:created' || k === 'ds6w:modified') return datum(v);
+    return Array.isArray(v) ? v.join(', ') : String(v);
+  }
+
   // q fehlt: Start beim Bookmark. q.issues = [IDs]: Start bei diesen Issues. q.alleIssues: alle Issues der Plattform.
   async function leseBookmark(bmId, bmTitel, q) {
     var nodes = [], edges = [], gesehen = {}, hinweise = [];
@@ -394,6 +448,24 @@
     var front = []; startProdukte.forEach(function (p) { if (front.indexOf(p.id) < 0) front.push(p.id); });
     // 2a. schneller Weg: ganze Struktur je Startprodukt mit einer expand-Abfrage; bei Fehlern Rückfall auf Ebene für Ebene
     S.expandInfo = []; S.expandFehl = 0; S.expandOk = false;
+    // 2·. Attribute aller Strukturobjekte mit einer Zone Query (eine Abfrage für alle Startprodukte); bei Fehler weiter wie bisher
+    var zq = {}; S.zqInfo = [];
+    if (S.mitZone && maxTiefe > 0 && front.length) {
+      if ((S.zqFehl || 0) >= 2) S.zqInfo.push('übersprungen: in dieser Sitzung zweimal ohne Erfolg (Widget neu laden für einen neuen Versuch)');
+      else {
+        var tz = Date.now();
+        status('Lese Attribute der Produktstruktur in einer Abfrage (Zone Query) …');
+        try {
+          var zr = await zoneAttribute(front, maxTiefe === MAXTIEFE ? -1 : maxTiefe); zq = zr.attr; S.zqFehl = 0;
+          var namen = {}, pn = 0; Object.keys(zq).forEach(function (k) { Object.keys(zq[k]).forEach(function (n) { if (zq[k][n] !== '' && zq[k][n] != null) namen[n] = (namen[n] || 0) + 1; }); if (zq[k]['ds6wg:EnterpriseExtension.V_PartNumber']) pn++; });
+          S.zqInfo.push('ok: Variante ' + (zr.variante + 1) + ' von ' + ZQATTR.length + (zr.ohneEnovia ? ' (Adresse ohne /enovia)' : '') + ', ' + Object.keys(zq).length + ' Objekte mit Attributen, davon ' + pn + ' mit Teilenummer, ' + ((Date.now() - tz) / 1000).toFixed(1) + ' s');
+          S.zqInfo.push('gelieferte Attribute (Anzahl Objekte): ' + (Object.keys(namen).map(function (n) { return n + ' ' + namen[n]; }).join(', ') || '(keine)'));
+          if (zr.fehl.length) S.zqInfo.push('vorher fehlgeschlagen: ' + zr.fehl.join(' | '));
+          if (zr.fehler) S.zqInfo.push('Hinweis der Plattform: ' + zr.fehler);
+          var bsp = Object.keys(zq)[0]; if (bsp) S.zqInfo.push('Beispiel ' + bsp + ': ' + JSON.stringify(zq[bsp]).slice(0, 600));
+        } catch (e) { S.zqFehl = (S.zqFehl || 0) + 1; zq = {}; S.zqInfo.push('Rückfall auf den bisherigen Weg: ' + e.message); }
+      }
+    }
     if (S.mitExpand && maxTiefe > 0 && front.length) {
       var rest = [], t0 = Date.now();
       for (var wi = 0; wi < front.length; wi++) {
@@ -418,7 +490,7 @@
         melde(true);
       }
       // Details nachladen, wo expand keine Grunddaten geliefert hat
-      var ohne = Object.keys(items).filter(function (k) { var d = items[k].det; return !d || !(d.title || d.name); });
+      var ohne = Object.keys(items).filter(function (k) { var d = items[k].det; return (!d || !(d.title || d.name)) && !(zq[k] && (zq[k]['ds6w:label'] || zq[k]['ds6w:identifier'])); });
       if (ohne.length) {
         status('Lese Details zu ' + ohne.length + ' Objekten …');
         await pool(ohne, PARALLEL, async function (k) { try { items[k].det = await engItem(k); } catch (e) { items[k].fehler = e.message; } });
@@ -451,11 +523,14 @@
       var ids = Object.keys(items), erledigt = 0, zaehler = {};
       DOKREL.forEach(function (r) { zaehler[r.rel] = { ok: 0, fehler: 0 }; });
       await pool(ids, PARALLEL, async function (id) {
+        // alle Beziehungen eines Objekts gleichzeitig abfragen (seit Adapter 15), ausgewertet in fester Reihenfolge
+        async function eine(r) { var z = zaehler[r.rel]; if (z.fehler >= 3 && !z.ok) return null; try { var l = await dokumenteZu(id, r.rel); z.ok++; return l; } catch (e) { z.fehler++; return null; } }
+        var listen = [];
+        if (S.dokSeriell) { for (var rs = 0; rs < DOKREL.length; rs++) listen.push(await eine(DOKREL[rs])); }   // nur für den Testvergleich
+        else listen = await Promise.all(DOKREL.map(eine));
         for (var ri = 0; ri < DOKREL.length; ri++) {
-          var r = DOKREL[ri], z = zaehler[r.rel];
-          if (z.fehler >= 3 && !z.ok) continue;   // diese Beziehung kennt die Plattform nicht
-          var liste;
-          try { liste = await dokumenteZu(id, r.rel); z.ok++; } catch (e) { z.fehler++; continue; }
+          var r = DOKREL[ri], liste = listen[ri];
+          if (!liste) continue;
           liste.forEach(function (d) {
             var did = d && (d.id || d.identifier); if (!did) return;
             if (!doks[did]) {
@@ -591,10 +666,18 @@
         var meta = { Titel: d.title || '', Name: d.name || '', Revision: d.revision || '', Reifegrad: d.state || '', Beschreibung: d.description || '', Teilenummer: er.partNumber || '',
           Besitzer: d.owner || '', Organisation: d.organization || '', 'Collaborative Space': d.collabspace || '', Erstellt: datum(d.created), 'Geändert': datum(d.modified), Typ: d.type || 'VPMReference',
           'Direkte Kinder': String(it.kinder.length), Verwendungen: String(verwendet[id] || 0), ID: id };
+        var za = zq[id];
+        if (za) Object.keys(za).forEach(function (a) {
+          var w = zqWert(a, za[a]); if (!w || a === 'ds6w:type') return;
+          var feld = ZQMETA[a] || a;
+          if (feld === 'Reifegrad') { if (!meta.Reifegrad) meta.Reifegrad = w.split('.').pop(); return; }
+          if (!meta[feld]) meta[feld] = w;
+        });
         Object.keys(meta).forEach(function (k) { if (meta[k] === '') delete meta[k]; });
-        var n = { id: id, type: it.kinder.length ? 'asm' : 'part', name: d.title || d.name || ('Objekt ' + id.slice(-6)), meta: meta, dl: true };
+        var n = { id: id, type: it.kinder.length ? 'asm' : 'part', name: d.title || d.name || (za && (za['ds6w:label'] || za['ds6w:identifier'])) || ('Objekt ' + id.slice(-6)), meta: meta, dl: true };
         S.cad[id] = 1; if (d.type && (!S.cadTyp[id] || /^VPMReference$/i.test(S.cadTyp[id]))) S.cadTyp[id] = /dsxcad/i.test(S.cadTyp[id] || '') ? S.cadTyp[id] : d.type;
         if (d.state) n.state = ZUSTAND[d.state] || d.state;
+        else if (za && za['ds6w:status']) { var zs = String(za['ds6w:status']).split('.').pop().toUpperCase().replace(/ /g, '_'); n.state = ZUSTAND[zs] || zs; }
         nodes.push(n);
         kinder.forEach(function (c) { var e = { from: c.id, to: id, type: 'struktur' }; if (c.n > 1) { e.label = '×' + c.n; e.meta = { Instanzen: String(c.n) }; } edges.push(e); });
       });
@@ -671,7 +754,7 @@
     if (S.laeuft) return;
     var b = sonder ? { title: 'Alle Issues' } : S.treffer[+q('.td-tr').value]; if (!b) return;
     try {
-      S.laeuft = true; S.max = Math.max(10, parseInt(S.maxText, 10) || 1500); S.mitDok = q('.td-dk').checked; S.mitIssues = q('.td-ia').checked; S.mitExpand = q('.td-ex').checked;
+      S.laeuft = true; S.max = Math.max(10, parseInt(S.maxText, 10) || 1500); S.mitDok = q('.td-dk').checked; S.mitIssues = q('.td-ia').checked; S.mitExpand = q('.td-ex').checked; S.mitZone = q('.td-zq').checked;
       S.aufrufe = 0; S.frist = 0; S.lauf = (S.lauf || 0) + 1; S.zwischen = false; S.letzteMeldung = 0; S.mitAufbau = q('.td-au').checked;
       var t0 = Date.now(), erg;
       if (sonder && sonder.alleIssues) { S.frist = t0 + FRIST_ALLE * 1000; S.max = Math.max(S.max, 5000); erg = await leseBookmark(null, null, { alleIssues: true, struktur: false }); }
@@ -683,7 +766,7 @@
     } catch (e) { status('Laden fehlgeschlagen: ' + e.message + ' (Details unter „Diagnose“)', true); } finally { S.laeuft = false; S.frist = 0; diagnose(); }
   }
   function diagnoseText() {
-    var z = ['3Deep-Widget Diagnose (Adapter 14, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
+    var z = ['3Deep-Widget Diagnose (Adapter 15, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
       '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-'), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), ''];
     if (S.wurzelInfo) { z.push('', 'Produkte im Bookmark:'); S.wurzelInfo.forEach(function (w) { z.push('  ' + w); }); }
     if (S.issueInfo) {
@@ -693,6 +776,7 @@
       z.push('Issues mit betroffenen Objekten (neueste zuerst, höchstens 40):');
       ii.mitBezug.slice().sort(nachDatum).slice(0, 40).forEach(function (x) { z.push('  ' + x.d + '  ' + x.t + '  -> ' + (x.ids.join(', ') || '(keine ID erkannt)') + '  Treffer im Bookmark: ' + x.treffer); });
     }
+    if (S.zqInfo && S.zqInfo.length) { z.push('', 'Zone Query (Attribute):'); S.zqInfo.forEach(function (c) { z.push('  ' + c); }); }
     if (S.expandInfo && S.expandInfo.length) { z.push('', 'Produktstruktur:'); S.expandInfo.forEach(function (c) { z.push('  ' + c); }); }
     if (S.cadInfo.length) { z.push('', 'Downloads von Bauteilen/Baugruppen:'); S.cadInfo.forEach(function (c) { z.push('  ' + c); }); }
     z.push('', '=== Ab hier nur bei Bedarf: alle Aufrufe ===', 'Aufrufe:');
@@ -717,6 +801,7 @@
       '<select class="td-tr" style="' + feld + ';max-width:260px;display:none"></select>' +
       '<button class="td-la" style="' + knopf + ';background:#2563d6;display:none">Laden</button>' +
       '<label title="Produktstruktur mit einer Abfrage je Produkt lesen (expand, schneller); aus = Ebene für Ebene wie bisher" style="display:flex;align-items:center;gap:4px"><input class="td-ex" type="checkbox" checked="checked" />Schnell</label>' +
+      '<label title="Attribute aller Strukturobjekte (z. B. Teilenummer) mit einer Abfrage nachlesen (Zone Query); aus = wie bisher" style="display:flex;align-items:center;gap:4px"><input class="td-zq" type="checkbox" checked="checked" />Attribute</label>' +
       '<label title="Bild während des Lesens schrittweise aufbauen; aus = erst am Ende zeigen" style="display:flex;align-items:center;gap:4px"><input class="td-au" type="checkbox" checked="checked" />Aufbau</label>' +
       '<label title="Spezifikationen und Attachments der Objekte mitlesen" style="display:flex;align-items:center;gap:4px"><input class="td-dk" type="checkbox" />Dokumente</label>' +
       '<label title="Issues, Aufgaben und Personen zu den Objekten mitlesen" style="display:flex;align-items:center;gap:4px"><input class="td-ia" type="checkbox" />Issues/Aufgaben</label>' +
@@ -898,6 +983,32 @@
               mem.push({ id: ins.id, type: 'VPMInstance', name: ins.name }); mem.push({ Path: p2 }); ab(c, p2, t + 1); });
           })(wurzel, [wurzel], 0);
           return ja({ totalItems: mem.length, member: mem });
+        }
+        if (pfad === ZQ) {
+          if (methode !== 'POST') return nein(new Error('405'));
+          var sb = (body || {}).select_bo || [];
+          if (S.testZoneFehler === 'alle') return nein(new Error('404 Not Found'));
+          if (S.testZoneFehler === 'leer') return ja({});
+          if (S.testZoneFehler === 'ds6wg' && sb.some(function (x) { return /^ds6wg:/.test(x); })) return nein(new Error('400 Invalid parameter select_bo !'));
+          if (!body || !Array.isArray(body.root_path_physicalid) || !body.label) return nein(new Error('400 Invalid parameter root_path_physicalid !'));
+          var did = 1000, dids = {}, res = [], pfadeZ = [], maxZ = +body.expand_iter; if (!(maxZ >= 0)) maxZ = 99;
+          function wert(o, a) { return { physicalid: o.id, 'ds6w:label': o.title, 'ds6w:identifier': o.name, 'ds6w:type': o.type, 'ds6w:status': 'VPLM_SMB_Definition.' + o.state, 'ds6w:responsible': o.owner,
+            'ds6w:created': o.created, 'ds6w:modified': o.modified, 'ds6w:description': o.description, 'ds6wg:revision': o.revision, 'ds6wg:EnterpriseExtension.V_PartNumber': (o['dseng:EnterpriseReference'] || {}).partNumber }[a]; }
+          function el(pid, o) {
+            if (dids[pid]) return dids[pid]; var d = ++did; dids[pid] = d;
+            var at = [{ name: 'did', value: String(d) }]; sb.forEach(function (a) { var w = o ? wert(o, a) : (a === 'physicalid' ? pid : a === 'ds6w:type' ? 'VPMInstance' : null); if (w != null) at.push({ name: a, value: w }); });
+            res.push({ attributes: at }); return d;
+          }
+          body.root_path_physicalid.forEach(function (rp) {
+            var wz = rp[rp.length - 1]; if (!TEST.it[wz]) return;
+            (function ab(rid, pf, t) {
+              var kk = t < maxZ ? (TEST.kids[rid] || []) : [];
+              if (!kk.length) pfadeZ.push(pf.slice());
+              kk.forEach(function (ins) { var c = ins.referencedObject.identifier; ab(c, pf.concat([el(ins.id, null), el(c, TEST.it[c])]), t + 1); });
+            })(wz, [el(wz, TEST.it[wz])], 0);
+          });
+          pfadeZ.forEach(function (pp) { res.push({ path: pp }); });
+          return ja({ results: res });
         }
         if ((m = pfad.match(/dseng:EngItem\/([^\/]+)\/dseng:EngInstance$/))) { var kk = TEST.kids[m[1]] || []; return ja({ totalItems: kk.length, member: seite(kk) }); }
         if ((m = pfad.match(/dseng:EngItem\/([^\/]+)$/))) { var it = TEST.it[m[1]]; return it ? ja({ totalItems: 1, member: [it] }) : nein(new Error('404 Objekt nicht gefunden')); }

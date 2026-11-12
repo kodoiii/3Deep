@@ -1,4 +1,4 @@
-# 3Deep-Widget: Einrichtung und Bedienung (Stand Adapter Version 14, Darstellung Version 68)
+# 3Deep-Widget: Einrichtung und Bedienung (Stand Adapter Version 15, Darstellung Version 68)
 
 ## Dateien (alle im selben Ordner auf GitHub Pages)
 - `widget.html` – kleiner Lader für das 3DDashboard. **Diese Adresse** trägt man im Dashboard ein.
@@ -21,6 +21,7 @@ Hosting: Repository `kodoiii/3Deep` (öffentlich), Adresse `https://kodoiii.gith
 ## Bedienung
 - Auswahl „Bookmark | Issue“: womit begonnen wird. Namen oder Titel eingeben, „Suchen“, Treffer wählen, „Laden“.
 - Häkchen „Schnell“: Produktstruktur mit einer Abfrage je Produkt lesen (expand); geht das nicht, liest das Widget automatisch Ebene für Ebene. Aus = immer Ebene für Ebene (zum Vergleich).
+- Häkchen „Attribute“ (Standard an): liest die Attribute aller Strukturobjekte (z. B. Teilenummer, Reifegrad, Besitzer) mit einer einzigen Abfrage (Zone Query, `POST /cvservlet/zonequeries`). Klappt das nicht, geht es ohne diese Attribute weiter wie bisher; Ergebnis in der Diagnose unter „Zone Query (Attribute)“.
 - Häkchen „Aufbau“: Das Bild baut sich schon während des Lesens auf; bereits gezeigte Objekte bleiben an ihrem Platz, am Ende ordnet sich das Netz einmal weich neu. Solange man nicht selbst klickt, scrollt oder eine Taste drückt, rahmt die Kamera den wachsenden Raum.
 - Häkchen „Dokumente“: Spezifikationen und Attachments mitlesen. „Issues/Aufgaben“: Issues, Aufgaben, Personen mitlesen. Beide sind seit Adapter 14 standardmäßig aus (schneller Aufbau nur mit Bookmark und Produktstruktur); bei Bedarf einschalten und neu laden. Beim Start über ein Issue werden dessen Objekte, Dokumente und Zuweisungen immer gelesen.
 - Häkchen „Struktur“ (nur bei Start mit Issue): Produktstruktur der betroffenen Objekte abwärts.
@@ -43,7 +44,9 @@ Hosting: Repository `kodoiii/3Deep` (öffentlich), Adresse `https://kodoiii.gith
 | Start bei einem Issue, Attachments direkt am Issue, „Alle Issues“ | nur mit Beispieldaten getestet |
 | Aufgaben mit Bezug zu einem Objekt | Abruf läuft, noch kein Treffer gesehen |
 | Download von Bauteilen/Baugruppen: CAD-Datei über `dsxcad … AuthoringFile/DownloadTicket`, sonst Derived Output über `dsdo:DerivedOutputs/Locate` | laut DS-SDK, nur mit Beispieldaten getestet |
-| Produktstruktur in einer Abfrage (`dseng:EngItem/{ID}/expand`), Rückfall Ebene für Ebene | laut DS-SDK, nur mit Beispieldaten getestet |
+| Produktstruktur in einer Abfrage (`dseng:EngItem/{ID}/expand`), Rückfall Ebene für Ebene | auf der Plattform bestätigt (ca. 2 s statt ca. 80 s) |
+| Attribute über Zone Query (`/cvservlet/zonequeries`, Body laut Doku R2026x) | Aufruf laut Doku; Prädikate außer `ds6w:label`/`ds6w:type`, Adresse und Teilenummer vermutet, nur mit Beispieldaten getestet |
+| Dokument-Beziehungen je Objekt gleichzeitig abfragen | mit Beispieldaten getestet |
 | Schrittweiser Aufbau während des Lesens | mit Beispieldaten getestet |
 | Unterordner eines Bookmarks | vermutet |
 | WASD mit eingefangener Maus, SpaceMouse im Dashboard | offen |
