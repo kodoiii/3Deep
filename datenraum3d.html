@@ -2,7 +2,7 @@
 <html lang="de"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>3Deep – Datenraum in 3D</title>
-<meta name="3deep-darstellung" content="76">
+<meta name="3deep-darstellung" content="77">
 <style>
 :root{--fg:#e6edf3;--panel:rgba(15,22,41,.86);--mut:#9fb0c4}
 html,body{margin:0;height:100%;background:linear-gradient(180deg,#d4ecff 0%,#93c3ea 55%,#5088c0 100%) fixed;color:var(--fg);font:13px/1.4 system-ui,sans-serif;overflow:hidden}
@@ -89,7 +89,7 @@ html{--lg:#0e2a4a;--lgh:rgba(255,255,255,.85)}html.space{--lg:#dbe7ff;--lgh:rgba
 <label class="s">Neuzeichnen<select id="es"><option value="max" selected>Maximal: im Stillstand kein Neuzeichnen</option><option value="auto">Automatisch: im Stillstand 15 Bilder/s</option><option value="aus">Aus: immer volle Bildrate</option></select></label>
 <label style="display:block;margin-top:8px"><input type="checkbox" id="introan" checked> Intro beim Start zeigen</label>
 </details>
-<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 76</div>
+<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 77</div>
 </div>
 <div id="det" class="pn"></div></div>
 <div id="dcap"></div><div id="dfade" style="position:fixed;inset:0;background:#0b1424;opacity:0;pointer-events:none;transition:opacity .6s;z-index:14"></div><div id="cross"></div><div id="info"></div>
@@ -175,19 +175,20 @@ function kraftLayout(vonHier){const n_=N.length,big=n_>400,sz=Math.cbrt(n_/150)*
  const c=N.reduce((p,n)=>n.adj.length>p.adj.length?n:p,N[0]),cx=c.x,cy=c.y,cz=c.z;N.forEach(n=>{n.x-=cx;n.y-=cy;n.z-=cz}); // meistvernetztes Objekt in die Mitte
 }
 function ladeDaten(d){CUR=d;$('legend').style.display='';AX=null;AXO=null;ST_T=d.stateTitle||'Reifegrad';ST_N=d.stateNames||null;if(DM.on&&!DM.laden)demoStop();DMO=null;if(ani&&!ani.swap){ani=null;sperre(false)}
- T={};Object.keys(d.types||{}).forEach(k=>{const t=d.types[k]||{};T[k]={c:HEX.test(t.color)?t.color:'#9aa5b1',d:+t.size>0?+t.size:1,l:t.label||k,shape:t.shape,layer:t.layer,role:t.role,tier:t.tier}});
+ T={};Object.keys(d.types||{}).forEach(k=>{const t=d.types[k]||{};T[k]={c:HEX.test(t.color)?t.color:'#9aa5b1',d:+t.size>0?+t.size:1,l:t.label||k,shape:t.shape,layer:t.layer,role:t.role,gem:t.gem,cut:t.cut}});
  RT=d.relTypes||{};const nn=[],ee=[],idx={};
  (d.nodes||[]).forEach(o=>{if(o.id==null)return;if(!T[o.type])T[o.type]={c:'#9aa5b1',d:1,l:String(o.type)};const t=T[o.type];
   idx[o.id]=nn.length;nn.push({i:nn.length,key:String(o.id),n:String(o.name!=null?o.name:o.id),t:o.type,meta:o.meta||{},dl:!!o.dl,img:bildAdr(o.img),r:(+o.size>0?+o.size:t.d)/2,sf:+o.size>0?Math.max(.35,Math.min(3,+o.size/t.d)):1,adj:[],shape:t.shape,sh:SHAPES[t.shape]||null,state:zust(o.state||o.maturity),stateL:String(o.state||o.maturity||''),empty:Array.isArray(o.empty)?o.empty:[],rgb:hx(t.c),c0:mix(t.c,255,.55),c1:t.c,c2:mix(t.c,0,.45)})});
- if(!nn.length)throw new Error('Keine Knoten (nodes) gefunden');if(astro)themeAstro(nn);
+ if(!nn.length)throw new Error('Keine Knoten (nodes) gefunden');if(astro)themeAstro(nn);else if(kris)themeKristall(nn);
  (d.edges||[]).forEach(o=>{const a=idx[o.from],b=idx[o.to];if(a==null||b==null||a===b)return;const rt=RT[o.type]||{},c=HEX.test(rt.color)?rt.color:'#2f3f5c';
   const e={a,b,dir:o.directed!=null?!!o.directed:!!rt.directed,type:o.type||'',lbl:String(o.label||rt.label||o.type||'Link'),meta:o.meta||{},c,c2:mix(c,0,.4),cl:mix(c,255,.55)};ee.push(e);nn[a].adj.push({e,o:b});nn[b].adj.push({e,o:a})});
  N=nn;E=ee;MAXD=2*Math.max(...N.map(n=>n.r));MIND=+d.spacing>0?Math.max(+d.spacing,1.3*MAXD):2.8*MAXD;
- const n_=N.length,ck=astro?'a':'s',cached=d._lc&&d._lc[ck];
+ const n_=N.length,ck=astro?'a':kris?'k':'s',cached=d._lc&&d._lc[ck];
  if(cached&&cached.length===n_)N.forEach((n,i)=>{n.x=cached[i][0];n.y=cached[i][1];n.z=cached[i][2]}); // gleiche Daten + gleiche Darstellung: Layout wiederverwenden
  else{kraftLayout();(d._lc=d._lc||{})[ck]=N.map(n=>[n.x,n.y,n.z])}
  RAD=Math.max(20,...N.map(n=>Math.hypot(n.x,n.y,n.z)));N.forEach(n=>{n.kx=n.x;n.ky=n.y;n.kz=n.z;n.tx=n.x;n.ty=n.y;n.tz=n.z});$('lay').value='kraft';animL=false;space=astro;LBL=[];document.documentElement.classList.toggle('space',space);
- hidden.clear();hiddenR.clear();waehle(null);fuelleAttr();fuelleAchsen(d);zustLeg();fuelleRel();$('q').value='';$('res').innerHTML='';
+ hidden.clear();hiddenR.clear();waehle(null);fuelleAttr();fuelleAchsen(d);zustLeg();$('lgst').style.display=$('lgz').style.display=kris?'none':''; // Kristall: Reifegrad-Effekte vorerst aus (Version 77)
+ fuelleRel();$('q').value='';$('res').innerHTML='';
  $('rm').max=Math.max(200,n_);$('rm').value=Math.min(d.maxObjects||200,n_);needHome=true;CH=(d.chains||[]).concat(GEN);LAYERS=d.layers||null;tr=null;$('kres').innerHTML='';$('klt').textContent=[...new Set(E.map(e=>e.type))].filter(Boolean).join(', ');fuelleChains(null);orient=d.orient||orient;$('or').value=orient;if(d.layout){const dl=d.layout==='sonne'?'baum':d.layout;$('lay').value=dl;setLayout(dl,false)}
  const cnt={};N.forEach(n=>cnt[n.t]=(cnt[n.t]||0)+1);
  $('leg').innerHTML=Object.keys(cnt).map(k=>`<label class="lg"><input type="checkbox" checked data-k="${esc(k)}"><span class="dot" style="background:${T[k].c}${T[k].shape==='dodecahedron'?';border-radius:0;clip-path:polygon(50% 0,100% 38%,82% 100%,18% 100%,0 38%)':''}${T[k].shape==='box'||T[k].shape==='book'?';border-radius:2px':''}${T[k].shape==='folder'?';border-radius:1px 4px 2px 2px':''}${T[k].shape==='torus'?';background:radial-gradient(circle,transparent 28%,'+T[k].c+' 32%)':''}"></span>${esc(T[k].l)} (${cnt[k]})</label>`).join('')}
@@ -535,7 +536,7 @@ function skizze(name,asm){let h=2166136261;for(const ch of String(name))h=Math.i
  const m=3,w=B[2]-B[0]+2*m,hh=B[3]-B[1]+2*m,f=150/Math.max(w,hh);
  return'data:image/svg+xml,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${(B[0]-m).toFixed(1)} ${(B[1]-m).toFixed(1)} ${w.toFixed(1)} ${hh.toFixed(1)}" width="${Math.round(w*f)}" height="${Math.round(hh*f)}">${o}</svg>`)}
 // ---------- Linkchain-Analyse ----------
-let CUR=null,ani=null,EF=1,astro=false,CEN=[0,0,0],catia=false,zoomMode=false,rotMoved=false,tr=null,CH=[],LAYERS=null,orient='h',obStil='web';
+let CUR=null,ani=null,EF=1,astro=false,kris=false,CEN=[0,0,0],catia=false,zoomMode=false,rotMoved=false,tr=null,CH=[],LAYERS=null,orient='h',obStil='web';
 const GEN=[{name:'Alle direkten Nachbarn',chain:'?-'},{name:'Zwei Schritte (beliebig)',chain:'?- ?-'},{name:'Struktur abwärts (beliebig tief)',chain:'struktur<*'},{name:'Struktur aufwärts (beliebig tief)',chain:'struktur>*'}];
 function kette(txt){return txt.trim().split(/[\s,\u2192]+/).filter(Boolean).map(t=>{const m=/^([\w?]+?)([<>-]?)(\*?)$/.exec(t);if(!m)throw new Error('Ungültiger Schritt: '+t);return{link:m[1],dir:m[2]||'-',rep:!!m[3]}})}
 function fuelleChains(n){const ok=CH.map((c,i)=>[c,i]).filter(([c])=>!c.start||(n&&c.start===n.t));
@@ -862,7 +863,7 @@ cv.addEventListener('click',e=>{if(dwn&&Math.hypot(e.clientX-dwn[0],e.clientY-dw
  if(hov)waehle(hov,false);else if(hovE)waehleE(hovE);else if(locked||catia)waehle(null);else{try{cv.requestPointerLock()}catch(_){}}});
 addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;if(catia){catiaMove(e);return}if(locked||drag){fly=null;yaw-=e.movementX*.0025;pitch=Math.max(-1.5,Math.min(1.5,pitch-e.movementY*.0025))}});
 const typing=e=>/INPUT|TEXTAREA/.test(e.target.tagName);
-addEventListener('keydown',e=>{if(typing(e)||(e.ctrlKey&&e.shiftKey&&e.code==='KeyE'))return;if(e.code==='KeyH'){if(PK.on)parcoursStart();else home(false)}keys[e.code]=true;if(e.code==='Space')e.preventDefault()});addEventListener('keyup',e=>keys[e.code]=false);
+addEventListener('keydown',e=>{if(typing(e)||(e.ctrlKey&&e.shiftKey&&(e.code==='KeyE'||e.code==='KeyX')))return;if(e.code==='KeyH'){if(PK.on)parcoursStart();else home(false)}keys[e.code]=true;if(e.code==='Space')e.preventDefault()});addEventListener('keyup',e=>keys[e.code]=false);
 // ---------- Objektdarstellung "Sonnensystem" (Astronomie, nicht maßstabsgetreu) ----------
 const AC={giant:'#e5533d',sun:'#ffd23f',asteroid:'#8c8279',ringed:'#d9a066',ship:'#cfd6dd',station:'#9aa5b1',comet:'#cfe8ff',earth:'#2f7fd0',ice:'#bfe6f5'},
  AS={giant:5,sun:3,asteroid:2,ship:2,ringed:2,station:2,comet:2,earth:2,ice:2},
@@ -943,11 +944,52 @@ function zeichneAstro(n,q,R,t){const x=q.x,y=q.y,i=n.i;
   ctx.restore();el(x-.35*R,y-.4*R,.28*R,.16*R,'rgba(255,255,255,.5)');
   const tw=Math.sin(t*2+i*3);if(tw>.85){ctx.strokeStyle='rgba(255,255,255,'+((tw-.85)*6).toFixed(2)+')';ctx.lineWidth=Math.max(.8,R*.04);ctx.beginPath();ctx.moveTo(x+.2*R,y-.5*R);ctx.lineTo(x+.2*R,y-.2*R);ctx.moveTo(x+.05*R,y-.35*R);ctx.lineTo(x+.35*R,y-.35*R);ctx.stroke()}break}
  default:sph(n.c0,n.c1,n.c2,R)}}
-function wechselTheme(a){const th=a===true?'astro':a===false?'std':a;astro=th==='astro';const lay=$('lay').value,o=orient;try{ladeDaten(CUR)}catch(x){$('err').textContent='Fehler: '+x.message;return}
+function wechselTheme(a){const th=a===true?'astro':a===false?'std':a;astro=th==='astro';kris=th==='kristall';const lay=$('lay').value,o=orient;try{ladeDaten(CUR)}catch(x){$('err').textContent='Fehler: '+x.message;return}
  if(lay!==$('lay').value||o!==orient){orient=o;$('or').value=o;$('lay').value=lay;setLayout(lay,false)}}
 // Objektdarstellung (Version 74 ohne Auswahlfeld): Strg+Umschalt+E schaltet Standard <-> Sonnensystem (Urknall bzw. Schwarzes Loch)
 function themaUmschalten(){if(ani||!CUR)return;if(astro)startBH('std');else startBang()}
+// Version 77: Strg+Umschalt+X schaltet Standard <-> Kristall (aus dem Sonnensystem direkt nach Kristall, über das Schwarze Loch)
+function kristallUmschalten(){if(ani||!CUR)return;if(kris)startKris('std');else if(astro)startBH('kristall');else startKris('kristall')}
 addEventListener('keydown',e=>{if(e.code==='KeyE'&&e.ctrlKey&&e.shiftKey&&!e.altKey&&!e.metaKey&&!typing(e)){e.preventDefault();keys.KeyE=false;if(!e.repeat)themaUmschalten()}});
+addEventListener('keydown',e=>{if(e.code==='KeyX'&&e.ctrlKey&&e.shiftKey&&!e.altKey&&!e.metaKey&&!typing(e)){e.preventDefault();keys.KeyX=false;if(!e.repeat)kristallUmschalten()}});
+// ---------- Objektdarstellung „Kristall“ (Version 77, Wunsch des Nutzers, experimentell): gläserne Edelsteine im Stil des Intros ----------
+// Saphir-Diamant = Baugruppe (deutlich größer als alles andere), Rubin-Diamant = Issue, Amethyst-Diamant = Person, Smaragd-Kristall = Bauteil/Sonstiges,
+// Topas-Kristall = Aufgabe/Anforderung, Bergkristall-Würfel (klein) = Bookmark und Dokumente. JSON: types.<Typ>.gem (saphir, rubin, amethyst, smaragd, topas, klar) und .cut (diamant, kristall, wuerfel).
+const GEM={saphir:'#1d5fd6',rubin:'#d4114e',amethyst:'#9a5bd6',smaragd:'#16a865',topas:'#f0a530',klar:'#9fc2ee'},GEM_DE={saphir:'Saphir',rubin:'Rubin',amethyst:'Amethyst',smaragd:'Smaragd',topas:'Topas',klar:'Bergkristall'};
+const GEMS=[[/folder|bookmark/i,'klar','wuerfel'],[/assembly|baugruppe|logical|\basm\b|system|kunde|customer/i,'saphir','diamant'],[/issue|fmea|failure|problem|risiko/i,'rubin','diamant'],
+ [/person|user|mensch|mitarbeiter/i,'amethyst','diamant'],[/task|aufgabe|requirement|anforderung|vertrag|projekt/i,'topas','kristall'],[/spec|pdf|doc|attach|präs|ppt|zeichnung|drawing|dwg|markup|review/i,'klar','wuerfel']];
+function gemOf(k,l){const q=k+' '+l;for(const [re,g,c] of GEMS)if(re.test(q))return[g,c];return['smaragd','kristall']}
+function themeKristall(nn){Object.keys(T).forEach(k=>{const t=T[k],[g0,c0]=gemOf(k,t.l),g=GEM[t.gem]?t.gem:g0,c=['diamant','kristall','wuerfel'].includes(t.cut)?t.cut:c0;t.gem=g;t.cut=c;t.c=GEM[g];t.l=t.l+' · '+GEM_DE[g];t.shape=null});
+ nn.forEach(n=>{const t=T[n.t],c=GEM[t.gem];n.gem=t.gem;n.cut=t.cut;n.r*=n.cut==='diamant'?(n.gem==='saphir'?1.7:1.05):n.cut==='kristall'?1.15:1;n.c0=mix(c,255,.55);n.c1=c;n.c2=mix(c,0,.45);n.rgb=hx(c);n.sh=null;n.shape='kristall'});
+ const sap=nn.filter(n=>n.gem==='saphir'),gr=sap.length?Math.min(...sap.map(n=>n.r)):0;if(gr)nn.forEach(n=>{if(n.gem!=='saphir')n.r=Math.min(n.r,gr*.6)})} // Baugruppen bleiben die größten Objekte
+const KM={};
+{const W=s=>[[-1,-1,-1],[1,-1,-1],[-1,1,-1],[1,1,-1],[-1,-1,1],[1,-1,1],[-1,1,1],[1,1,1]].map(v=>v.map(x=>x*s));
+ KM.wuerfel={V:W(.72),F:[[0,1,3,2],[4,6,7,5],[0,4,5,1],[2,3,7,6],[0,2,6,4],[1,5,7,3]],inn:true};
+ {const V=[],F=[],k=6,r=.36,h=.72,tp=.38;for(let i=0;i<k;i++){const a=i*2*Math.PI/k;V.push([Math.cos(a)*r,h,Math.sin(a)*r],[Math.cos(a)*r,-h,Math.sin(a)*r])}V.push([0,h+tp,0],[0,-h-tp,0]);
+  for(let i=0;i<k;i++){const j=(i+1)%k;F.push([2*i,2*j,2*j+1,2*i+1]);F.push([2*i,2*k,2*j]);F.push([2*i+1,2*j+1,2*k+1])}KM.kristall={V,F}}
+ {const V=[],F=[],k=8;for(let i=0;i<k;i++){const a=i*2*Math.PI/k+Math.PI/8;V.push([Math.cos(a),.08,Math.sin(a)])}for(let i=0;i<k;i++){const a=i*2*Math.PI/k;V.push([Math.cos(a)*.56,.46,Math.sin(a)*.56])}V.push([0,-.95,0]);
+  F.push([15,14,13,12,11,10,9,8]);for(let i=0;i<k;i++){const j=(i+1)%k;F.push([i,j,8+j]);F.push([i,8+j,8+i]);F.push([16,j,i])}KM.diamant={V,F}}}
+const KL=(()=>{const l=[-.45,.75,.5],m=Math.hypot(...l);return l.map(x=>x/m)})();
+function funkel(x,y,s2){ctx.save();ctx.globalCompositeOperation='lighter';ctx.fillStyle='#fff';ctx.beginPath();ctx.moveTo(x,y-s2);ctx.lineTo(x+s2*.15,y-s2*.15);ctx.lineTo(x+s2,y);ctx.lineTo(x+s2*.15,y+s2*.15);ctx.lineTo(x,y+s2);ctx.lineTo(x-s2*.15,y+s2*.15);ctx.lineTo(x-s2,y);ctx.lineTo(x-s2*.15,y-s2*.15);ctx.closePath();ctx.fill();ctx.restore()}
+function zeichneKristall(n,proj,q,t){const M=KM[n.cut]||KM.kristall,c=n.rgb,r=n.r,klar=n.gem==='klar',ga=ctx.globalAlpha,R=r*q.k;
+ if(R<1.6){ctx.fillStyle=n.c1;ctx.beginPath();ctx.arc(q.x,q.y,Math.max(R,1.1),0,7);ctx.fill();return}
+ const a=t*.22+n.i*1.7,ca=Math.cos(a),sa=Math.sin(a),b=(n.cut==='kristall'?.42:n.cut==='diamant'?.32:.18)*(hs(n.i,5)<.5?1:-1),cb=Math.cos(b),sb=Math.sin(b);
+ const Vr=M.V.map(v=>{const x=v[0]*ca+v[2]*sa,z=-v[0]*sa+v[2]*ca,y=v[1];return[x,y*cb-z*sb,y*sb+z*cb]}),P=Vr.map(v=>proj(n.x+v[0]*r,n.y+v[1]*r,n.z+v[2]*r));if(P.some(p=>p.z<.3))return;
+ const cm=[0,1,2].map(k=>Vr.reduce((s,v)=>s+v[k],0)/Vr.length);
+ const fs=M.F.map(f=>{const m=[0,1,2].map(k=>f.reduce((s,i)=>s+Vr[i][k],0)/f.length),nv=[m[0]-cm[0],m[1]-cm[1],m[2]-cm[2]],l=Math.hypot(...nv)||1;nv.forEach((x,k)=>nv[k]=x/l);
+  const vis=nv[0]*(cam.x-n.x-m[0]*r)+nv[1]*(cam.y-n.y-m[1]*r)+nv[2]*(cam.z-n.z-m[2]*r)>0;return{f,nv,vis,z:f.reduce((s,i)=>s+P[i].z,0)/f.length}}).sort((p,q2)=>q2.z-p.z);
+ const col=(k,al)=>`rgba(${c.map(x=>Math.round(Math.min(255,x*k))).join(',')},${al.toFixed(3)})`,wh=(k,al)=>`rgba(${c.map(x=>Math.round(x+(255-x)*k)).join(',')},${al.toFixed(3)})`;
+ const pfad=f=>{ctx.beginPath();f.forEach((i,k)=>k?ctx.lineTo(P[i].x,P[i].y):ctx.moveTo(P[i].x,P[i].y));ctx.closePath()};
+ fs.forEach(F=>{pfad(F.f);if(!F.vis){ctx.fillStyle=col(.55,klar?.2:.35);ctx.fill();return}const d=Math.max(0,F.nv[0]*KL[0]+F.nv[1]*KL[1]+F.nv[2]*KL[2]);
+  if(R>10){const p0=P[F.f[0]],p2=P[F.f[Math.floor(F.f.length/2)]],lg=ctx.createLinearGradient(p0.x,p0.y,p2.x,p2.y);lg.addColorStop(0,wh(.75*d+.1,klar?.55:.75));lg.addColorStop(.5,col(.95+.25*d,klar?.32:.5+.2*d));lg.addColorStop(1,col(.6,klar?.3:.62));ctx.fillStyle=lg}
+  else ctx.fillStyle=col(.8+.4*d,klar?.35:.7);ctx.fill()});
+ if(M.inn&&R>8){ctx.globalAlpha=ga*.45;ctx.strokeStyle=wh(.6,1);ctx.lineWidth=Math.max(.5,R*.012);[[.55,.65,.5],[.3,.4,.6]].forEach(([kx,ky,kz])=>{const I=Vr.map(v=>proj(n.x+v[0]*r*kx,n.y+v[1]*r*ky,n.z+v[2]*r*kz));ctx.beginPath();M.F.forEach(f=>{f.forEach((i,k)=>k?ctx.lineTo(I[i].x,I[i].y):ctx.moveTo(I[i].x,I[i].y));ctx.closePath()});ctx.stroke()})}
+ ctx.lineJoin='round';fs.forEach(F=>{ctx.globalAlpha=ga*(F.vis?.9:.3);ctx.strokeStyle=F.vis?'rgba(255,255,255,.85)':wh(.4,1);ctx.lineWidth=Math.max(.6,Math.min(2,R*(F.vis?.03:.015)));pfad(F.f);ctx.stroke()});
+ ctx.globalAlpha=ga;const tw=Math.sin(t*1.7+n.i*2.3),hoch=()=>P.reduce((p,q2)=>q2.y<p.y?q2:p);
+ if(tw>.93&&R>6){const h=hoch();funkel(h.x,h.y,R*.45*(tw-.93)/.07)}if(n.kfun>0){const h=hoch();funkel(h.x,h.y,Math.max(4,R*.7)*n.kfun)}}
+// Wechsel Standard <-> Kristall: Objekte „kristallisieren“ vom Zentrum nach außen (ca. 1,1 s), mit Funkeln
+function startKris(ziel){wechselTheme(ziel);if(!N.length)return;const C=[0,1,2].map(k=>N.reduce((m,n)=>m+n['xyz'[k]],0)/N.length),ds=N.map(n=>Math.hypot(n.x-C[0],n.y-C[1],n.z-C[2])),dm=Math.max(...ds)||1;
+ ani={kris:true,t0:null,p1:N.map(n=>n.r),dl:ds.map((d,i)=>.6*d/dm+.08*hs(i,9)),ph:2,u:1,fa:0,swap:false};N.forEach(n=>{n.r=.02});sperre(true);fly=null}
 // Schwarzes Loch (unsichtbar): hinter den Objekten, leicht rechts oberhalb der Blickrichtung. Alle Objekte werden in 3 s hineingezogen (Weg ~ u^5, also rasch beschleunigend),
 // danach weißer Lichtblitz; hinter dem Blitz wird auf die Standarddarstellung gewechselt.
 function startBH(ziel){const sy=Math.sin(yaw),cy=Math.cos(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch),f=[-sy*cp,sp,-cy*cp],r=[cy,0,-sy],u=[sy*sp,cp,cy*sp];
@@ -957,6 +999,8 @@ function startBH(ziel){const sy=Math.sin(yaw),cy=Math.cos(yaw),cp=Math.cos(pitch
  ani={t0:null,bh,ax:f,p0:P0,dl:ds.map((d,i)=>(.88*(d-dn)/dr+.12*hs(i,7))*.65),ph:0,u:0,fa:0,ts:0,swap:false,ziel:ziel||'std'};sperre(true);fly=null;animL=false;needHome=false;waehle(null);tr=null;$('kres').innerHTML=''}
 function sperre(b){['lay','or','ds'].forEach(k=>$(k).disabled=b)}
 function animStep(now){const a=ani;
+ if(a.kris){if(a.t0==null)a.t0=now;const el=(now-a.t0)/1000;let fertig=true;N.forEach((n,i)=>{const k=Math.max(0,Math.min(1,(el-a.dl[i])/.5));if(k<1)fertig=false;n.r=a.p1[i]*Math.max(.02,(1-Math.pow(1-k,3))*(1+.18*Math.sin(k*Math.PI)));n.kfun=k>0&&k<1?Math.sin(k*Math.PI):0});
+  if(fertig){N.forEach((n,i)=>{n.r=a.p1[i];n.kfun=0});ani=null;sperre(false)}return}
  if(a.bang){if(a.t0==null)a.t0=now;const el=now-a.t0,uu=Math.min(1,el/3200),e=1-Math.pow(1-uu,4),sc=Math.min(1,e*2.2+.03);
   N.forEach((n,i)=>{const p=a.p1[i];n.x=a.C[0]+(p[0]-a.C[0])*e;n.y=a.C[1]+(p[1]-a.C[1])*e;n.z=a.C[2]+(p[2]-a.C[2])*e;n.r=p[3]*sc});
   a.u=uu;a.fa=Math.max(0,1-el/700);if(uu>=1){N.forEach((n,i)=>{const p=a.p1[i];n.x=p[0];n.y=p[1];n.z=p[2];n.r=p[3]});ani=null;sperre(false)}return}
@@ -1035,13 +1079,13 @@ function ergaenzeDaten(d,fertig){
  for(let pass=0;pass<40;pass++){let neu=0;ok.forEach(o=>{const k=String(o.id);if(pos.has(k))return;const p=(nb.get(k)||[]).map(x=>pos.get(x)).find(Boolean);if(!p)return;
   const w=Math.random()*6.283,z=Math.random()*2-1,r=Math.sqrt(1-z*z);pos.set(k,[p[0]+Math.cos(w)*r*L,p[1]+z*L,p[2]+Math.sin(w)*r*L]);neu++});if(!neu)break}
  ok.forEach(o=>{const k=String(o.id);if(!pos.has(k))pos.set(k,[(Math.random()-.5)*RAD,(Math.random()-.5)*RAD,(Math.random()-.5)*RAD])});
- d._lc={[astro?'a':'s']:ok.map(o=>pos.get(String(o.id)))};
+ d._lc={[astro?'a':kris?'k':'s']:ok.map(o=>pos.get(String(o.id)))};
  ladeDaten(d);
  const neuI=new Set(N.filter(n=>!alt.has(n.key)).map(n=>n.i));AUF.neu+=neuI.size;
  // Nur Neues wird eingepasst; ohne neue Objekte (z. B. nur Attribute nachgeliefert) bleibt alles liegen. Das Durchrechnen am Schluss nur, solange der Benutzer nicht arbeitet.
  if(fertig&&passiv&&AUF.neu&&AUF.erst)kraftLayout(true);else if(neuI.size)nachjustieren(neuI);
  $('rm').value=rmVoll?N.length:Math.min(rmV,N.length);upd();
- RAD=Math.max(20,...N.map(n=>Math.hypot(n.x,n.y,n.z)));N.forEach(n=>{n.kx=n.x;n.ky=n.y;n.kz=n.z});(d._lc||{})[astro?'a':'s']=N.map(n=>[n.x,n.y,n.z]);
+ RAD=Math.max(20,...N.map(n=>Math.hypot(n.x,n.y,n.z)));N.forEach(n=>{n.kx=n.x;n.ky=n.y;n.kz=n.z});(d._lc||{})[astro?'a':kris?'k':'s']=N.map(n=>[n.x,n.y,n.z]);
  $('lay').value=lay;if([...$('at').options].some(o=>o.value===at))$('at').value=at;
  hidT.forEach(k=>{if(!T[k])return;hidden.add(k);const i=[...$('leg').querySelectorAll('input')].find(x=>x.dataset.k===k);if(i)i.checked=false});
  hidR.forEach(k=>{hiddenR.add(k);const i=[...$('rfl').querySelectorAll('input')].find(x=>x.dataset.r===k);if(i)i.checked=false});
@@ -1310,7 +1354,7 @@ function frame(now){requestAnimationFrame(frame);
     ctx.globalAlpha*=.6;ctx.strokeStyle=e.c2;ctx.lineWidth=Math.max(.6,w1*.06);ctx.beginPath();ctx.moveTo(rL[0]-svx*.15,rL[1]-svy*.15);ctx.quadraticCurveTo(b.x-svx*1.35,b.y-svy*1.35,rR[0]-svx*.15,rR[1]-svy*.15);ctx.stroke();ctx.restore()}
   }else{const n=it.n,q=n.q,R=n.r*q.k;if(q.x<-R||q.x>W+R||q.y<-R||q.y>H+R)return;
    const g=ctx.createRadialGradient(q.x-.35*R,q.y-.35*R,R*.1,q.x,q.y,R);g.addColorStop(0,n.c0);g.addColorStop(.55,n.c1);g.addColorStop(1,n.c2);
-   ctx.globalAlpha=fade(n.dist)*(!(sel||selE||tr)||nb.has(n.i)?1:.15)*n.va;if(n.sh)zeichnePoly(n,proj);else if(n.shape==='bust')zeichneBueste(n,q,R);else if(n.shape==='starfish')zeichneSeestern(n,q,R,now/1000);else if(n.shape==='octopus')zeichneOktopus(n,proj);else if(n.shape==='torus')zeichneMesh(n,proj,TORUS);else if(n.shape==='book')zeichneMesh(n,proj,BOOK);else if(n.shape==='folder')zeichneMesh(n,proj,FOLDER);else if(n.role)zeichneAstro(n,q,R,now/1000);else{ctx.fillStyle=g;ctx.beginPath();ctx.arc(q.x,q.y,Math.max(R,1.5),0,7);ctx.fill()}zustandFx(n,q,R,now/1000);
+   ctx.globalAlpha=fade(n.dist)*(!(sel||selE||tr)||nb.has(n.i)?1:.15)*n.va;if(n.shape==='kristall')zeichneKristall(n,proj,q,now/1000);else if(n.sh)zeichnePoly(n,proj);else if(n.shape==='bust')zeichneBueste(n,q,R);else if(n.shape==='starfish')zeichneSeestern(n,q,R,now/1000);else if(n.shape==='octopus')zeichneOktopus(n,proj);else if(n.shape==='torus')zeichneMesh(n,proj,TORUS);else if(n.shape==='book')zeichneMesh(n,proj,BOOK);else if(n.shape==='folder')zeichneMesh(n,proj,FOLDER);else if(n.role)zeichneAstro(n,q,R,now/1000);else{ctx.fillStyle=g;ctx.beginPath();ctx.arc(q.x,q.y,Math.max(R,1.5),0,7);ctx.fill()}if(!kris)zustandFx(n,q,R,now/1000);
    if(Math.hypot(q.x-ax,q.y-ay)<=Math.max(R,4)&&q.z<bz){bz=q.z;best=n}}});
  ctx.globalAlpha=1;LBL.forEach(l=>{const p=proj(l.x,l.y,l.z);if(p.z<.5)return;const sz=Math.max(11,Math.min(30,foc*1.4/p.z));ctx.font=`600 ${sz}px system-ui,sans-serif`;ctx.textBaseline='middle';ctx.textAlign=orient==='h'?'center':'left';ctx.lineJoin='round';ctx.lineWidth=3;ctx.strokeStyle=space?'rgba(0,0,10,.6)':'rgba(255,255,255,.7)';ctx.strokeText(l.t,p.x,p.y);ctx.fillStyle=space?'#cfe0ff':'#0e2a4a';ctx.fillText(l.t,p.x,p.y)});
  hov=best;hovE=best?null:bestE;cv.style.cursor=(best||bestE)?'pointer':'default';
@@ -1323,7 +1367,7 @@ let fN=0,fT=performance.now();const pf=$('perf');
 function perfTick(now){fN++;if(now-fT>1000){pf.textContent=Math.round(fN*1000/(now-fT))+' fps';fN=0;fT=now}}
 // ---------- Leerer Raum (Version 75, Wunsch des Nutzers): Start ohne Objekte, Auswahl „Datenraum wählen …“ ----------
 function leererRaum(){if(DM.on&&!DM.laden)demoStop();ani=null;sperre(false);CUR=null;AX=null;AXO=null;DMO=null;N=[];E=[];T={};RT={};hidden.clear();hiddenR.clear();tr=null;waehle(null);
- astro=false;space=false;LBL=[];document.documentElement.classList.remove('space');$('kres').innerHTML='';$('klt').textContent='';$('leg').innerHTML='';$('legend').style.display='none';$('q').value='';$('res').innerHTML='';
+ astro=false;kris=false;space=false;LBL=[];document.documentElement.classList.remove('space');$('kres').innerHTML='';$('klt').textContent='';$('leg').innerHTML='';$('legend').style.display='none';$('q').value='';$('res').innerHTML='';
  CH=GEN.slice();fuelleAttr();fuelleRel();fuelleChains(null);$('lay').value='kraft';$('axui').style.display='none';$('ds').value='';cam.x=0;cam.y=0;cam.z=60;yaw=0;pitch=0;fly=null;aktiv()}
 // ---------- Intro (Version 75, Wunsch des Nutzers): gläserne Würfel über spiegelndem Boden, Kamerafahrt ca. 5 s, Esc oder Klick überspringt,
 // blendet dann in den leeren Standardhintergrund über. Abschaltbar (Häkchen „Intro beim Start zeigen“, localStorage 'intro'). Unter Testautomatisierung
