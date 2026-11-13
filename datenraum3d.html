@@ -2,7 +2,7 @@
 <html lang="de"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>3Deep – Datenraum in 3D</title>
-<meta name="3deep-darstellung" content="75">
+<meta name="3deep-darstellung" content="76">
 <style>
 :root{--fg:#e6edf3;--panel:rgba(15,22,41,.86);--mut:#9fb0c4}
 html,body{margin:0;height:100%;background:linear-gradient(180deg,#d4ecff 0%,#93c3ea 55%,#5088c0 100%) fixed;color:var(--fg);font:13px/1.4 system-ui,sans-serif;overflow:hidden}
@@ -31,7 +31,7 @@ html{--lg:#0e2a4a;--lgh:rgba(255,255,255,.85)}html.space{--lg:#dbe7ff;--lgh:rgba
 .tr{position:fixed;left:12px;color:var(--lg);text-shadow:0 0 3px var(--lgh),0 0 3px var(--lgh),0 0 7px var(--lgh);font-size:12px;pointer-events:none}
 #legend{top:8px}#hint{bottom:8px;line-height:1.5}.tr .m{color:var(--lg);opacity:.75}#legend label{pointer-events:auto}
 #intro{position:fixed;inset:0;z-index:60;transition:opacity 1.4s ease;cursor:pointer;background:#9dbbe4}#intro canvas{position:absolute;inset:0;width:100%;height:100%}#intro.aus{opacity:0;pointer-events:none}
-#intro .it{position:absolute;left:0;right:0;bottom:13%;text-align:center;color:#fff;text-shadow:0 2px 22px rgba(20,50,100,.5),0 0 2px rgba(20,50,100,.3);opacity:0;animation:itin 1.8s ease .9s forwards;pointer-events:none}
+#intro .it{position:absolute;left:0;right:0;bottom:calc(13% + clamp(29px,5vw,56px));text-align:center;color:#fff;text-shadow:0 2px 22px rgba(20,50,100,.5),0 0 2px rgba(20,50,100,.3);opacity:0;animation:itin 1.8s ease .9s forwards;pointer-events:none}
 #intro .it b{display:block;font:600 clamp(40px,7vw,78px)/1 system-ui,sans-serif;letter-spacing:.05em}#intro .it span{display:block;margin-top:10px;font:300 clamp(13px,1.6vw,20px) system-ui,sans-serif;letter-spacing:.35em;text-transform:uppercase}
 @keyframes itin{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 #cross{position:fixed;left:50%;top:50%;width:10px;height:10px;margin:-5px;border:1px solid #0a2a4a99;border-radius:50%;pointer-events:none;display:none}
@@ -89,7 +89,7 @@ html{--lg:#0e2a4a;--lgh:rgba(255,255,255,.85)}html.space{--lg:#dbe7ff;--lgh:rgba
 <label class="s">Neuzeichnen<select id="es"><option value="max" selected>Maximal: im Stillstand kein Neuzeichnen</option><option value="auto">Automatisch: im Stillstand 15 Bilder/s</option><option value="aus">Aus: immer volle Bildrate</option></select></label>
 <label style="display:block;margin-top:8px"><input type="checkbox" id="introan" checked> Intro beim Start zeigen</label>
 </details>
-<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 75</div>
+<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 76</div>
 </div>
 <div id="det" class="pn"></div></div>
 <div id="dcap"></div><div id="dfade" style="position:fixed;inset:0;background:#0b1424;opacity:0;pointer-events:none;transition:opacity .6s;z-index:14"></div><div id="cross"></div><div id="info"></div>

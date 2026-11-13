@@ -1,11 +1,11 @@
-/* 3Deep-Widget, Adapter Version 32.
+/* 3Deep-Widget, Adapter Version 33.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
    im Format der echten Schnittstellen-Antworten. */
 (function () {
   'use strict';
-  var DARSTELLUNG = '75';   // Version von datenraum3d.html; muss zu <meta name="3deep-darstellung"> dort passen (tests/test-gleichstand.js)
+  var DARSTELLUNG = '76';   // Version von datenraum3d.html; muss zu <meta name="3deep-darstellung"> dort passen (tests/test-gleichstand.js)
   var BKS = '/resources/v1/modeler/dsbks/dsbks:Bookmark';
   var ENG = '/resources/v1/modeler/dseng/dseng:EngItem';
   var DOC = '/resources/v1/modeler/documents';
@@ -1351,7 +1351,7 @@
   async function laden(sonder) {
     var b = sonder ? sonder.drop : S.treffer[+q('.td-tr').value]; if (!b) return;
     if (S.laeuft) { S.naechstes = { drop: b, nach: !!(sonder && sonder.nach), frisch: !!(sonder && sonder.frisch) }; S.abbruch = true; S.vorn = ''; status('Löse das laufende Laden ab …'); return; }
-    S.zuletzt = b; S.nachladen = false;
+    S.zuletzt = b; S.nachladen = false; if (!(sonder && sonder.nach)) S.letztesAuto = !!(sonder && sonder.auto);
     var t0 = Date.now(), fertig, gleich = !!(sonder && sonder.nach && S.gezeigt === S.lauf && S.lauf > 0);
     S.laufP = new Promise(function (ja) { fertig = ja; });
     try {
@@ -1378,6 +1378,7 @@
       if (S.abbruch) throw new Error('abgebrochen');
       sende({ quelle: '3deep-adapter', daten: erg.daten, name: b.title || 'Daten', lauf: S.lauf, start: !S.zwischen, ergaenzen: S.zwischen, fertig: true });
       S.zwischen = true; S.gezeigt = S.lauf; S.letzte = erg.daten; S.vorn = '';
+      letztesMerken(b);
       var sek = (Date.now() - t0) / 1000, erstes = S.stufen.length ? S.stufen[0].s : sek;
       S.stufen.push({ name: 'Fertig', s: sek, n: erg.daten.nodes.length, e: erg.daten.edges.length });
       status(erg.daten.nodes.length + ' Objekte, ' + erg.daten.edges.length + ' Beziehungen aus „' + (b.title || b.id) + '“ in ' + sek.toFixed(1) + ' s, ' + S.aufrufe + ' Abfragen' +
@@ -1388,12 +1389,29 @@
     } catch (e) {
       S.vorn = '';
       if (!S.abbruch) status('Laden fehlgeschlagen: ' + e.message + ' (Details unter „Diagnose“)', true);
+      if (S.letztesAuto && !S.abbruch) { try { localStorage.removeItem(letztesSchluessel()); } catch (x) { } status('Das zuletzt geöffnete Objekt „' + (b.title || b.id) + '“ ließ sich nicht laden (' + e.message + ') und wird nicht mehr automatisch geöffnet.', true); }
     } finally {
       S.laeuft = false; S.aufStufe = null; S.vorn = '';
       var n = S.naechstes; S.naechstes = null; S.abbruch = false;
       diagnose(); fertig();
       if (n) laden(n); else if (S.nachladen) haekchenGeaendert();
     }
+  }
+  // Adapter 33 (Wunsch des Nutzers): zuletzt erfolgreich geladenes Objekt (Bookmark oder Drop) im Browser merken (localStorage, je Tenant)
+  // und beim nächsten Öffnen automatisch laden – die Darstellung zeigt es erst nach ihrem Intro (sie sammelt die Nachrichten bis dahin).
+  function letztesSchluessel() { return '3deep_letztes_' + (S.live ? (S.tenant || '-') : 'test'); }
+  function letztesMerken(b) {
+    var m = { art: b.art || 'bm', id: b.id, title: b.title || b.name || '', typ: b.typ || '', anzeige: b.anzeige || '', ctx: b.ctx || '', t: Date.now() };
+    S.letztesGemerkt = m; try { localStorage.setItem(letztesSchluessel(), JSON.stringify(m)); } catch (e) { }
+  }
+  function letztesLaden() {
+    if (S.letztesGestartet || S.laeuft || S.zuletzt) return; S.letztesGestartet = true;
+    var m = null; try { m = JSON.parse(localStorage.getItem(letztesSchluessel()) || 'null'); } catch (e) { }
+    if (!m || !m.id) return;
+    S.letztesGemerkt = m;
+    if (m.art === 'bm' || !m.art) q('.td-su').value = m.title || m.id;
+    status('Lade das zuletzt geöffnete Objekt „' + (m.title || m.id) + '“ …');
+    laden({ drop: m, auto: true });
   }
   // Häkchen nach dem Laden geändert: zuletzt geladenes Objekt (Drop oder Bookmark) mit den neuen Einstellungen nachladen (Bild bleibt stehen).
   // Mehrere Häkchen kurz hintereinander = ein Ladevorgang; ein noch laufendes Laden wird abgelöst.
@@ -1409,8 +1427,9 @@
     clearTimeout(S.neuUhr); laden({ drop: S.zuletzt, nach: true, frisch: true });
   }
   function diagnoseText() {
-    var z = ['3Deep-Widget Diagnose (Adapter 32, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
+    var z = ['3Deep-Widget Diagnose (Adapter 33, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
       '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-') + (S.ctxZahl ? ' (automatisch gewählt, ' + S.ctxZahl + ' verfügbar)' : ''), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), ''];
+    z.push('Zuletzt geöffnet (gemerkt, wird beim Öffnen geladen): ' + (S.letztesGemerkt ? (S.letztesGemerkt.title || '-') + ' [' + S.letztesGemerkt.id + '], ' + (S.letztesGemerkt.art || 'bm') : '-'));
     if (S.stufen && S.stufen.length) {
       z.push('', 'Ablauf (dieses Laden): ' + (S.aufrufe || 0) + ' Abfragen an die Plattform, ' + S.cacheZ.treffer + ' aus dem Zwischenspeicher' + (S.laeuft ? ' – läuft noch' : ''));
       S.stufen.forEach(function (s) { z.push('  ' + s.s.toFixed(1).padStart(6) + ' s  ' + s.name + ' – ' + s.n + ' Objekte, ' + s.e + ' Beziehungen'); });
@@ -1554,16 +1573,17 @@
         if (erledigt) return; erledigt = true;
         S.space = String(url).replace(/\/$/, ''); S.tenant = plattform || tenantAus(S.space); S.spaceQuelle = quelle;
         var fest = (w.getValue('SecurityContext') || '').trim();
-        if (fest) { S.ctx = fest; status('Bereit. Bookmark-Namen eingeben und „Suchen“ drücken.'); return; }
+        if (fest) { S.ctx = fest; status('Bereit. Bookmark-Namen eingeben und „Suchen“ drücken.'); letztesLaden(); return; }
         kontexte().then(function (k) {
           S.ctx = k.bevorzugt; S.ctxZahl = k.liste.length;   // automatisch: bevorzugter, sonst erster Kontext (kein Auswahlfeld, Wunsch des Nutzers)
-          if (!S.ctx) ctxVonHand('Kein Security Context gefunden.'); else status('Bereit. Bookmark-Namen eingeben und „Suchen“ drücken.');
+          if (!S.ctx) ctxVonHand('Kein Security Context gefunden.'); else { status('Bereit. Bookmark-Namen eingeben und „Suchen“ drücken.'); letztesLaden(); }
         }, function (e) { ctxVonHand('Security Context nicht ermittelbar (' + e.message + ').'); }).then(diagnose);
       }
       function ctxVonHand(grund) {
         var f = q('.td-ci'), alt = ''; try { alt = localStorage.getItem('3deep_ctx') || ''; } catch (x) { }
         f.style.display = ''; f.value = alt; S.ctx = alt;
         status(alt ? 'Bereit (Security Context aus der letzten Sitzung). Bookmark-Namen eingeben und „Suchen“ drücken.' : grund + ' Bitte oben im Feld „Security Context“ eintragen (Rolle.Organisation.Collaborative Space), dann suchen.', !alt);
+        if (alt) letztesLaden();
       }
       function rueckfall(grund) {
         if (erledigt) return;
@@ -1848,7 +1868,7 @@
     S.live = false; S.maxText = '1500'; S.viewerUrl = window.__3deep.basis + 'datenraum3d.html?v=' + DARSTELLUNG;
     q('.td-mo').style.display = ''; q('.td-su').value = 'E-Fahrzeug';
     ladeDarstellung();
-    kontexte().then(function (k) { S.ctx = k.bevorzugt; status('Testmodus (nicht im 3DDashboard). „Suchen“ und dann „Laden“ drücken.'); });
+    kontexte().then(function (k) { S.ctx = k.bevorzugt; status('Testmodus (nicht im 3DDashboard). „Suchen“ und dann „Laden“ drücken.'); if (!S.ohneLetztes) letztesLaden(); });
   }
 
   // ---------- Einstieg (vom Lader index.html aufgerufen) ----------
