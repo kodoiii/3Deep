@@ -1,11 +1,11 @@
-/* 3Deep-Widget, Adapter Version 30.
+/* 3Deep-Widget, Adapter Version 31.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
    im Format der echten Schnittstellen-Antworten. */
 (function () {
   'use strict';
-  var DARSTELLUNG = '73';   // Version von datenraum3d.html; muss zu <meta name="3deep-darstellung"> dort passen (tests/test-gleichstand.js)
+  var DARSTELLUNG = '74';   // Version von datenraum3d.html; muss zu <meta name="3deep-darstellung"> dort passen (tests/test-gleichstand.js)
   var BKS = '/resources/v1/modeler/dsbks/dsbks:Bookmark';
   var ENG = '/resources/v1/modeler/dseng/dseng:EngItem';
   var DOC = '/resources/v1/modeler/documents';
@@ -1253,7 +1253,7 @@
   window.addEventListener('message', function (e) {
     var m = e.data; if (!m || m.quelle !== '3deep' || !S.frame || e.source !== S.frame.contentWindow) return;
     if (m.download) { download(m.download, m.name); return; }
-    if (m.bereit) { S.bereit = true; if (S.wartend) sende(S.wartend); else sende({ quelle: '3deep-adapter', steuerung: 'game' }); }
+    if (m.bereit) { S.bereit = true; if (S.wartend) sende(S.wartend); }  // Adapter 31: keine Steuerungsvorgabe mehr, die Darstellung bleibt bei CATIA (Wunsch des Nutzers)
   });
 
   // ---------- Drag & Drop aus 3DEXPERIENCE (Format 3DXContent: {protocol:'3DXContent', data:{items:[{objectId, objectType, displayName, displayType, …}]}}) ----------
@@ -1364,7 +1364,7 @@
       var nl = q('.td-nl'); if (nl) nl.style.display = '';
       S.aufStufe = function (daten, name) {
         var d = gleich ? vereinige(daten) : daten, sek = (Date.now() - t0) / 1000;
-        sende({ quelle: '3deep-adapter', daten: d, name: b.title || 'Daten', lauf: S.lauf, start: !S.zwischen, ergaenzen: true, steuerung: S.zwischen ? undefined : 'game' });
+        sende({ quelle: '3deep-adapter', daten: d, name: b.title || 'Daten', lauf: S.lauf, start: !S.zwischen, ergaenzen: true });
         S.zwischen = true; S.gezeigt = S.lauf;
         S.stufen.push({ name: name, s: sek, n: d.nodes.length, e: d.edges.length });
         if (!S.vorn) { S.vorn = (gleich ? 'Lade nach' : 'Bild steht (' + d.nodes.length + ' Objekte nach ' + sek.toFixed(1) + ' s)') + ' – im Hintergrund: '; fortschritt('weitere Daten …'); }
@@ -1376,7 +1376,7 @@
       else if (b.art === 'person') erg = await leseBookmark(null, null, { person: { id: b.id, name: b.title }, struktur: false });
       else erg = await leseBookmark(b.id, b.title || b.name || '');
       if (S.abbruch) throw new Error('abgebrochen');
-      sende({ quelle: '3deep-adapter', daten: erg.daten, name: b.title || 'Daten', lauf: S.lauf, start: !S.zwischen, ergaenzen: S.zwischen, fertig: true, steuerung: S.zwischen ? undefined : 'game' });
+      sende({ quelle: '3deep-adapter', daten: erg.daten, name: b.title || 'Daten', lauf: S.lauf, start: !S.zwischen, ergaenzen: S.zwischen, fertig: true });
       S.zwischen = true; S.gezeigt = S.lauf; S.letzte = erg.daten; S.vorn = '';
       var sek = (Date.now() - t0) / 1000, erstes = S.stufen.length ? S.stufen[0].s : sek;
       S.stufen.push({ name: 'Fertig', s: sek, n: erg.daten.nodes.length, e: erg.daten.edges.length });
@@ -1409,7 +1409,7 @@
     clearTimeout(S.neuUhr); laden({ drop: S.zuletzt, nach: true, frisch: true });
   }
   function diagnoseText() {
-    var z = ['3Deep-Widget Diagnose (Adapter 30, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
+    var z = ['3Deep-Widget Diagnose (Adapter 31, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
       '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-') + (S.ctxZahl ? ' (automatisch gewählt, ' + S.ctxZahl + ' verfügbar)' : ''), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), ''];
     if (S.stufen && S.stufen.length) {
       z.push('', 'Ablauf (dieses Laden): ' + (S.aufrufe || 0) + ' Abfragen an die Plattform, ' + S.cacheZ.treffer + ' aus dem Zwischenspeicher' + (S.laeuft ? ' – läuft noch' : ''));
