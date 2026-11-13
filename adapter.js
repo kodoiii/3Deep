@@ -1,11 +1,11 @@
-/* 3Deep-Widget, Adapter Version 31.
+/* 3Deep-Widget, Adapter Version 32.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
    im Format der echten Schnittstellen-Antworten. */
 (function () {
   'use strict';
-  var DARSTELLUNG = '74';   // Version von datenraum3d.html; muss zu <meta name="3deep-darstellung"> dort passen (tests/test-gleichstand.js)
+  var DARSTELLUNG = '75';   // Version von datenraum3d.html; muss zu <meta name="3deep-darstellung"> dort passen (tests/test-gleichstand.js)
   var BKS = '/resources/v1/modeler/dsbks/dsbks:Bookmark';
   var ENG = '/resources/v1/modeler/dseng/dseng:EngItem';
   var DOC = '/resources/v1/modeler/documents';
@@ -1356,7 +1356,7 @@
     S.laufP = new Promise(function (ja) { fertig = ja; });
     try {
       S.laeuft = true; S.abbruch = false; S.vorn = ''; S.ladeNr = (S.ladeNr || 0) + 1;
-      S.max = Math.max(10, parseInt(S.maxText, 10) || 1500); S.mitDok = q('.td-dk').checked; S.mitIssues = q('.td-ia').checked; S.mitExpand = q('.td-ex').checked; S.mitZone = q('.td-zq').checked; S.mitZeich = q('.td-zg').checked;
+      S.max = Math.max(10, parseInt(S.maxText, 10) || 1500); S.mitDok = q('.td-dk').checked; S.mitIssues = q('.td-ia').checked; S.mitExpand = !S.ohneExpand; S.mitZone = !S.ohneZone; /* Adapter 32: Häkchen „Schnell“ und „Attribute“ entfernt, immer an (Rückfälle bleiben); S.ohneExpand/S.ohneZone nur für Tests */ S.mitZeich = q('.td-zg').checked;
       if (sonder && sonder.frisch) cacheLeeren(); else cacheAufraeumen();
       S.aufrufe = 0; S.issCacheZ = { treffer: 0, neu: 0 }; S.cacheZ = { treffer: 0, neu: 0 }; S.issueInfo = null; S.vorschauInfo = null; vorschauAufraeumen();   // Diagnose-Abschnitte gelten nur für dieses Laden
       S.stufen = []; S.zwischen = gleich;
@@ -1409,7 +1409,7 @@
     clearTimeout(S.neuUhr); laden({ drop: S.zuletzt, nach: true, frisch: true });
   }
   function diagnoseText() {
-    var z = ['3Deep-Widget Diagnose (Adapter 31, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
+    var z = ['3Deep-Widget Diagnose (Adapter 32, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
       '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-') + (S.ctxZahl ? ' (automatisch gewählt, ' + S.ctxZahl + ' verfügbar)' : ''), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), ''];
     if (S.stufen && S.stufen.length) {
       z.push('', 'Ablauf (dieses Laden): ' + (S.aufrufe || 0) + ' Abfragen an die Plattform, ' + S.cacheZ.treffer + ' aus dem Zwischenspeicher' + (S.laeuft ? ' – läuft noch' : ''));
@@ -1494,8 +1494,6 @@
       '<select class="td-tr" style="' + feld + ';max-width:260px;display:none"></select>' +
       '<button class="td-la" style="' + knopf + ';background:#368ec4;border-color:#368ec4;color:#fff;display:none">Laden</button>' +
       '<button class="td-nl" title="Neu lesen: Zwischenspeicher leeren und das geladene Objekt frisch von der Plattform holen (Daten bleiben sonst 30 Minuten gespeichert)" style="' + knopf + ';display:none">↻</button>' +
-      '<label title="Produktstruktur mit einer Abfrage je Produkt lesen (expand, schneller); aus = Ebene für Ebene wie bisher" style="display:flex;align-items:center;gap:4px"><input class="td-ex" type="checkbox" checked="checked" />Schnell</label>' +
-      '<label title="Attribute aller Strukturobjekte (z. B. Teilenummer) mit einer Abfrage nachlesen (Zone Query); aus = wie bisher" style="display:flex;align-items:center;gap:4px"><input class="td-zq" type="checkbox" checked="checked" />Attribute</label>' +
       '<label title="Spezifikationen und Attachments der Objekte mitlesen (im Hintergrund, nach dem ersten Bild)" style="display:flex;align-items:center;gap:4px"><input class="td-dk" type="checkbox" checked="checked" />Dokumente</label>' +
       '<label title="Zeichnungen (Drawings) der Strukturobjekte suchen und anzeigen (im Hintergrund, nach dem ersten Bild)" style="display:flex;align-items:center;gap:4px"><input class="td-zg" type="checkbox" checked="checked" />Zeichnungen</label>' +
       '<label title="Issues, Aufgaben und Personen zu den Objekten mitlesen (im Hintergrund, nach dem ersten Bild)" style="display:flex;align-items:center;gap:4px"><input class="td-ia" type="checkbox" checked="checked" />Issues/Aufgaben</label>' +
@@ -1515,7 +1513,7 @@
     q('.td-vb').onclick = function () { status('Prüfe Vorschaubilder …'); vorschauPruefen().then(function () { status('Vorschaubilder geprüft – Ergebnis in der Diagnose unter „Vorschaubilder“.'); }); };
     q('.td-dc').onclick = function () { var d = q('.td-dx'); d.value = diagnoseText(); d.select(); try { document.execCommand('copy'); } catch (e) { } if (navigator.clipboard) navigator.clipboard.writeText(d.value).catch(function () { }); };
     q('.td-ci').onchange = function (e) { S.ctx = e.target.value.trim(); try { localStorage.setItem('3deep_ctx', S.ctx); } catch (x) { } if (S.ctx) status('Security Context gesetzt. Bookmark-Namen eingeben und „Suchen“ drücken.'); };
-    ['.td-ex', '.td-zq', '.td-dk', '.td-zg', '.td-ia'].forEach(function (k) { q(k).addEventListener('change', haekchenGeaendert); });
+    ['.td-dk', '.td-zg', '.td-ia'].forEach(function (k) { q(k).addEventListener('change', haekchenGeaendert); });
     S.frame = q('.td-fr');
     dropEinrichten(q('.td-dz'));
   }

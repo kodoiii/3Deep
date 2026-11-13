@@ -2,7 +2,7 @@
 <html lang="de"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>3Deep – Datenraum in 3D</title>
-<meta name="3deep-darstellung" content="74">
+<meta name="3deep-darstellung" content="75">
 <style>
 :root{--fg:#e6edf3;--panel:rgba(15,22,41,.86);--mut:#9fb0c4}
 html,body{margin:0;height:100%;background:linear-gradient(180deg,#d4ecff 0%,#93c3ea 55%,#5088c0 100%) fixed;color:var(--fg);font:13px/1.4 system-ui,sans-serif;overflow:hidden}
@@ -30,6 +30,10 @@ summary{cursor:pointer;color:var(--mut);margin-top:10px}.item.on{background:#fff
 html{--lg:#0e2a4a;--lgh:rgba(255,255,255,.85)}html.space{--lg:#dbe7ff;--lgh:rgba(0,0,14,.85)}
 .tr{position:fixed;left:12px;color:var(--lg);text-shadow:0 0 3px var(--lgh),0 0 3px var(--lgh),0 0 7px var(--lgh);font-size:12px;pointer-events:none}
 #legend{top:8px}#hint{bottom:8px;line-height:1.5}.tr .m{color:var(--lg);opacity:.75}#legend label{pointer-events:auto}
+#intro{position:fixed;inset:0;z-index:60;transition:opacity 1.4s ease;cursor:pointer;background:#9dbbe4}#intro canvas{position:absolute;inset:0;width:100%;height:100%}#intro.aus{opacity:0;pointer-events:none}
+#intro .it{position:absolute;left:0;right:0;bottom:13%;text-align:center;color:#fff;text-shadow:0 2px 22px rgba(20,50,100,.5),0 0 2px rgba(20,50,100,.3);opacity:0;animation:itin 1.8s ease .9s forwards;pointer-events:none}
+#intro .it b{display:block;font:600 clamp(40px,7vw,78px)/1 system-ui,sans-serif;letter-spacing:.05em}#intro .it span{display:block;margin-top:10px;font:300 clamp(13px,1.6vw,20px) system-ui,sans-serif;letter-spacing:.35em;text-transform:uppercase}
+@keyframes itin{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 #cross{position:fixed;left:50%;top:50%;width:10px;height:10px;margin:-5px;border:1px solid #0a2a4a99;border-radius:50%;pointer-events:none;display:none}
 </style></head><body>
 <canvas id="cv"></canvas>
@@ -37,7 +41,7 @@ html{--lg:#0e2a4a;--lgh:rgba(255,255,255,.85)}html.space{--lg:#dbe7ff;--lgh:rgba
 <h1><button id="rcz" title="Bedienfeld einklappen (Taste M)">»</button>3Deep <span class="m" style="font-weight:400;font-size:13px">Datenraum in 3D</span></h1>
 <div id="perf" class="m" style="font-size:11px;margin-bottom:2px"></div><div id="stat" class="m">Skript wird nicht ausgeführt (Skripte blockiert?)</div>
 <div style="margin-top:8px"><input id="q" type="text" placeholder="Suche (Name, ID, Metadaten) …"><div id="res"></div></div>
-<label class="s">Datenraum<select id="ds"><option value="demo">Demo: Elektroauto (fiktiv)</option><option value="speaker">Speaker (Training, aus CSV)</option><option value="rflp">RFLP System Modeling (Demo)</option><option value="kauf">Kaufmännisch (fiktiv)</option><option value="sat">Kleinsatellit (fiktiv)</option><option value="import" hidden>Importierte Datei</option></select></label>
+<label class="s">Datenraum<select id="ds"><option value="" selected>Datenraum wählen …</option><option value="demo">Demo: Elektroauto (fiktiv)</option><option value="speaker">Speaker (Training, aus CSV)</option><option value="rflp">RFLP System Modeling (Demo)</option><option value="kauf">Kaufmännisch (fiktiv)</option><option value="sat">Kleinsatellit (fiktiv)</option><option value="import" hidden>Importierte Datei</option></select></label>
 <label class="s">Layout<select id="lay"><option value="kraft">Netz (Kräfte)</option><option value="schicht">Schichten nach Objekttyp</option><option value="reife">Schichten nach Reifegrad</option><option value="baum">Baum (Baugruppenstruktur)</option><option value="rflp">RFLP-Ebenen (R · F · L · P)</option><option value="attr">Gruppiert nach Attribut (s. u.)</option><option value="achsen">Wertediagramm 3D (Kennzahlen auf Achsen)</option></select></label>
 <label class="s">Attribut<select id="at"></select></label>
 <div id="axui" style="display:none;margin-top:6px;padding:6px 8px;border:1px solid #3a4a68;border-radius:8px"><b>Wertediagramm 3D</b>
@@ -83,8 +87,9 @@ html{--lg:#0e2a4a;--lgh:rgba(255,255,255,.85)}html.space{--lg:#dbe7ff;--lgh:rgba
 </details>
 <details><summary>Energiesparen</summary>
 <label class="s">Neuzeichnen<select id="es"><option value="max" selected>Maximal: im Stillstand kein Neuzeichnen</option><option value="auto">Automatisch: im Stillstand 15 Bilder/s</option><option value="aus">Aus: immer volle Bildrate</option></select></label>
+<label style="display:block;margin-top:8px"><input type="checkbox" id="introan" checked> Intro beim Start zeigen</label>
 </details>
-<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 74</div>
+<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 75</div>
 </div>
 <div id="det" class="pn"></div></div>
 <div id="dcap"></div><div id="dfade" style="position:fixed;inset:0;background:#0b1424;opacity:0;pointer-events:none;transition:opacity .6s;z-index:14"></div><div id="cross"></div><div id="info"></div>
@@ -169,7 +174,7 @@ function kraftLayout(vonHier){const n_=N.length,big=n_>400,sz=Math.cbrt(n_/150)*
   if(!moved)break}
  const c=N.reduce((p,n)=>n.adj.length>p.adj.length?n:p,N[0]),cx=c.x,cy=c.y,cz=c.z;N.forEach(n=>{n.x-=cx;n.y-=cy;n.z-=cz}); // meistvernetztes Objekt in die Mitte
 }
-function ladeDaten(d){CUR=d;AX=null;AXO=null;ST_T=d.stateTitle||'Reifegrad';ST_N=d.stateNames||null;if(DM.on&&!DM.laden)demoStop();DMO=null;if(ani&&!ani.swap){ani=null;sperre(false)}
+function ladeDaten(d){CUR=d;$('legend').style.display='';AX=null;AXO=null;ST_T=d.stateTitle||'Reifegrad';ST_N=d.stateNames||null;if(DM.on&&!DM.laden)demoStop();DMO=null;if(ani&&!ani.swap){ani=null;sperre(false)}
  T={};Object.keys(d.types||{}).forEach(k=>{const t=d.types[k]||{};T[k]={c:HEX.test(t.color)?t.color:'#9aa5b1',d:+t.size>0?+t.size:1,l:t.label||k,shape:t.shape,layer:t.layer,role:t.role,tier:t.tier}});
  RT=d.relTypes||{};const nn=[],ee=[],idx={};
  (d.nodes||[]).forEach(o=>{if(o.id==null)return;if(!T[o.type])T[o.type]={c:'#9aa5b1',d:1,l:String(o.type)};const t=T[o.type];
@@ -384,7 +389,8 @@ function baum(){const n_=N.length,par=new Array(n_).fill(-2),roots=wurzeln(par,n
  foot(V);const P=new Array(n_),dy=MIND*1.5;let dm=0;
  const place=(i,x,z,d)=>{if(i<n_){P[i]=[x,-d*dy,z];dm=Math.max(dm,d)}ch[i].forEach((c,j)=>place(c,x+off[i][j][0],z+off[i][j][1],i<n_?d+1:0))};
  place(V,0,0,0);P.forEach(p=>p[1]+=dm*dy/2);return sep(P)}
-function setLayout(m,anim){LBL=[];if(m!=='achsen'){AX=null;AXO=null}$('axui').style.display=m==='achsen'?'block':'none';let P=m==='achsen'?achsenLayout():m==='schicht'?schichten():m==='reife'?reife():m==='rflp'?rflp():m==='baum'?baum():m==='attr'?attrLayout():N.map(n=>[n.kx,n.ky,n.kz]);if(orient==='h'&&m==='baum')P=P.map(p=>[-p[1],p[0],p[2]]);space=astro;document.documentElement.classList.toggle('space',space);
+function setLayout(m,anim){LBL=[];if(m!=='achsen'){AX=null;AXO=null}$('axui').style.display=m==='achsen'?'block':'none';if(!N.length)return; // leerer Raum (Version 75)
+ let P=m==='achsen'?achsenLayout():m==='schicht'?schichten():m==='reife'?reife():m==='rflp'?rflp():m==='baum'?baum():m==='attr'?attrLayout():N.map(n=>[n.kx,n.ky,n.kz]);if(orient==='h'&&m==='baum')P=P.map(p=>[-p[1],p[0],p[2]]);space=astro;document.documentElement.classList.toggle('space',space);
  N.forEach((n,i)=>{n.tx=P[i][0];n.ty=P[i][1];n.tz=P[i][2];if(!anim){n.x=n.tx;n.y=n.ty;n.z=n.tz;n.va=(!AXO||AXO.has(n.i))&&(!DMO||DMO.has(n.i))?1:0}});animL=!!anim;if(anim)home(false)}
 $('lay').onchange=e=>setLayout(e.target.value,true);
 $('at').onchange=()=>{$('lay').value='attr';setLayout('attr',true)};
@@ -418,7 +424,7 @@ function csvZuDaten(text,titel,quelle){
  nodes.forEach(n=>{if(eltern.has(n.id))n.size=3.36});
  const spacing=2.8*Math.max(3,...nodes.filter(n=>n.type!=='Bookmark-Folder').map(n=>n.size||types[n.type].size));   // Abstand wie vor Version 70 (Ordner damals 3)
  return{types,relTypes,nodes,edges,spacing}}
-$('ds').onchange=e=>{$('err').textContent='';try{ladeDaten(e.target.value==='speaker'?csvZuDaten(SPEAKER_CSV,'Speaker','bookmark_editor_Nov_04_2026_20_58_44.csv'):e.target.value==='rflp'?rflpData():e.target.value==='kauf'?kaufData():e.target.value==='sat'?satData():demoData())}catch(x){$('err').textContent='Fehler: '+x.message}};
+$('ds').onchange=e=>{$('err').textContent='';if(!e.target.value){leererRaum();return}try{ladeDaten(e.target.value==='speaker'?csvZuDaten(SPEAKER_CSV,'Speaker','bookmark_editor_Nov_04_2026_20_58_44.csv'):e.target.value==='rflp'?rflpData():e.target.value==='kauf'?kaufData():e.target.value==='sat'?satData():demoData())}catch(x){$('err').textContent='Fehler: '+x.message}};
 // ---------- Datenraum „Kleinsatellit (fiktiv)“: Erdbeobachtungssatellit EO-Sat 1 im Critical Design Review ----------
 function satData(){s=31;
  const de=(x,d)=>x.toFixed(d).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.'),fk=x=>de(x,x<1?2:1)+' kg',fw=x=>de(x,x%1?1:0)+' W';
@@ -1047,12 +1053,14 @@ function ergaenzeDaten(d,fertig){
  if(profN){const p=N.find(x=>x.key===profN.key);if(!p)schliesseProfil();else{profN=p;if(p.img&&$('profb').dataset.u!==p.img)profBild(p)}}}
 // ---------- Einbettung (Version 65): Daten vom 3Deep-Widget-Adapter per postMessage ----------
 function setzeSteuerung(v){v=v==='game'||v==='wasd'?'game':'catia';$('ctl').value=v;$('ctl').onchange({target:{value:v}})}
-addEventListener('message',e=>{const m=e.data;if(!m||m.quelle!=='3deep-adapter'||e.source!==parent)return;
+addEventListener('message',e=>{const m=e.data;if(!m||m.quelle!=='3deep-adapter'||e.source!==parent)return;if(INTRO.on)INTRO.q.push(m);else adapterNachricht(m)});
+// Version 75: Daten, die während des Intros kommen, werden gesammelt und nach dem Intro der Reihe nach angezeigt
+function adapterNachricht(m){
  if(m.daten){try{$('err').textContent='';
   // Version 68: start = neuer Ladevorgang, ergaenzen = Zwischenstand desselben Laufs (lauf), fertig = letzter Stand
   if(m.ergaenzen&&!m.start&&m.lauf!=null&&m.lauf===AUF.lauf)ergaenzeDaten(m.daten,!!m.fertig);else{AUF.eigen=false;AUF.neu=0;AUF.erst=true;ladeDaten(m.daten)}
   AUF.lauf=m.lauf!=null?m.lauf:null;AUF.aktiv=!!m.ergaenzen&&!m.fertig;if(m.fertig){AUF.neu=0;AUF.erst=false}$('ds').value='import'}catch(x){$('err').textContent='Fehler: '+x.message}}
- if(m.steuerung)setzeSteuerung(m.steuerung);aktiv()});
+ if(m.steuerung)setzeSteuerung(m.steuerung);aktiv()}
 if(/[?&]steuerung=(wasd|game)/.test(location.search))setzeSteuerung('game');
 if(parent!==window){try{parent.postMessage({quelle:'3deep',bereit:true},'*')}catch(_){}}
 // ---------- SpaceMouse (WebHID), zusätzlich zur Maus ----------
@@ -1270,7 +1278,7 @@ function frame(now){requestAnimationFrame(frame);
  const vis=new Set(pool.slice(0,maxO).map(n=>n.i)),items=[];let ec=0;
  N.forEach(n=>{if(vis.has(n.i)&&n.q.z>.5)items.push({z:n.q.z,n})});
  E.forEach(e=>{if(!hiddenR.has(e.type||'(ohne Typ)')&&vis.has(e.a)&&vis.has(e.b)){ec++;const A=N[e.a],B=N[e.b];if(A.q.z>.5&&B.q.z>.5)items.push({z:(A.q.z+B.q.z)/2,e})}});
- $('stat').textContent=`Sichtbar: ${vis.size} von ${N.length} Objekten, ${ec} von ${E.length} Beziehungen`;
+ $('stat').textContent=N.length?`Sichtbar: ${vis.size} von ${N.length} Objekten, ${ec} von ${E.length} Beziehungen`:'Kein Datenraum geladen. Oben „Datenraum“ wählen, JSON importieren oder Demo abspielen.';
  items.sort((a,b)=>b.z-a.z);ctx.clearRect(0,0,W,H);ctx.lineCap='butt';if(space)zeichneSterne(r,u,f,foc);if(PK.on)zeichneParcours(proj,foc,now);if(ani&&ani.bang)zeichneBang(r,u,f,foc,ani);if(AX&&AXO&&!PK.on&&$('lay').value==='achsen')zeichneAchsen(proj,vis,foc);
  const fade=d=>1-.65*Math.min(1,Math.max(0,(d-.4*maxD)/(.6*maxD))),nb=tr?tr.nodes:new Set(must);
  const ax=locked?W/2:mx,ay=locked?H/2:my;let best=null,bz=1e9,bestE=null,bzE=1e9;
@@ -1313,5 +1321,72 @@ function frame(now){requestAnimationFrame(frame);
 // ---------- Messanzeige: Grafikchip laut Browser und Bilder pro Sekunde ----------
 let fN=0,fT=performance.now();const pf=$('perf');
 function perfTick(now){fN++;if(now-fT>1000){pf.textContent=Math.round(fN*1000/(now-fT))+' fps';fN=0;fT=now}}
-ladeDaten(demoData());requestAnimationFrame(frame);
+// ---------- Leerer Raum (Version 75, Wunsch des Nutzers): Start ohne Objekte, Auswahl „Datenraum wählen …“ ----------
+function leererRaum(){if(DM.on&&!DM.laden)demoStop();ani=null;sperre(false);CUR=null;AX=null;AXO=null;DMO=null;N=[];E=[];T={};RT={};hidden.clear();hiddenR.clear();tr=null;waehle(null);
+ astro=false;space=false;LBL=[];document.documentElement.classList.remove('space');$('kres').innerHTML='';$('klt').textContent='';$('leg').innerHTML='';$('legend').style.display='none';$('q').value='';$('res').innerHTML='';
+ CH=GEN.slice();fuelleAttr();fuelleRel();fuelleChains(null);$('lay').value='kraft';$('axui').style.display='none';$('ds').value='';cam.x=0;cam.y=0;cam.z=60;yaw=0;pitch=0;fly=null;aktiv()}
+// ---------- Intro (Version 75, Wunsch des Nutzers): gläserne Würfel über spiegelndem Boden, Kamerafahrt ca. 5 s, Esc oder Klick überspringt,
+// blendet dann in den leeren Standardhintergrund über. Abschaltbar (Häkchen „Intro beim Start zeigen“, localStorage 'intro'). Unter Testautomatisierung
+// (navigator.webdriver) aus, damit die übrigen Tests unverändert laufen; tests/test-intro.js schaltet es gezielt ein.
+const INTRO={on:false,q:[],stop:null};
+function introAn(){try{return localStorage.getItem('intro')!=='aus'}catch(_){return true}}
+$('introan').checked=introAn();$('introan').onchange=e=>{try{localStorage.setItem('intro',e.target.checked?'an':'aus')}catch(_){}};
+function introStart(){if(!introAn()||navigator.webdriver)return;
+ const wrap=document.createElement('div'),cvI=document.createElement('canvas');wrap.id='intro';wrap.appendChild(cvI);
+ wrap.insertAdjacentHTML('beforeend','<div class="it"><b>3Deep</b><span>Datenraum in 3D</span></div>');document.body.appendChild(wrap);
+ const g=cvI.getContext('2d');let w=0,h=0;INTRO.on=true;
+ const rs=()=>{const d=Math.min(2,devicePixelRatio||1);w=innerWidth;h=innerHeight;cvI.width=w*d;cvI.height=h*d;g.setTransform(d,0,0,d,0,0)};rs();addEventListener('resize',rs);
+ // Szene: Würfel (Mitte c, halbe Kantenlängen e, Drehung rot(t) -> [Gier, Neigung]), innere Kristallflächen ln
+ const B=[],FL=[],ra=(i,j,a,b)=>a+(b-a)*hs(i,j);
+ const kristall=(i,k)=>{const L=[];for(let m=0;m<k;m++){const ax=Math.floor(hs(i,m*7+1)*3),p=ra(i,m*7+2,-.75,.75),a0=ra(i,m*7+3,-1,.2),a1=ra(i,m*7+4,a0+.4,1),b0=ra(i,m*7+5,-1,.2),b1=ra(i,m*7+6,b0+.4,1),
+   pt=(a,b)=>ax===0?[p,a,b]:ax===1?[a,p,b]:[a,b,p];L.push({p:[pt(a0,b0),pt(a1,b0),pt(a1,b1),pt(a0,b1)],d:hs(i,m*7+7)<.35})}return L};
+ const box=(x,y,z,ex,ey,ez,rot,k,spieg)=>{const i=B.length;B.push({c:[x,y,z],e:[ex,ey,ez],rot,ln:kristall(i+11,k),sp:spieg!==false})};
+ // Mittelwürfel und schwebende Würfel(gruppen), langsam taumelnd
+ box(0,15.5,-30,6.2,6.2,6.2,t=>[.42+t*.12,.1+.03*Math.sin(t*.7)],22);B[0].dicht=true;
+ box(-10.5,16.5,-22,1.1,1.6,1.1,t=>[t*.5+1,.4+.2*Math.sin(t)],3);box(-10,15,-22.5,1,1,1,t=>[t*.5+1.4,.6],2);
+ box(9,21,-34,1.8,1.6,1.8,t=>[.8+t*.3,.6],3);box(11.2,19.6,-33,1.5,1.5,1.5,t=>[.3-t*.25,.9],3);
+ box(8.6,10.8,-21,1.7,1.5,1.7,t=>[.7-t*.4,.5+.1*Math.sin(t*1.3)],3);
+ // Türme links und rechts aus Glaswürfeln, oben vereinzelt schwebend
+ let q=0;for(const sd of[-1,1])for(let gx=0;gx<4;gx++)for(let gz=0;gz<11;gz++){q++;if(gx===0&&hs(q,4)<.45)continue;const x=sd*(21+gx*4.3+ra(q,1,-.3,.3)),z=14-gz*4.4,ht=Math.floor(ra(q,3,1+gx,3+gx*2.2+(gz>6?1:0)));
+  for(let l=0;l<ht;l++){if(l>0&&hs(q,l+20)<.18)continue;const e=ra(q,l+30,1.6,2.25);box(x,2.1+l*4.25,z,2.1,2.1,2.1,null,4,l<4)}
+  if(gx>1&&hs(q,90)<.12){const e=ra(q,91,1.3,2);box(x,ra(q,92,26,36),z,e,e,e,null,3,false)}}
+ for(let i=0;i<90;i++)FL.push({x:ra(i,300,-70,70),z:ra(i,301,-300,40),w:ra(i,302,2,14),d:ra(i,303,.3,1.2),dk:hs(i,304)<.6});
+ const FC=[[0,1,3,2],[4,6,7,5],[0,4,5,1],[2,3,7,6],[0,2,6,4],[1,5,7,3]],EK=[[0,1],[2,3],[4,5],[6,7],[0,2],[1,3],[4,6],[5,7],[0,4],[1,5],[2,6],[3,7]];
+ let t0=null,ende=false;
+ const fertig=()=>{if(ende)return;ende=true;wrap.classList.add('aus');aktiv();setTimeout(()=>{wrap.remove();removeEventListener('resize',rs);INTRO.on=false;aktiv();const mq=INTRO.q;INTRO.q=[];mq.forEach(adapterNachricht)},1450)};
+ INTRO.stop=fertig;wrap.addEventListener('click',fertig);
+ const zeichne=t=>{const e=1-Math.pow(1-Math.min(1,t/5.6),2),C=[0,6+2.5*e,48-32*e],Y=.07*Math.sin(t*.55)-.04,P=.1-.035*e,
+   cy=Math.cos(Y),sy=Math.sin(Y),cp=Math.cos(P),sp=Math.sin(P),f=[-sy*cp,sp,-cy*cp],r=[cy,0,-sy],u=[sy*sp,cp,cy*sp],foc=h/2/Math.tan(35*Math.PI/180);
+  const pr=(x,y,z)=>{const dx=x-C[0],dy=y-C[1],dz=z-C[2],zz=dx*f[0]+dy*f[1]+dz*f[2],k=foc/zz;return{x:w/2+(dx*r[0]+dy*r[1]+dz*r[2])*k,y:h/2-(dx*u[0]+dy*u[1]+dz*u[2])*k,z:zz}};
+  const hy=Math.max(0,Math.min(h,h/2+foc*Math.tan(P)));
+  // Himmel, Boden, Dunst am Horizont
+  let gr=g.createLinearGradient(0,0,0,hy);gr.addColorStop(0,'#6893d0');gr.addColorStop(.7,'#a9c4e8');gr.addColorStop(1,'#d6e4f5');g.fillStyle=gr;g.fillRect(0,0,w,hy+1);
+  gr=g.createLinearGradient(0,hy,0,h);gr.addColorStop(0,'#c9d9ef');gr.addColorStop(.25,'#a9c1e4');gr.addColorStop(1,'#7e9fcf');g.fillStyle=gr;g.fillRect(0,hy,w,h-hy);
+  const vw=(x,y,z,b,al,sp)=>{const a=al?al(t):null,ca=a?Math.cos(a[0]):1,sa=a?Math.sin(a[0]):0,cb=a?Math.cos(a[1]):1,sb=a?Math.sin(a[1]):0;
+   let X=x*ca+z*sa,Z=-x*sa+z*ca,Yy=y*cb-Z*sb;Z=y*sb+Z*cb;const wy=b.c[1]+Yy;return[b.c[0]+X,sp?-wy:wy,b.c[2]+Z]};
+  const list=B.map(b=>({b,d:Math.hypot(b.c[0]-C[0],b.c[1]-C[1],b.c[2]-C[2])})).sort((a,b)=>b.d-a.d);
+  const zb=(b,d,sp,ga)=>{const V=[];for(const sx of[-1,1])for(const sy_ of[-1,1])for(const sz of[-1,1])V.push(vw(sx*b.e[0],sy_*b.e[1],sz*b.e[2],b,b.rot,sp));
+   const P2=V.map(v=>pr(v[0],v[1],v[2]));if(P2.some(p=>p.z<.6))return;const sz=b.e[0]*foc/d;if(sz<.8)return;
+   const al=ga*Math.max(.12,Math.min(1,1-(d-60)/190)),cx=V.reduce((a,v)=>a+v[0],0)/8,cyy=V.reduce((a,v)=>a+v[1],0)/8,cz=V.reduce((a,v)=>a+v[2],0)/8;
+   const fs=FC.map(fc=>{const m=[0,1,2].map(k=>fc.reduce((a,i)=>a+V[i][k],0)/4),n=[m[0]-cx,m[1]-cyy,m[2]-cz],vis=n[0]*(C[0]-m[0])+n[1]*(C[1]-m[1])+n[2]*(C[2]-m[2])>0,l=Math.hypot(...n)||1;
+    return{fc,vis,ny:n[1]/l,nx:n[0]/l,z:fc.reduce((a,i)=>a+P2[i].z,0)/4}}).sort((a,b)=>b.z-a.z);
+   fs.forEach(F=>{const lt=(b.dicht?1.5:1)*(F.vis?(.15+.2*Math.max(0,F.ny)+.08*Math.max(0,-F.nx)):.06);g.globalAlpha=al;
+    if(F.vis&&sz>15){const p0=P2[F.fc[0]],p2=P2[F.fc[2]],lg=g.createLinearGradient(p0.x,p0.y,p2.x,p2.y);lg.addColorStop(0,`rgba(255,255,255,${(lt*2.2).toFixed(3)})`);lg.addColorStop(.55,`rgba(214,232,255,${lt.toFixed(3)})`);lg.addColorStop(1,`rgba(170,200,240,${(lt*1.4).toFixed(3)})`);g.fillStyle=lg}
+    else g.fillStyle=`rgba(226,239,255,${lt.toFixed(3)})`;g.beginPath();F.fc.forEach((i,k)=>k?g.lineTo(P2[i].x,P2[i].y):g.moveTo(P2[i].x,P2[i].y));g.closePath();g.fill()});
+   if(sz>6){g.lineWidth=Math.max(.5,Math.min(1.4,sz/40));b.ln.forEach(L=>{const Q=L.p.map(p=>{const v=vw(p[0]*b.e[0],p[1]*b.e[1],p[2]*b.e[2],b,b.rot,sp);return pr(v[0],v[1],v[2])});
+     g.globalAlpha=al*(L.d?.32:b.dicht?.7:.5);g.strokeStyle=L.d?'#2c4f80':'#ffffff';g.beginPath();Q.forEach((p,k)=>k?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y));g.closePath();g.stroke()})}
+   if(sz>10)(b.dicht?[[.8,.7,.85],[.6,.75,.5],[.42,.45,.6],[.25,.6,.3]]:[[.58,.62,.55]]).forEach(([kx,ky,kz],j)=>{const I=V.map(v=>pr(cx+(v[0]-cx)*kx,cyy+(v[1]-cyy)*ky,cz+(v[2]-cz)*kz));g.globalAlpha=al*(b.dicht?.45:.35);g.strokeStyle=j%2&&b.dicht?'#dbe9ff':'#ffffff';g.lineWidth=Math.max(.5,Math.min(1.2,sz/50));g.beginPath();EK.forEach(([a,c])=>{g.moveTo(I[a].x,I[a].y);g.lineTo(I[c].x,I[c].y)});g.stroke();if(b.dicht){g.globalAlpha=al*.07;g.fillStyle='#ffffff';[[0,1,3,2],[4,5,7,6]].forEach(fc=>{g.beginPath();fc.forEach((i,k)=>k?g.lineTo(I[i].x,I[i].y):g.moveTo(I[i].x,I[i].y));g.closePath();g.fill()})}})
+   g.globalAlpha=al*.85;g.strokeStyle='#f4f9ff';g.lineWidth=Math.max(.6,Math.min(1.8,sz/30));g.beginPath();EK.forEach(([a,c])=>{g.moveTo(P2[a].x,P2[a].y);g.lineTo(P2[c].x,P2[c].y)});g.stroke();g.globalAlpha=1};
+  // Spiegelbilder im Boden (unterhalb des Horizonts), danach Bodenschimmer und Fugen
+  g.save();g.beginPath();g.rect(0,hy,w,h-hy);g.clip();list.forEach(o=>{if(o.b.sp)zb(o.b,o.d,true,.42)});
+  gr=g.createLinearGradient(0,hy,0,h);gr.addColorStop(0,'rgba(205,220,242,.75)');gr.addColorStop(.3,'rgba(180,202,235,.25)');gr.addColorStop(1,'rgba(120,155,205,.12)');g.fillStyle=gr;g.fillRect(0,hy,w,h-hy);
+  const seg=(x1,z1,x2,z2,st,lw)=>{let a=pr(x1,0,z1),b=pr(x2,0,z2);if(a.z<1&&b.z<1)return;if(a.z<1||b.z<1){const s0=(1-a.z)/(b.z-a.z),xm=x1+(x2-x1)*s0,zm=z1+(z2-z1)*s0,m=pr(xm,0,zm);if(a.z<1)a=m;else b=m}g.strokeStyle=st;g.lineWidth=lw;g.beginPath();g.moveTo(a.x,a.y);g.lineTo(b.x,b.y);g.stroke()};
+  for(let x=-96;x<=96;x+=8)seg(x,40,x,-420,'rgba(40,75,130,.09)',.8);for(let z=40;z>-420;z-=8)seg(-200,z,200,z,`rgba(40,75,130,${(.1*Math.max(0,1-(C[2]-z)/300)).toFixed(3)})`,.8);
+  FL.forEach(p=>{const a=pr(p.x,0,p.z),b=pr(p.x+p.w,0,p.z),c=pr(p.x+p.w,0,p.z-p.d),dd=pr(p.x,0,p.z-p.d);if([a,b,c,dd].some(v=>v.z<1))return;g.fillStyle=p.dk?'rgba(35,65,115,.16)':'rgba(255,255,255,.28)';g.beginPath();g.moveTo(a.x,a.y);g.lineTo(b.x,b.y);g.lineTo(c.x,c.y);g.lineTo(dd.x,dd.y);g.closePath();g.fill()});
+  g.restore();
+  gr=g.createLinearGradient(0,hy-60,0,hy+40);gr.addColorStop(0,'rgba(225,236,250,0)');gr.addColorStop(.6,'rgba(232,241,252,.55)');gr.addColorStop(1,'rgba(225,236,250,0)');g.fillStyle=gr;g.fillRect(0,hy-60,w,100);
+  list.forEach(o=>zb(o.b,o.d,false,1))};
+ const lauf=now=>{if(!wrap.isConnected)return;requestAnimationFrame(lauf);if(t0==null)t0=now;const t=(now-t0)/1000;if(t>=5)fertig();zeichne(t)};requestAnimationFrame(lauf)}
+addEventListener('keydown',e=>{if(e.key==='Escape'&&INTRO.on&&INTRO.stop)INTRO.stop()});
+leererRaum();requestAnimationFrame(frame);introStart();
 </script></body></html>
