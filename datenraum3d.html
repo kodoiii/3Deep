@@ -2,7 +2,7 @@
 <html lang="de"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>3Deep – Datenraum in 3D</title>
-<meta name="3deep-darstellung" content="70">
+<meta name="3deep-darstellung" content="71">
 <style>
 :root{--fg:#e6edf3;--panel:rgba(15,22,41,.86);--mut:#9fb0c4}
 html,body{margin:0;height:100%;background:linear-gradient(180deg,#d4ecff 0%,#93c3ea 55%,#5088c0 100%) fixed;color:var(--fg);font:13px/1.4 system-ui,sans-serif;overflow:hidden}
@@ -81,7 +81,7 @@ html{--lg:#0e2a4a;--lgh:rgba(255,255,255,.85)}html.space{--lg:#dbe7ff;--lgh:rgba
 <div id="err" style="color:#ff9aa8;margin-top:4px"></div>
 <div class="m" style="margin-top:6px">Format: <code>{types:{Typ:{color,size,shape,label}}, relTypes:{Typ:{color,directed}}, nodes:[{id,type,name,meta:{…}}], edges:[{from,to,type,directed}]}</code> – size = Kugeldurchmesser, shape = sphere (Standard), dodecahedron, torus, box, book, bust (Person), starfish (Seestern) oder octopus. Knoten optional mit state: In Work, Frozen, Released, Obsolete oder To do. Den Mindestabstand bestimmt der größte Durchmesser (oder optional spacing). Weitere optionale Felder: axes (Vorlagen fürs Wertediagramm: name, x, y, z, zinv, note), stateTitle und stateNames (eigene Statusnamen, z. B. Vertragsstatus), attr (bevorzugtes Gruppierungsattribut). Zahlen in meta (z. B. „12.500 €“, „34 %“) können im Wertediagramm auf Achsen gelegt werden. Am einfachsten: Demo-JSON speichern und anpassen. CSV: Der Export aus dem Bookmark-Editor (Spalten Level, Title, Type, Maturity State …) wird direkt eingelesen.</div>
 </details>
-<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 70</div>
+<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 71</div>
 </div>
 <div id="det" class="pn"></div></div>
 <div id="dcap"></div><div id="dfade" style="position:fixed;inset:0;background:#0b1424;opacity:0;pointer-events:none;transition:opacity .6s;z-index:14"></div><div id="cross"></div><div id="info"></div>
@@ -1136,15 +1136,23 @@ $('ctl').value='catia';$('ctl').onchange({target:{value:'catia'}});
 // ---------- Ergänzen statt neu laden (Version 68): schrittweiser Aufbau, z. B. solange der Widget-Adapter noch liest ----------
 // Vorhandene Objekte behalten Lage, Auswahl, Filter und Layout; neue erscheinen bei einem schon gezeigten Nachbarn und gleiten an ihren Platz.
 // Die Kamera rahmt den wachsenden Raum, bis man selbst klickt, scrollt oder eine Taste drückt.
-const AUF={aktiv:false,eigen:false,lauf:null};
-['pointerdown','wheel'].forEach(t=>cv.addEventListener(t,()=>{if(AUF.aktiv)AUF.eigen=true}));addEventListener('keydown',()=>{if(AUF.aktiv)AUF.eigen=true});
-function nachjustieren(neu){const L=MIND*1.5;
- for(let it=0;it<40;it++)E.forEach(e=>{const a=N[e.a],b=N[e.b],dx=b.x-a.x,dy=b.y-a.y,dz=b.z-a.z,dd=Math.hypot(dx,dy,dz)+.01,k=(dd-L)*.08/dd,wa=neu.has(a.i)?1:.1,wb=neu.has(b.i)?1:.1;
-  a.x+=dx*k*wa;a.y+=dy*k*wa;a.z+=dz*k*wa;b.x-=dx*k*wb;b.y-=dy*k*wb;b.z-=dz*k*wb});
- const P=N.map(n=>[n.x,n.y,n.z]);gridSep(P,80);N.forEach((n,i)=>{n.x=P[i][0];n.y=P[i][1];n.z=P[i][2]})}
+// Version 71: eigen = der Benutzer hat seit dem Laden selbst eingegriffen (auch nach dem Aufbau, für spätere Ergänzungen); neu = seit dem Start ergänzte Objekte;
+// erst = erster Aufbau dieses Laufs (nur dann wird am Schluss einmal durchgerechnet; späteres Nachladen lässt das Bild stehen)
+const AUF={aktiv:false,eigen:false,lauf:null,neu:0,erst:true};
+['pointerdown','wheel'].forEach(t=>cv.addEventListener(t,()=>{AUF.eigen=true}));addEventListener('keydown',()=>{AUF.eigen=true});
+// Version 71: bekannte Objekte bleiben liegen (der Benutzer arbeitet schon mit dem Bild); nur die neuen werden eingepasst:
+// Federn zu ihren Nachbarn, danach Mindestabstand, wobei nur neue Objekte ausweichen.
+function nachjustieren(neu){const L=MIND*1.5,M2=MIND*MIND*.998;
+ for(let it=0;it<40;it++)E.forEach(e=>{const a=N[e.a],b=N[e.b],na=neu.has(a.i),nb=neu.has(b.i);if(!na&&!nb)return;const dx=b.x-a.x,dy=b.y-a.y,dz=b.z-a.z,dd=Math.hypot(dx,dy,dz)+.01,k=(dd-L)*.08/dd;
+  if(na){a.x+=dx*k;a.y+=dy*k;a.z+=dz*k}if(nb){b.x-=dx*k;b.y-=dy*k;b.z-=dz*k}});
+ const nl=[...neu].map(i=>N[i]);
+ for(let it=0;it<40;it++){let mv=false;nl.forEach(a=>{for(let j=0;j<N.length;j++){const b=N[j];if(a===b)continue;let dx=a.x-b.x,dy=a.y-b.y,dz=a.z-b.z,d2=dx*dx+dy*dy+dz*dz;if(d2>=M2)continue;mv=true;let d=Math.sqrt(d2);
+   if(d<1e-6){dx=Math.random()-.5;dy=Math.random()-.5;dz=Math.random()-.5;d=Math.hypot(dx,dy,dz)||1}const k=(MIND-d+.01)/d*(neu.has(b.i)?.5:1);a.x+=dx*k;a.y+=dy*k;a.z+=dz*k}});if(!mv)break}}
 function ergaenzeDaten(d,fertig){
  if(!N.length){ladeDaten(d);return}
  const alt=new Map(N.map(n=>[n.key,n])),lay=$('lay').value,at=$('at').value,selK=sel&&sel.key,hidT=new Set(hidden),hidR=new Set(hiddenR),c0={x:cam.x,y:cam.y,z:cam.z,yaw,pitch},L=MIND*1.5;
+ // Version 71: der Benutzer arbeitet während des Aufbaus weiter, deshalb bleiben auch Suche, Linkchain und der Regler „Maximale Objektanzahl“ erhalten
+ const qT=$('q').value,kinT=$('kin').value,kpT=$('kpre').value,hatTr=!!(tr&&sel&&tr.start===sel.i),rmV=+$('rm').value,rmVoll=rmV>=N.length,passiv=!AUF.eigen&&!selK;
  const ok=(d.nodes||[]).filter(o=>o.id!=null),pos=new Map(),nb=new Map();ok.forEach(o=>{const a=alt.get(String(o.id));if(a)pos.set(String(o.id),[a.kx,a.ky,a.kz])});
  (d.edges||[]).forEach(e=>{const f=String(e.from),g=String(e.to);if(!nb.has(f))nb.set(f,[]);if(!nb.has(g))nb.set(g,[]);nb.get(f).push(g);nb.get(g).push(f)});
  for(let pass=0;pass<40;pass++){let neu=0;ok.forEach(o=>{const k=String(o.id);if(pos.has(k))return;const p=(nb.get(k)||[]).map(x=>pos.get(x)).find(Boolean);if(!p)return;
@@ -1152,8 +1160,10 @@ function ergaenzeDaten(d,fertig){
  ok.forEach(o=>{const k=String(o.id);if(!pos.has(k))pos.set(k,[(Math.random()-.5)*RAD,(Math.random()-.5)*RAD,(Math.random()-.5)*RAD])});
  d._lc={[astro?'a':meer?'m':'s']:ok.map(o=>pos.get(String(o.id)))};
  ladeDaten(d);
- const neuI=new Set(N.filter(n=>!alt.has(n.key)).map(n=>n.i));
- if(fertig)kraftLayout(true);else nachjustieren(neuI);
+ const neuI=new Set(N.filter(n=>!alt.has(n.key)).map(n=>n.i));AUF.neu+=neuI.size;
+ // Nur Neues wird eingepasst; ohne neue Objekte (z. B. nur Attribute nachgeliefert) bleibt alles liegen. Das Durchrechnen am Schluss nur, solange der Benutzer nicht arbeitet.
+ if(fertig&&passiv&&AUF.neu&&AUF.erst)kraftLayout(true);else if(neuI.size)nachjustieren(neuI);
+ $('rm').value=rmVoll?N.length:Math.min(rmV,N.length);upd();
  RAD=Math.max(20,...N.map(n=>Math.hypot(n.x,n.y,n.z)));N.forEach(n=>{n.kx=n.x;n.ky=n.y;n.kz=n.z});(d._lc||{})[astro?'a':meer?'m':'s']=N.map(n=>[n.x,n.y,n.z]);
  $('lay').value=lay;if([...$('at').options].some(o=>o.value===at))$('at').value=at;
  hidT.forEach(k=>{if(!T[k])return;hidden.add(k);const i=[...$('leg').querySelectorAll('input')].find(x=>x.dataset.k===k);if(i)i.checked=false});
@@ -1161,14 +1171,15 @@ function ergaenzeDaten(d,fertig){
  setLayout(lay,false);
  N.forEach(n=>{const a=alt.get(n.key);let s=a?[a.x,a.y,a.z]:null;if(!s){const m=n.adj.map(x=>alt.get(N[x.o].key)).find(Boolean);s=m?[m.x,m.y,m.z]:[n.tx,n.ty,n.tz]}n.x=s[0];n.y=s[1];n.z=s[2]});animL=true;
  needHome=false;if(AUF.eigen||selK){cam.x=c0.x;cam.y=c0.y;cam.z=c0.z;yaw=c0.yaw;pitch=c0.pitch}else home(false);
- if(selK){const n=N.find(x=>x.key===selK);if(n)waehle(n,false)}}
+ if(selK){const n=N.find(x=>x.key===selK);if(n){waehle(n,false);if(hatTr){if([...$('kpre').options].some(o=>o.value===kpT))$('kpre').value=kpT;$('kin').value=kinT;analysiere()}}}
+ if(qT){$('q').value=qT;suche()}}
 // ---------- Einbettung (Version 65): Daten vom 3Deep-Widget-Adapter per postMessage ----------
 function setzeSteuerung(v){v=v==='game'||v==='wasd'?'game':'catia';$('ctl').value=v;$('ctl').onchange({target:{value:v}})}
 addEventListener('message',e=>{const m=e.data;if(!m||m.quelle!=='3deep-adapter'||e.source!==parent)return;
  if(m.daten){try{$('err').textContent='';
   // Version 68: start = neuer Ladevorgang, ergaenzen = Zwischenstand desselben Laufs (lauf), fertig = letzter Stand
-  if(m.ergaenzen&&!m.start&&m.lauf!=null&&m.lauf===AUF.lauf)ergaenzeDaten(m.daten,!!m.fertig);else{AUF.eigen=false;ladeDaten(m.daten)}
-  AUF.lauf=m.lauf!=null?m.lauf:null;AUF.aktiv=!!m.ergaenzen&&!m.fertig;$('ds').value='import'}catch(x){$('err').textContent='Fehler: '+x.message}}
+  if(m.ergaenzen&&!m.start&&m.lauf!=null&&m.lauf===AUF.lauf)ergaenzeDaten(m.daten,!!m.fertig);else{AUF.eigen=false;AUF.neu=0;AUF.erst=true;ladeDaten(m.daten)}
+  AUF.lauf=m.lauf!=null?m.lauf:null;AUF.aktiv=!!m.ergaenzen&&!m.fertig;if(m.fertig){AUF.neu=0;AUF.erst=false}$('ds').value='import'}catch(x){$('err').textContent='Fehler: '+x.message}}
  if(m.steuerung)setzeSteuerung(m.steuerung);aktiv()});
 if(/[?&]steuerung=(wasd|game)/.test(location.search))setzeSteuerung('game');
 if(parent!==window){try{parent.postMessage({quelle:'3deep',bereit:true},'*')}catch(_){}}

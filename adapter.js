@@ -1,11 +1,11 @@
-/* 3Deep-Widget, Adapter Version 28.
+/* 3Deep-Widget, Adapter Version 29.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
    im Format der echten Schnittstellen-Antworten. */
 (function () {
   'use strict';
-  var DARSTELLUNG = '70';   // Version von datenraum3d.html; muss zu <meta name="3deep-darstellung"> dort passen (tests/test-gleichstand.js)
+  var DARSTELLUNG = '71';   // Version von datenraum3d.html; muss zu <meta name="3deep-darstellung"> dort passen (tests/test-gleichstand.js)
   var BKS = '/resources/v1/modeler/dsbks/dsbks:Bookmark';
   var ENG = '/resources/v1/modeler/dseng/dseng:EngItem';
   var DOC = '/resources/v1/modeler/documents';
@@ -24,6 +24,9 @@
   // Unter-Bookmarks (Adapter 25, gesichert per Mitschnitt des Bookmark Editors): POST enorelnav/v2/navigate/i3dx/getecosystem, direction "out";
   // Link-Typ workspaces_bookmarks_to = Unterordner, workspaces_folders_to = Objekt im Ordner. Ordner-Typ Wurzel "Workspace", Unterordner "Workspace Vault".
   var ECO = '/resources/enorelnav/v2/navigate/i3dx/getecosystem';
+  // Zahl der Beziehungen je Objekt und Beziehungsname (Relational Explorer, gesichert per Mitschnitt 12.11.2026); hier nur für die Beziehungsübersicht in der Diagnose
+  var RCNT = '/resources/enorelnav/v2/navigate/i3dx/getrelationcount';
+  var ECOPAKET = 25, ECOPARALLEL = 6;   // Objekte je getecosystem-Aufruf (25 auf der Plattform bestätigt); gleichzeitige Aufrufe über alle Sammelabfragen zusammen
   var ECOTAX = { 'Workspace': 'types/Project Management/Workspace', 'Workspace Vault': 'types/Workspace Vault' };
   var ZQATTR = [
     ['physicalid', 'ds6w:label', 'ds6w:identifier', 'ds6w:type', 'ds6w:status', 'ds6w:responsible', 'ds6w:created', 'ds6w:modified', 'ds6w:description', 'ds6wg:revision', 'ds6wg:EnterpriseExtension.V_PartNumber'],
@@ -34,12 +37,20 @@
   var zqVar = 0;
   var DOKREL = [{ rel: 'SpecificationDocument', art: 'spec' }, { rel: 'PLMDocConnection', art: 'praes' }, { rel: 'Reference Document', art: 'praes' }];
   var S = { live: false, WAF: null, space: '', tenant: '', ctx: '', root: null, log: [], roh: {}, bereit: false, wartend: null,
-    frame: null, viewerUrl: '', max: 1500, issCache: {}, issCacheZ: { treffer: 0, neu: 0 }, issCacheMs: 10 * 60 * 1000, zuletzt: null, nachladen: false, neuVerzug: 500, neuLaden: 0, laeuft: false, treffer: [], dateien: {}, csrf: '', cad: {}, cadTyp: {}, cadInfo: [] };
+    frame: null, viewerUrl: '', max: 1500, issCache: {}, issCacheZ: { treffer: 0, neu: 0 }, issCacheMs: 30 * 60 * 1000,
+    cache: {}, cacheMs: 30 * 60 * 1000, cacheZ: { treffer: 0, neu: 0 }, stufen: [], lauf: 0, abbruch: false, vorn: '', zuletzt: null, nachladen: false, neuVerzug: 500, neuLaden: 0, laeuft: false, treffer: [], dateien: {}, csrf: '', cad: {}, cadTyp: {}, cadInfo: [] };
 
   // ---------- kleine Helfer ----------
   function q(sel) { return S.root.querySelector(sel); }
   function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function status(t, fehler) { var e = q('.td-st'); if (e) { e.textContent = t; e.style.color = fehler ? '#cc092f' : '#3d3d3d'; } }
+  // Fortschritt des Ladens. S.vorn: Vorspann, solange im Hintergrund weitergeladen wird (das Bild steht schon). Ein frischer Download-Link
+  // oder eine Download-Meldung bleibt 15 s stehen, damit der Fortschritt sie nicht überschreibt.
+  function fortschritt(t) {
+    var e = q('.td-st'); if (!e) return;
+    if (S.vorn && Date.now() - (S.dlZeit || 0) < 15000) return;
+    e.textContent = (S.vorn || '') + t; e.style.color = '#3d3d3d';
+  }
   function mitglieder(r) {
     if (Array.isArray(r)) return r; if (!r || typeof r !== 'object') return [];
     if (Array.isArray(r.member)) return r.member; if (Array.isArray(r.data)) return r.data; if (Array.isArray(r.issue)) return r.issue;
@@ -57,9 +68,9 @@
 
   // ---------- Zugriff auf die Plattform ----------
   function muster(pfad) { return pfad.replace(/\/[0-9A-Fa-f]{16,}(?=\/|$)/g, '/{ID}'); }
-  function protokoll(pfad, params, ok, antwort, ms) {
+  function protokoll(pfad, params, ok, antwort, ms, ausSpeicher) {
     var m = muster(pfad) + (params && params.$mask ? ' [' + params.$mask + ']' : '') + (params && params.$fields ? ' [$fields=' + params.$fields + ']' : '') + (params && params.parentRelName ? ' [' + params.parentRelName + ']' : '');
-    S.log.push({ zeit: new Date().toLocaleTimeString('de-DE'), aufruf: m, ok: ok, info: ok ? mitglieder(antwort).length + ' Einträge' : String(antwort), ms: ms });
+    S.log.push({ zeit: new Date().toLocaleTimeString('de-DE'), aufruf: m, ok: ok, info: ok ? mitglieder(antwort).length + ' Einträge' + (ausSpeicher ? ' (Zwischenspeicher)' : '') : String(antwort), ms: ms, sp: !!ausSpeicher });
     if (S.log.length > 400) S.log.shift();
     if (ok && !S.roh[m]) { var t = ''; try { t = JSON.stringify(antwort, sauber, 1); } catch (e) { t = String(antwort); } S.roh[m] = t.length > 6000 ? t.slice(0, 6000) + '\n… (gekürzt)' : t; }
     if (!ok && !S.roh['FEHLER ' + m]) S.roh['FEHLER ' + m] = String(antwort);
@@ -82,12 +93,34 @@
       } catch (e) { fehler(e); }
     });
   }
+  // Zwischenspeicher aller Leseabfragen (Adapter 29, Wunsch des Nutzers): nur im Arbeitsspeicher, gültig S.cacheMs (30 min), S.cacheMs = 0 schaltet ihn ab.
+  // Nicht gespeichert: Suchen, CSRF-Token, Download-Tickets und Issue-Details (die haben ihren eigenen Speicher S.issCache). Der Schlüssel lässt das
+  // wechselnde Feld „label“ der Abfragen weg. „↻ Neu lesen“ leert alles (cacheLeeren).
+  function cacheKey(pfad, p, methode, body) {
+    var m = methode || 'GET';
+    if (m === 'GET') { if (/\/search$|\/CSRF$|Ticket/i.test(pfad) || pfad.indexOf(ISS + '/') === 0) return ''; }
+    else if (!(m === 'POST' && (pfad === ECO || pfad === RCNT || /\/cvservlet\/zonequeries$/.test(pfad) || /\/expand$/.test(pfad)))) return '';
+    var b = ''; if (body != null) { var k = {}; Object.keys(body).forEach(function (x) { if (x !== 'label') k[x] = body[x]; }); b = JSON.stringify(k); }
+    return m + ' ' + pfad + ' ' + JSON.stringify(Object.keys(p).sort().map(function (x) { return [x, p[x]]; })) + ' ' + b;
+  }
+  function cacheLeeren() {
+    var n = Object.keys(S.cache).length + Object.keys(S.issCache).length;
+    S.cache = {}; S.cacheZ = { treffer: 0, neu: 0 }; issueCacheLeeren(); return n;
+  }
+  function cacheAufraeumen() {
+    var jetzt = Date.now(), ks = Object.keys(S.cache);
+    ks.forEach(function (k) { if (jetzt - S.cache[k].t >= S.cacheMs) delete S.cache[k]; });
+    ks = Object.keys(S.cache); if (ks.length > 20000) ks.sort(function (a, b) { return S.cache[a].t - S.cache[b].t; }).slice(0, ks.length - 20000).forEach(function (k) { delete S.cache[k]; });
+  }
   function hole(pfad, params, ohneKontext, methode, kopfPlus, body) {
     var p = {}; Object.keys(params || {}).forEach(function (k) { p[k] = params[k]; });
     if (S.tenant) p.tenant = S.tenant;
+    if (S.abbruch) return Promise.reject(new Error('abgebrochen'));   // ein neues Laden hat das laufende abgelöst
+    var ck = S.cacheMs > 0 ? cacheKey(pfad, p, methode, body) : '', c = ck ? S.cache[ck] : null;
+    if (c && Date.now() - c.t < S.cacheMs) { S.cacheZ.treffer++; protokoll(pfad, p, true, c.d, 0, true); return Promise.resolve(c.d); }
     S.aufrufe = (S.aufrufe || 0) + 1;
     var t0 = Date.now(), anfrage = S.live ? liveGet(pfad, p, ohneKontext, methode, kopfPlus, body) : testGet(pfad, p, methode, body);
-    return anfrage.then(function (d) { protokoll(pfad, p, true, d, Date.now() - t0); return d; },
+    return anfrage.then(function (d) { protokoll(pfad, p, true, d, Date.now() - t0); if (ck) { S.cache[ck] = { t: Date.now(), d: d }; S.cacheZ.neu++; } return d; },
       function (e) { protokoll(pfad, p, false, e.message || e, Date.now() - t0); throw new Error(muster(pfad).split('/').slice(-2).join('/') + ': ' + (e.message || e)); });
   }
   function alleSeiten(pfad, params, lies) {
@@ -105,9 +138,12 @@
   // ---------- Datei eines Dokuments herunterladen ----------
   function csrf(neu) {
     if (S.csrf && !neu) return Promise.resolve(S.csrf);
-    return hole('/resources/v1/application/CSRF', {}, true).then(function (r) {
+    if (S.csrfP && !neu) return S.csrfP;   // Zone Query, expand und getecosystem starten gleichzeitig: nur eine Token-Abfrage
+    var pr = hole('/resources/v1/application/CSRF', {}, true).then(function (r) {
+      if (S.csrfP === pr) S.csrfP = null;
       S.csrf = (r && r.csrf && r.csrf.value) || ''; if (!S.csrf) throw new Error('kein CSRF-Token erhalten'); return S.csrf;
-    });
+    }, function (e) { if (S.csrfP === pr) S.csrfP = null; throw e; });
+    S.csrfP = pr; return pr;
   }
   function ticket(docId, mehrere, zipName, zweiter) {
     return csrf(zweiter).then(function (tok) {
@@ -119,15 +155,18 @@
       return { url: e.ticketURL, name: e.fileName || (mehrere ? zipName : '') };
     }, function (e) { if (!zweiter) return ticket(docId, mehrere, zipName, true); throw e; });
   }
+  // Ein abgelöstes Laden läuft noch kurz aus (S.abbruch): Downloads und Suchen warten so lange, sonst würden ihre Abfragen mit abgebrochen.
+  function ruheWarten() { return S.abbruch && S.laufP ? S.laufP.then(function () { }, function () { }) : Promise.resolve(); }
   async function download(knotenId, name) {
+    S.dlZeit = Date.now(); await ruheWarten();
     var docId = String(knotenId || '').replace(/^[oz]:/, ''), info = S.dateien[docId];
     if (docId && !info && S.cad[docId]) { await cadDownload(docId, name); diagnose(); return; }
     if (!docId || !info) { status('Zu diesem Objekt ist keine Datei bekannt.', true); return; }
     if (!info.n) { status('„' + (name || docId) + '“ enthält keine Datei.', true); return; }
     try {
-      status('Fordere Download für „' + (name || docId) + '“ an …');
+      S.dlZeit = Date.now(); status('Fordere Download für „' + (name || docId) + '“ an …');
       var t = await ticket(docId, info.n > 1, String(name || 'Dokument').replace(/[^A-Za-z0-9._ -]+/g, '_').slice(0, 60) + '.zip');
-      var st = q('.td-st'); st.style.color = '#3d3d3d'; st.innerHTML = 'Datei bereit: <a class="td-dl" target="_blank" rel="noopener" style="color:#368ec4">' + esc(t.name || 'herunterladen') + '</a> (startet der Download nicht von selbst, hier klicken)';
+      var st = q('.td-st'); st.style.color = '#3d3d3d'; S.dlZeit = Date.now(); st.innerHTML = 'Datei bereit: <a class="td-dl" target="_blank" rel="noopener" style="color:#368ec4">' + esc(t.name || 'herunterladen') + '</a> (startet der Download nicht von selbst, hier klicken)';
       var a = q('.td-dl'); a.href = t.url; if (t.name) a.setAttribute('download', t.name);
       try { a.click(); } catch (e) { }
     } catch (e) { status('Download fehlgeschlagen: ' + e.message, true); }
@@ -162,13 +201,13 @@
     var st = q('.td-st'); st.style.color = '#3d3d3d';
     var weg = fcsWeg(t), name = esc(t.name || 'herunterladen');
     if (weg === 'link') {
-      st.innerHTML = 'Datei bereit: <a class="td-dl" target="_blank" rel="noopener" style="color:#368ec4">' + name + '</a>' + (quelle ? ' – ' + esc(quelle) : '') + ' (startet der Download nicht von selbst, hier klicken)';
+      S.dlZeit = Date.now(); st.innerHTML = 'Datei bereit: <a class="td-dl" target="_blank" rel="noopener" style="color:#368ec4">' + name + '</a>' + (quelle ? ' – ' + esc(quelle) : '') + ' (startet der Download nicht von selbst, hier klicken)';
       var a = q('.td-dl'); a.href = t.url; if (t.name) a.setAttribute('download', t.name);
       try { a.click(); } catch (e) { }
       return 'Link';
     }
     var get = t.url + (t.url.indexOf('?') < 0 ? '?' : '&') + encodeURIComponent(t.param) + '=' + encodeURIComponent(t.ticket);
-    st.innerHTML = 'Datei bereit: <button class="td-dlp" style="background:#368ec4;color:#fff;border:0;border-radius:4px;padding:2px 8px;cursor:pointer;font:inherit">⬇ ' + name + '</button>' + (quelle ? ' – ' + esc(quelle) : '') +
+    S.dlZeit = Date.now(); st.innerHTML = 'Datei bereit: <button class="td-dlp" style="background:#368ec4;color:#fff;border:0;border-radius:4px;padding:2px 8px;cursor:pointer;font:inherit">⬇ ' + name + '</button>' + (quelle ? ' – ' + esc(quelle) : '') +
       ' (startet der Download nicht von selbst: Knopf drücken; klappt das nicht: <a class="td-dlg" target="_blank" rel="noopener" style="color:#368ec4">Weg 2</a>)';
     q('.td-dlp').onclick = function () { S.dlWeg = 'Knopf (POST)'; fcsSenden(t); diagnose(); };
     var g = q('.td-dlg'); g.href = get; g.onclick = function () { S.dlWeg = 'Weg 2 (Ticket in der Adresse)'; setTimeout(diagnose, 50); };
@@ -191,6 +230,7 @@
     return liste.filter(function (f) { return f.doId; }).sort(function (a, b) { return rang(a) - rang(b); });
   }
   async function cadDownload(id, name) {
+    S.dlZeit = Date.now(); await ruheWarten();
     var typ = S.cadTyp[id] || '', wege = [], t = null, quelle = '';
     status('Suche Datei zu „' + (name || id) + '“ …');
     try { await csrf(true); } catch (e) { status('Download fehlgeschlagen: ' + e.message, true); return; }
@@ -347,7 +387,7 @@
   function issueDetailHolen(id) {
     var v = issVar, p = ISSFELDER[v] ? { $fields: ISSFELDER[v] } : {};
     return hole(ISS + '/' + encodeURIComponent(id), p).then(function (r) { return mitglieder(r)[0] || (r && (r.id || r.title) ? r : null); },
-      function (e) { if (!/Zeitlimit/.test(e.message) && v < ISSFELDER.length - 1) { if (issVar === v) issVar = v + 1; return issueDetailHolen(id); } throw e; });
+      function (e) { if (!S.abbruch && !/Zeitlimit/.test(e.message) && v < ISSFELDER.length - 1) { if (issVar === v) issVar = v + 1; return issueDetailHolen(id); } throw e; });
   }
   // alle 32-stelligen IDs irgendwo in einer Antwort (Rückfall, wenn die erwarteten Felder fehlen)
   function alleIds(o, aus) {
@@ -362,7 +402,7 @@
     var p = {}; Object.keys(params || {}).forEach(function (k) { p[k] = params[k]; });
     if (!taskInclude) return hole(pfad, p).then(mitglieder);
     var mit = {}; Object.keys(p).forEach(function (k) { mit[k] = p[k]; }); mit.$include = 'all';
-    return hole(pfad, mit).then(mitglieder, function (e) { if (/Zeitlimit/.test(e.message)) throw e; taskInclude = false; return hole(pfad, p).then(mitglieder); });
+    return hole(pfad, mit).then(mitglieder, function (e) { if (S.abbruch || /Zeitlimit/.test(e.message)) throw e; taskInclude = false; return hole(pfad, p).then(mitglieder); });
   }
   function refIds(liste) {
     var ids = [];
@@ -483,79 +523,107 @@
   // getecosystem direction "out", relations ["v6_cad_document_to"], Link Zeichnung -> Produkt, "ro.xcadbasedependency.v_cadlinktype": "drawing".
   // Vom Produkt aus (hier): direction "in", relations v6_cad_document_from/_to (vermutet), mehrere Produkte je Aufruf (vermutet, sonst einzeln).
   var ECOTAX_PRD = 'types/PLMEntity/PLMReference/PLMCoreReference/LPAbstractReference/PHYSICALAbstractReference/VPMReference';
-  async function zeichnungenEco(ids, info) {
+  var ECOTAX_DOC = 'types/DOCUMENTS/Document', ECOTAX_DRW = 'types/PLMEntity/PLMReference/PLMCoreRepReference/VPMRepReference/Drawing';
+  function ecoProdukt(id) { return { id: id, typ: (S.cadTyp[id] && !/dsxcad/i.test(S.cadTyp[id])) ? S.cadTyp[id] : 'VPMReference', tax: ECOTAX_PRD }; }
+  // getecosystem für viele Objekte (Adapter 29): Pakete zu ECOPAKET, ECOPARALLEL gleichzeitig. Schlägt ein Paket fehl, wird es halbiert (bis zum
+  // Einzelobjekt); nach 3 Fehlern ohne einen Erfolg ist Schluss. info: {ok, fehler, pakete, einzeln, fehlerText}. auswerten(antwort, objekteNachId).
+  // Zeichnungen, Dokumente und Issues fragen gleichzeitig (siehe „vorab“ in leseBookmark); zusammen laufen höchstens ECOPARALLEL Aufrufe.
+  var ecoLaeuft = 0, ecoWarte = [];
+  function ecoPlatz() { if (ecoLaeuft < ECOPARALLEL) { ecoLaeuft++; return Promise.resolve(); } return new Promise(function (ja) { ecoWarte.push(ja); }); }
+  function ecoFrei() { var n = ecoWarte.shift(); if (n) n(); else ecoLaeuft--; }
+  async function ecoPakete(objs, relations, richtung, info, auswerten) {
     var tok = ''; try { tok = await csrf(); } catch (e) { }
     var kopf = { 'Content-Type': 'application/json' }; if (tok) kopf.ENO_CSRF_TOKEN = tok;
-    var gef = [], menge = {}; ids.forEach(function (i) { menge[i] = 1; });
-    function frage(paket) {
-      return hole(ECO, { xrequestedwith: 'xmlhttprequest' }, false, 'POST', kopf, { widgetId: '3Deep', label: '3Deep-' + Date.now(), relations: ['v6_cad_document_from', 'v6_cad_document_to'], lang: 'en',
-        computeWithInstances: false, allRelationsMode: true, publicationsMode: false, attributesForView: ['ds6w:label', 'ds6wg:revision', 'ds6w:status', 'ds6w:type', 'ds6w:modified', 'ds6w:responsible', 'ds6w:identifier'],
-        ghostMode: false, excludedRelations: ['v6_structure_roots_from'], direction: 'in', restrictedMode: false, responseMode: 'ObjectsAndLinks', redirectQueryToSGI: true,
-        items: paket.map(function (i) { return { id: i, relTypesTaxonomies: ECOTAX_PRD, serviceId: '3DSpace', type: (S.cadTyp[i] && !/dsxcad/i.test(S.cadTyp[i])) ? S.cadTyp[i] : 'VPMReference' }; }) }).then(function (r) {
+    async function paket(pk) {
+      if ((info.fehler >= 3 && !info.ok) || S.abbruch) return;
+      await ecoPlatz();
+      try {
+        var r; try { r = await hole(ECO, { xrequestedwith: 'xmlhttprequest' }, false, 'POST', kopf, { widgetId: '3Deep', label: '3Deep-' + Date.now(), relations: relations, lang: 'en',
+          computeWithInstances: false, allRelationsMode: true, publicationsMode: false, attributesForView: ['ds6w:label', 'ds6wg:revision', 'ds6w:status', 'ds6w:type', 'ds6w:modified', 'ds6w:responsible', 'ds6w:project', 'ds6w:identifier'],
+          ghostMode: false, excludedRelations: ['v6_structure_roots_from'], direction: richtung, restrictedMode: false, responseMode: 'ObjectsAndLinks', redirectQueryToSGI: true,
+          items: pk.map(function (o) { return { id: o.id, relTypesTaxonomies: o.tax, serviceId: '3DSpace', type: o.typ }; }) }); } finally { ecoFrei(); }
         var obj = {}; ((r && r.objects) || []).forEach(function (x) { if (x && x.id) obj[x.id] = x; });
-        ((r && r.links) || []).forEach(function (l) {
-          if (!l || !/v6_cad_document/i.test(l.type || '')) return;
-          [[l.source, l.target], [l.target, l.source]].forEach(function (p) {
-            var z = obj[p[0]] || {}, art = String(l['ro.xcadbasedependency.v_cadlinktype'] || '').toLowerCase();
-            if (!menge[p[1]] || menge[p[0]] || !(/Drawing/i.test(z.type || '') || art === 'drawing')) return;
-            var tax = [].concat(z.taxonomies || [], z.relTypesTaxonomies || []).join(' ');
-            gef.push({ id: p[0], el: p[1], typ: z.type || 'Drawing', titel: z['ds6w:label'] || z.name || '', v5: /XCADRepExtension/i.test(tax),
-              a: { 'ds6w:label': z['ds6w:label'] || z.name, 'ds6w:identifier': z['ds6w:identifier'], 'ds6wg:revision': z['ds6wg:revision'] || z.revision, 'ds6w:status': z['ds6w:status'], 'ds6w:modified': z['ds6w:modified'], 'ds6w:responsible': z['ds6w:responsible'] } });
-          });
-        });
-      });
-    }
-    var pakete = []; for (var i = 0; i < ids.length; i += 25) pakete.push(ids.slice(i, i + 25));
-    await pool(pakete, 3, async function (pk) {
-      if (info.fehler >= 3 && !info.ok) return;
-      try { await frage(pk); info.ok += pk.length; info.pakete++; }
-      catch (e) {
+        auswerten(r || {}, obj); info.ok += pk.length; info.pakete++;
+      } catch (e) {
+        if (S.abbruch) return;
         if (!info.fehlerText) info.fehlerText = e.message;
         if (pk.length === 1) { info.fehler++; return; }
         info.einzeln = true;
-        await pool(pk, PARALLEL, async function (id) { if (info.fehler >= 3 && !info.ok) return; try { await frage([id]); info.ok++; } catch (e2) { info.fehler++; } });
+        var h = Math.ceil(pk.length / 2); await paket(pk.slice(0, h)); await paket(pk.slice(h));
       }
+    }
+    var pakete = []; for (var i = 0; i < objs.length; i += ECOPAKET) pakete.push(objs.slice(i, i + ECOPAKET));
+    await pool(pakete, ECOPARALLEL, paket);
+  }
+  function ecoInfo() { return { ok: 0, fehler: 0, pakete: 0, einzeln: false, fehlerText: '', links: 0 }; }
+  function ecoText(i) { return i.ok + ' Objekte geprüft' + (i.pakete ? ' in ' + i.pakete + ' Paketen' : '') + (i.einzeln ? ', teils geteilt' : '') + ', ' + i.fehler + ' Fehler'; }
+  // Zeichnungen, die nur per Zeigerbeziehung am Produkt hängen (Adapter 26, auf der Plattform bestätigt): vom Produkt aus eingehend,
+  // Link v6_cad_document_*, anderes Ende Typ Drawing oder "ro.xcadbasedependency.v_cadlinktype": "drawing".
+  async function zeichnungenEco(ids, info) {
+    var gef = [], menge = {}; ids.forEach(function (i) { menge[i] = 1; });
+    await ecoPakete(ids.map(ecoProdukt), ['v6_cad_document_from', 'v6_cad_document_to'], 'in', info, function (r, obj) {
+      (r.links || []).forEach(function (l) {
+        if (!l || !/v6_cad_document/i.test(l.type || '')) return;
+        [[l.source, l.target], [l.target, l.source]].forEach(function (p) {
+          var z = obj[p[0]] || {}, art = String(l['ro.xcadbasedependency.v_cadlinktype'] || '').toLowerCase();
+          if (!menge[p[1]] || menge[p[0]] || !(/Drawing/i.test(z.type || '') || art === 'drawing')) return;
+          var tax = [].concat(z.taxonomies || [], z.relTypesTaxonomies || []).join(' ');
+          gef.push({ id: p[0], el: p[1], typ: z.type || 'Drawing', titel: z['ds6w:label'] || z.name || '', v5: /XCADRepExtension/i.test(tax),
+            a: { 'ds6w:label': z['ds6w:label'] || z.name, 'ds6w:identifier': z['ds6w:identifier'], 'ds6wg:revision': z['ds6wg:revision'] || z.revision, 'ds6w:status': z['ds6w:status'], 'ds6w:modified': z['ds6w:modified'], 'ds6w:responsible': z['ds6w:responsible'] } });
+        });
+      });
     });
     return gef;
   }
-  // Issues zu geladenen Objekten (Adapter 27): getecosystem eingehend statt alle Issues lesen. Gesichert per Mitschnitt (Relational Explorer am Issue):
-  // Links issue_to (Issue -> betroffenes Objekt), assignee_to/contributor_to (Personen), v6_annexdoc_to (Anhang); am Objekt eingehend issue_from und
-  // issue_context_from (Namen aus getrelationcount gesichert). Aufrufform direction "in" mit mehreren items wie bei den Zeichnungen (Adapter 26, bestätigt).
-  var ECOTAX_DOC = 'types/DOCUMENTS/Document', ECOTAX_DRW = 'types/PLMEntity/PLMReference/PLMCoreRepReference/VPMRepReference/Drawing';
+  // Issues zu geladenen Objekten (Adapter 27, auf der Plattform bestätigt): eingehend issue_from / issue_context_from (Namen aus getrelationcount).
   async function issuesEco(objs, info) {
-    var tok = ''; try { tok = await csrf(); } catch (e) { }
-    var kopf = { 'Content-Type': 'application/json' }; if (tok) kopf.ENO_CSRF_TOKEN = tok;
     var menge = {}, gef = {}; objs.forEach(function (o) { menge[o.id] = 1; });
-    function frage(paket) {
-      return hole(ECO, { xrequestedwith: 'xmlhttprequest' }, false, 'POST', kopf, { widgetId: '3Deep', label: '3Deep-' + Date.now(), relations: ['issue_from', 'issue_context_from', 'issue_to', 'issue_context_to'], lang: 'en',
-        computeWithInstances: false, allRelationsMode: true, publicationsMode: false, attributesForView: ['ds6w:label', 'ds6w:status', 'ds6w:type', 'ds6w:modified', 'ds6w:responsible', 'ds6w:identifier'],
-        ghostMode: false, excludedRelations: ['v6_structure_roots_from'], direction: 'in', restrictedMode: false, responseMode: 'ObjectsAndLinks', redirectQueryToSGI: true,
-        items: paket.map(function (o) { return { id: o.id, relTypesTaxonomies: o.tax, serviceId: '3DSpace', type: o.typ }; }) }).then(function (r) {
-        var obj = {}; ((r && r.objects) || []).forEach(function (x) { if (x && x.id) obj[x.id] = x; });
-        ((r && r.links) || []).forEach(function (l) {
-          if (!l || !/^issue(_context)?_(from|to)$/i.test(l.type || '')) return;
-          [[l.source, l.target], [l.target, l.source]].forEach(function (pq) {
-            var z = obj[pq[0]];
-            if (!menge[pq[1]] || menge[pq[0]] || !(z ? /Issue/i.test(z.type || '') : true)) return;
-            var g = gef[pq[0]] = gef[pq[0]] || { ids: [], kontext: [], titel: (z && (z['ds6w:label'] || z.name)) || '' };
-            var feld = /context/i.test(l.type) ? g.kontext : g.ids; if (feld.indexOf(pq[1]) < 0) feld.push(pq[1]);
-            info.links++;
-          });
+    await ecoPakete(objs, ['issue_from', 'issue_context_from', 'issue_to', 'issue_context_to'], 'in', info, function (r, obj) {
+      (r.links || []).forEach(function (l) {
+        if (!l || !/^issue(_context)?_(from|to)$/i.test(l.type || '')) return;
+        [[l.source, l.target], [l.target, l.source]].forEach(function (pq) {
+          var z = obj[pq[0]];
+          if (!menge[pq[1]] || menge[pq[0]] || !(z ? /Issue/i.test(z.type || '') : true)) return;
+          var g = gef[pq[0]] = gef[pq[0]] || { ids: [], kontext: [], titel: (z && (z['ds6w:label'] || z.name)) || '' };
+          var feld = /context/i.test(l.type) ? g.kontext : g.ids; if (feld.indexOf(pq[1]) < 0) feld.push(pq[1]);
+          info.links++;
         });
       });
-    }
-    var pakete = []; for (var i = 0; i < objs.length; i += 25) pakete.push(objs.slice(i, i + 25));
-    await pool(pakete, 3, async function (pk) {
-      if (info.fehler >= 3 && !info.ok) return;
-      try { await frage(pk); info.ok += pk.length; info.pakete++; }
-      catch (e) {
-        if (!info.fehlerText) info.fehlerText = e.message;
-        if (pk.length === 1) { info.fehler++; return; }
-        info.einzeln = true;
-        await pool(pk, PARALLEL, async function (o) { if (info.fehler >= 3 && !info.ok) return; try { await frage([o]); info.ok++; } catch (e2) { info.fehler++; } });
-      }
     });
     return gef;
+  }
+  // Dokumente an Strukturobjekten (Adapter 29): vom Objekt aus ausgehend, Links v6_specdoc_to (Spezifikation) und v6_annexdoc_to (Attachment).
+  // Namen gesichert über getrelationcount am Produkt und den Mitschnitt am Issue (v6_annexdoc_to -> Document); mehrere Objekte je Aufruf wie eingehend.
+  // Liefert nur, WO Dokumente hängen, samt Grunddaten; Dateien und Beschreibung kommen danach über documents/parentId (nur für Objekte mit Dokumenten).
+  async function dokumenteEco(ids, info) {
+    var gef = [], menge = {}; ids.forEach(function (i) { menge[i] = 1; });
+    await ecoPakete(ids.map(ecoProdukt), ['v6_specdoc_to', 'v6_annexdoc_to'], 'out', info, function (r, obj) {
+      (r.links || []).forEach(function (l) {
+        var m = l && /^v6_(specdoc|annexdoc)_(to|from)$/i.exec(l.type || ''); if (!m) return;
+        [[l.source, l.target], [l.target, l.source]].forEach(function (p) {
+          if (!menge[p[0]] || menge[p[1]] || !p[1]) return;
+          var z = obj[p[1]] || {}; if (/Issue|Person/i.test(z.type || '')) return;
+          var st = String(z['ds6w:status'] || '').split('.').pop();
+          info.links++;
+          gef.push({ id: p[1], el: p[0], art: /spec/i.test(m[1]) ? 'spec' : 'praes', rel: l.type,
+            d: { id: p[1], type: z.type || 'Document', eco: true, dataelements: { title: z['ds6w:label'] || z.name || '', name: z['ds6w:identifier'] || '', revision: z['ds6wg:revision'] || z.revision || '', state: st,
+              owner: z['ds6w:responsible'] || z.owner || '', modified: z['ds6w:modified'] || '', collabspace: z['ds6w:project'] || '' } } });
+        });
+      });
+    });
+    return gef;
+  }
+  // Beziehungsübersicht für die Diagnose (Adapter 29): welche Beziehungen haben die ersten Objekte überhaupt? Ein Aufruf getrelationcount
+  // (Aufbau wie im Mitschnitt: relations ["use-auto-by-type-relations"], mehrere items). Zeigt, ob es Beziehungen gibt, die das Widget noch nicht liest.
+  async function beziehungsUebersicht(objs) {
+    var tok = ''; try { tok = await csrf(); } catch (e) { }
+    var kopf = { 'Content-Type': 'application/json' }; if (tok) kopf.ENO_CSRF_TOKEN = tok;
+    var t0 = Date.now(), r = await hole(RCNT, { xrequestedwith: 'xmlhttprequest' }, false, 'POST', kopf, { widgetId: '3Deep', label: '3Deep-' + Date.now(), allRelationsMode: true,
+      attributesForView: ['ds6w:label', 'ds6wg:revision', 'ds6w:status', 'ds6w:type', 'ds6w:modified', 'ds6w:responsible', 'ds6w:project', 'ds6w:dataSource', 'ds6w:identifier'],
+      computeWithInstances: false, excludedRelations: ['v6_structure_roots_from'], ghostMode: false,
+      items: objs.map(function (o) { return { id: o.id, relTypesTaxonomies: o.tax, serviceId: '3DSpace', type: o.typ }; }), lang: 'en', publicationsMode: false, redirectQueryToSGI: true, relations: ['use-auto-by-type-relations'] });
+    var sum = {}; ((r && r.counts) || []).forEach(function (c) { if (!c || !c.name) return; var s = sum[c.name] = sum[c.name] || { richtung: c.direction || '', objekte: 0, zahl: 0 }; s.objekte++; s.zahl += +c.count || 0; });
+    return { sum: sum, ms: Date.now() - t0, n: objs.length };
   }
   function zeichnungenXcad(id) {
     var art = /Product/i.test(S.cadTyp[id] || '') ? 'Product' : 'Part';
@@ -573,6 +641,23 @@
   // q.produkte = [IDs]: Start bei Physical Products (nur abwärts). q.person = {id, name}: Start bei einer Person (ihre Issues und Aufgaben).
   async function leseBookmark(bmId, bmTitel, q) {
     var nodes = [], edges = [], gesehen = {}, hinweise = [], qIss = !!(q && (q.issues || q.person)), pi = null;
+    var status = fortschritt;   // alle Fortschrittsmeldungen dieses Ladens (mit Vorspann, sobald das erste Bild steht)
+    // Ergebnisse der Hintergrundstufen stehen von Anfang an bereit, damit baue() jederzeit einen Zwischenstand liefern kann
+    var items = {}, anzahl = 0, grenze = false, zq = {}, zeich = {}, zeichZahl = 0, doks = {}, dokKanten = [], dokZahl = 0, dokGrenze = false;
+    var exKnoten = [], exKanten = [], pers = {}, issues = {}, tasks = {};
+    // Laden in Stufen (Adapter 29): melde() schickt den aktuellen Stand an die Darstellung. sofort = am Ende einer Stufe, sonst höchstens alle 1,5 s.
+    // aend zählt Änderungen, die die Zahl der Objekte nicht verändern (nachgelieferte Attribute, Dokumentdetails).
+    var letzteMeldung = 0, letzteSig = '', aend = 0;
+    function pruef() { if (S.abbruch) throw new Error('abgebrochen'); }
+    function abstand(ns) { var a = 3; ns.forEach(function (n) { if (n.type === 'folder' || n.type === 'dwg') return; var g = +n.size > 0 ? +n.size : ((types[n.type] || {}).size || 1); if (g > a) a = g; }); return +(2.8 * a).toFixed(3); }
+    function melde(name, sofort) {
+      if (!S.aufStufe || S.abbruch || (!sofort && Date.now() - letzteMeldung < 1500)) return;
+      var g = {}; Object.keys(gesehen).forEach(function (k) { g[k] = gesehen[k]; });
+      var z = baue(nodes.slice(), edges.slice(), g); if (!z.nodes.length) return;
+      var sig = z.nodes.length + '/' + z.edges.length + '/' + aend; if (sig === letzteSig) return;
+      letzteSig = sig; letzteMeldung = Date.now();
+      S.aufStufe({ types: types, relTypes: relTypes, nodes: z.nodes, edges: z.edges, spacing: abstand(z.nodes), maxObjects: Math.max(500, z.nodes.length) }, name);
+    }
     var types = {
       folder: { color: '#e6d2a6', size: 6, shape: 'folder', label: 'Bookmark-Folder' },
       asm: { color: '#4f8cff', size: 3.36, label: 'Baugruppe' },
@@ -608,10 +693,19 @@
 
     // 1. Bookmark-Ordner (samt Unterordnern, soweit sie als Inhalt geliefert werden)
     var startProdukte = [], ordner = q ? [] : [{ id: bmId, titel: bmTitel, eltern: null }], oi = 0, andere = []; S.bmInfo = []; S.ecoFehl = 0;
+    // Seit Adapter 29: Inhalt (Items2) und Unterordner (getecosystem) eines Ordners gleichzeitig, und die nächsten wartenden Ordner (bis zu 8) schon mit;
+    // ausgewertet wird weiter in der bisherigen Reihenfolge.
+    var holOrdner = {}, ordnerStart = function (x) {
+      if (holOrdner[x.id]) return;
+      holOrdner[x.id] = { inh: bookmarkInhalt(x.id).then(function (v) { return { ok: v }; }, function (e) { return { fehler: e }; }),
+        eco: S.ecoFehl < 2 ? unterordnerEco(x).then(function (v) { return { ok: v }; }, function (e) { return { fehler: e }; }) : null };
+    };
     while (oi < ordner.length && ordner.length < 200) {
+      ordner.slice(oi, oi + 8).forEach(ordnerStart);
       var o = ordner[oi++];
       status('Lese Bookmark „' + (o.titel || o.id) + '“ …');
-      var inh = await bookmarkInhalt(o.id);
+      var hol = holOrdner[o.id], ir0 = await hol.inh; pruef(); if (ir0.fehler) throw ir0.fehler;
+      var inh = ir0.ok, ecoP = hol.eco;
       var k = inh.kopf || {};
       nodes.push({ id: 'bm:' + o.id, type: 'folder', name: k.title || k.name || o.titel || 'Bookmark',
         meta: { Titel: k.title || o.titel || '', Beschreibung: k.description || '', Besitzer: k.owner || '', Erstellt: datum(k.created), 'Geändert': datum(k.modified), 'Collaborative Space': k.collabspace || '', 'Objekte im Ordner': String(inh.items.length), ID: o.id } });
@@ -627,12 +721,13 @@
       inh.items.forEach(function (it) { var ro = (it && it.referencedObject) || it || {}, t = ro.type || it.type || '?'; typen[t] = (typen[t] || 0) + 1; });
       inh.extra.forEach(function (x) { if (!ordner.some(function (y) { return y.id === x.id; })) { ordner.push({ id: x.id, titel: x.titel, eltern: o.id, typ: x.typ }); ausFeld.push(x.feld); } });
       var eco = '';
-      if (S.ecoFehl < 2 && ordner.length < 200) {
-        try {
-          var ue = await unterordnerEco(o), neu = 0; S.ecoFehl = 0;
+      if (ecoP && ordner.length < 200) {
+        var er0 = await ecoP; pruef();
+        if (er0.ok) {
+          var ue = er0.ok, neu = 0; S.ecoFehl = 0;
           ue.kinder.forEach(function (x) { if (!ordner.some(function (y) { return y.id === x.id; })) { ordner.push({ id: x.id, titel: x.titel, eltern: o.id, typ: x.typ }); neu++; } });
           eco = ', getecosystem: ' + ue.kinder.length + ' Unterordner' + (neu < ue.kinder.length ? ' (' + (ue.kinder.length - neu) + ' schon bekannt)' : '') + ', ' + ue.objekte + ' Objekte' + (ue.variante ? ' (nur mit ID)' : '');
-        } catch (e) { S.ecoFehl++; eco = ', getecosystem fehlgeschlagen: ' + String(e.message).slice(0, 160) + (S.ecoFehl >= 2 ? ' (für weitere Ordner übersprungen)' : ''); }
+        } else { S.ecoFehl++; eco = ', getecosystem fehlgeschlagen: ' + String(er0.fehler.message).slice(0, 160) + (S.ecoFehl >= 2 ? ' (für weitere Ordner übersprungen)' : ''); }
       } else if (S.ecoFehl >= 2) eco = ', getecosystem übersprungen';
       S.bmInfo.push('„' + (k.title || o.titel || o.id) + '“: ' + inh.items.length + ' Inhalte (' + (Object.keys(typen).map(function (t) { return t + ' ' + typen[t]; }).join(', ') || 'keine') + ')' +
         (ausFeld.length ? ', ' + ausFeld.length + ' Unterordner außerhalb des Inhalts (Feld ' + ausFeld.filter(function (f, i) { return ausFeld.indexOf(f) === i; }).join(', ') + ')' : '') +
@@ -670,59 +765,59 @@
     }
     var maxTiefe = q ? (q.struktur ? MAXTIEFE : 0) : MAXTIEFE;
     S.wurzeln = startProdukte.map(function (p) { return p.id; });
-    // 2. Produktstruktur abwärts, Ebene für Ebene
-    var items = {}, anzahl = 0, grenze = false;
+    // 2. Produktstruktur abwärts
+    pruef();
     var front = []; startProdukte.forEach(function (p) { if (front.indexOf(p.id) < 0) front.push(p.id); });
-    // 2a. schneller Weg: ganze Struktur je Startprodukt mit einer expand-Abfrage; bei Fehlern Rückfall auf Ebene für Ebene
     S.expandInfo = []; S.expandFehl = 0; S.expandOk = false;
-    // 2·. Attribute aller Strukturobjekte mit einer Zone Query (eine Abfrage für alle Startprodukte); bei Fehler weiter wie bisher
-    var zq = {}; S.zqInfo = []; S.zqOk = false;
+    // 2·. Attribute aller Strukturobjekte mit einer Zone Query (eine Abfrage für alle Startprodukte). Seit Adapter 29 läuft sie gleichzeitig mit
+    // der Struktur: das erste Bild wartet nicht darauf, die Attribute kommen als zweite Stufe nach. Bei Fehler weiter wie bisher.
+    var zqP = null; S.zqInfo = []; S.zqOk = false;
     if (S.mitZone && maxTiefe > 0 && front.length) {
       if ((S.zqFehl || 0) >= 2) S.zqInfo.push('übersprungen: in dieser Sitzung zweimal ohne Erfolg (Widget neu laden für einen neuen Versuch)');
       else {
         var tz = Date.now();
-        status('Lese Attribute der Produktstruktur in einer Abfrage (Zone Query) …');
-        try {
-          var zr = await zoneAttribute(front, maxTiefe === MAXTIEFE ? -1 : maxTiefe); zq = zr.attr; S.zqFehl = 0; S.zqOk = true;
+        zqP = zoneAttribute(front.slice(), maxTiefe === MAXTIEFE ? -1 : maxTiefe).then(function (zr) {
+          zq = zr.attr; S.zqFehl = 0; S.zqOk = true; aend++;
           var namen = {}, pn = 0; Object.keys(zq).forEach(function (k) { Object.keys(zq[k]).forEach(function (n) { if (zq[k][n] !== '' && zq[k][n] != null) namen[n] = (namen[n] || 0) + 1; }); if (zq[k]['ds6wg:EnterpriseExtension.V_PartNumber']) pn++; });
           S.zqInfo.push('ok: Variante ' + (zr.variante + 1) + ' von ' + ZQATTR.length + (zr.ohneEnovia ? ' (Adresse ohne /enovia)' : '') + ', ' + Object.keys(zq).length + ' Objekte mit Attributen, davon ' + pn + ' mit Teilenummer, ' + ((Date.now() - tz) / 1000).toFixed(1) + ' s');
           S.zqInfo.push('gelieferte Attribute (Anzahl Objekte): ' + (Object.keys(namen).map(function (n) { return n + ' ' + namen[n]; }).join(', ') || '(keine)'));
           if (zr.fehl.length) S.zqInfo.push('vorher fehlgeschlagen: ' + zr.fehl.join(' | '));
           if (zr.fehler) S.zqInfo.push('Hinweis der Plattform: ' + zr.fehler);
           var bsp = Object.keys(zq)[0]; if (bsp) S.zqInfo.push('Beispiel ' + bsp + ': ' + JSON.stringify(zq[bsp]).slice(0, 600));
-        } catch (e) { S.zqFehl = (S.zqFehl || 0) + 1; zq = {}; S.zqInfo.push('Rückfall auf den bisherigen Weg: ' + e.message); }
+        }, function (e) { if (!S.abbruch) S.zqFehl = (S.zqFehl || 0) + 1; zq = {}; S.zqInfo.push('Rückfall auf den bisherigen Weg: ' + e.message); });
       }
     }
+    // 2a. schneller Weg: ganze Struktur je Startprodukt mit einer expand-Abfrage (bis zu 4 Produkte gleichzeitig); bei Fehlern Rückfall auf Ebene für Ebene
     if (S.mitExpand && maxTiefe > 0 && front.length) {
-      var rest = [], t0 = Date.now();
-      for (var wi = 0; wi < front.length; wi++) {
-        var wid = front[wi], ex = null, grund = '';
-        if (S.expandFehl >= 2 && !S.expandOk) { rest.push(wid); continue; }   // expand geht hier offenbar nicht: nicht weiter versuchen
-        status('Lese Produktstruktur in einer Abfrage (expand): Produkt ' + (wi + 1) + ' von ' + front.length + ' …');
-        try { ex = await expandStruktur(wid, maxTiefe === MAXTIEFE ? -1 : maxTiefe); if (!ex) grund = 'Antwort nicht auswertbar'; else if (ex.voll) { grund = 'Grenze von ' + EXPANDGRENZE + ' Einträgen erreicht'; ex = null; } }
+      var rest = [], t0 = Date.now(), tiefeEx = maxTiefe === MAXTIEFE ? -1 : maxTiefe;
+      status('Lese Produktstruktur (expand): ' + front.length + (front.length === 1 ? ' Produkt' : ' Produkte') + ' …');
+      var exErg = await pool(front, 4, async function (wid) {
+        if (S.expandFehl >= 2 && !S.expandOk) return { aus: true };   // expand geht hier offenbar nicht: nicht weiter versuchen
+        var ex = null, grund = '';
+        try { ex = await expandStruktur(wid, tiefeEx); if (!ex) grund = 'Antwort nicht auswertbar'; else if (ex.voll) { grund = 'Grenze von ' + EXPANDGRENZE + ' Einträgen erreicht'; ex = null; } }
         catch (e) { grund = e.message; }
-        if (!ex) { S.expandFehl = (S.expandFehl || 0) + 1; rest.push(wid); S.expandInfo.push(wid + ': Rückfall auf Ebene für Ebene (' + grund + ')'); continue; }
-        S.expandOk = true;
+        if (!ex) { S.expandFehl = (S.expandFehl || 0) + 1; return { grund: grund }; }
+        S.expandOk = true; return { ex: ex };
+      });
+      pruef();
+      front.forEach(function (wid, wi) {
+        var er = exErg[wi] || {}, ex = er.ex;
+        if (!ex) { rest.push(wid); if (!er.aus) S.expandInfo.push(wid + ': Rückfall auf Ebene für Ebene (' + (er.grund || (er.fehler && er.fehler.message) || '?') + ')'); return; }
         var reihe = Object.keys(ex.tiefe).sort(function (a, b) { return ex.tiefe[a] - ex.tiefe[b]; }), neu = 0;
         reihe.forEach(function (rid) {
           if (items[rid]) return;
           if (anzahl + nodes.length + andere.length >= S.max) { grenze = true; return; }
           var kk = ex.kinder[rid] || {};
-          items[rid] = { id: rid, det: ex.refs[rid] || null, tiefe: ex.tiefe[rid],
+          items[rid] = { id: rid, det: ex.refs[rid] || null, tiefe: ex.tiefe[rid], ausExpand: true,
             kinder: Object.keys(kk).map(function (c) { return { id: c, n: Math.max(1, Object.keys(kk[c]).length) }; }) };
           if (ex.refs[rid] && ex.refs[rid].type && !S.cadTyp[rid]) S.cadTyp[rid] = ex.refs[rid].type;
           anzahl++; neu++;
         });
         S.expandInfo.push(wid + ': ' + neu + ' Objekte über expand');
-      }
-      // Details nachladen, wo expand keine Grunddaten geliefert hat
-      var ohne = Object.keys(items).filter(function (k) { var d = items[k].det; return (!d || !(d.title || d.name)) && !(zq[k] && (zq[k]['ds6w:label'] || zq[k]['ds6w:identifier'])); });
-      if (ohne.length) {
-        status('Lese Details zu ' + ohne.length + ' Objekten …');
-        await pool(ohne, PARALLEL, async function (k) { try { items[k].det = await engItem(k); } catch (e) { items[k].fehler = e.message; } });
-      }
-      S.expandInfo.push('Dauer expand samt Details: ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s');
+      });
+      S.expandInfo.push('Dauer expand: ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s');
       front = rest;
+      melde('Struktur', true);   // erstes Bild: Bookmark und Produktstruktur
     }
     for (var tiefe = 0; front.length && tiefe <= maxTiefe; tiefe++) {
       var frei = S.max - anzahl - nodes.length - andere.length;
@@ -738,12 +833,35 @@
       var naechste = [];
       front.forEach(function (id) { items[id].kinder.forEach(function (c) { if (!items[c.id] && naechste.indexOf(c.id) < 0) naechste.push(c.id); }); });
       front = naechste;
+      pruef(); melde('Struktur', tiefe === 0 || !front.length);
       if (grenze) break;
     }
     if (grenze || (front.length && maxTiefe === MAXTIEFE)) hinweise.push('Höchstzahl von ' + S.max + ' Objekten erreicht, die Struktur ist unvollständig.');
+    melde('Struktur', true);
+    // Hintergrund vorab (Adapter 29): Sobald die Struktur steht, starten die Sammelabfragen für Zeichnungen, Dokumente und Issues gleichzeitig.
+    // Ausgewertet werden sie weiter unten der Reihe nach; so überlappen sich nur die Wartezeiten.
+    var vorab = {}, vorabStart = function (fn) { return fn().then(function (v) { return { ok: v }; }, function (e) { return { fehler: e }; }); }, idsS = Object.keys(items);
+    var issObjA = []; ordner.forEach(function (o) { if (ECOTAX[o.typ]) issObjA.push({ id: o.id, typ: o.typ, tax: ECOTAX[o.typ] }); }); idsS.forEach(function (id) { issObjA.push(ecoProdukt(id)); });
+    if (idsS.length && S.mitZeich) { vorab.ze = ecoInfo(); vorab.zeich = vorabStart(function () { return zeichnungenEco(idsS, vorab.ze); }); }
+    if (idsS.length && S.mitDok && !S.testOhneDokEco) { vorab.de = ecoInfo(); vorab.dok = vorabStart(function () { return dokumenteEco(idsS, vorab.de); }); }
+    if (S.mitIssues && !qIss && !S.testOhneIssEco && issObjA.length) { vorab.ie = ecoInfo(); vorab.iss = vorabStart(function () { return issuesEco(issObjA, vorab.ie); }); }
+    // Stufe 2: Attribute aus der Zone Query; Details einzeln nur, wo weder expand noch die Zone Query Grunddaten geliefert haben
+    if (zqP) { status('Lese Attribute der Produktstruktur (Zone Query) …'); await zqP; pruef(); }
+    var ohne = Object.keys(items).filter(function (k) { var d = items[k].det; return items[k].ausExpand && (!d || !(d.title || d.name)) && !(zq[k] && (zq[k]['ds6w:label'] || zq[k]['ds6w:identifier'])); });
+    if (ohne.length) {
+      status('Lese Details zu ' + ohne.length + ' Objekten …');
+      await pool(ohne, PARALLEL, async function (k) { try { items[k].det = await engItem(k); } catch (e) { items[k].fehler = e.message; } });
+      aend++; pruef();
+    }
+    // übrige Bookmark-Inhalte (Dokumente usw.): Details gleich jetzt, es sind wenige
+    await pool(andere, PARALLEL, async function (a) {
+      if (/Document/i.test(a.typ)) { try { a.det = await dokument(a.id); aend++; } catch (e) { } }
+    });
+    pruef(); melde('Attribute', true);
 
-    // 2a'. Zeichnungen der Strukturobjekte
-    var zeich = {}, zeichZahl = 0; S.zgInfo = [];
+    // 2a'. Zeichnungen der Strukturobjekte (Hintergrund). Seit Adapter 29: Zone Query (kostet nichts extra) und Zeigerbeziehung (ein Durchgang in Paketen);
+    // die Abfragen je Objekt nur noch als Rückfall: EngRepInstance, wenn die Zone Query nicht verfügbar ist, dsxcad, wenn die Zeigerbeziehung nicht lesbar war.
+    S.zgInfo = [];
     if (S.mitZeich && Object.keys(items).length) {
       var tz0 = Date.now(), nimm = function (z, el, quelle) {
         if (!z.id || items[z.id]) return;
@@ -754,65 +872,99 @@
       Object.keys(zz.gef).forEach(function (k) { var g = zz.gef[k]; Object.keys(g.eltern).concat([null]).forEach(function (el) { nimm({ id: k, typ: g.a['ds6w:type'], titel: g.a['ds6w:label'] || g.a['ds6w:identifier'], a: g.a }, el, 'Zone Query'); }); });
       if (S.zqOk) S.zgInfo.push('Zone Query: ' + zoneZahl + ' Zeichnungen; Typen in der Antwort: ' + (Object.keys(zz.typen).map(function (t) { return t + ' ' + zz.typen[t]; }).join(', ') || '(keine)'));
       else S.zgInfo.push('Zone Query nicht verfügbar (Häkchen „Attribute“ aus oder Fehler)');
-      var ids2 = Object.keys(items), zf = { eng: { ok: 0, fehler: 0, treffer: 0, fehlerText: '' }, xcad: { ok: 0, fehler: 0, treffer: 0, fehlerText: '' } }, zErl = 0;
-      var mitEng = !zoneZahl, xIds = ids2.filter(function (id) { return /dsxcad/i.test(S.cadTyp[id] || ''); });
-      status('Suche Zeichnungen …');
-      await pool(ids2, PARALLEL, async function (id) {
-        var auf = [];
-        if (mitEng) auf.push(['eng', zeichnungenEng]);
-        if (xIds.indexOf(id) >= 0) auf.push(['xcad', zeichnungenXcad]);
-        await Promise.all(auf.map(async function (w) {
-          var z = zf[w[0]]; if (z.fehler >= 3 && !z.ok) return;
-          try { var l = await w[1](id); z.ok++; z.treffer += l.length; l.forEach(function (x) { nimm(x, id, w[0] === 'eng' ? 'EngRepInstance' : 'dsxcad'); }); }
-          catch (e) { z.fehler++; if (!z.fehlerText) z.fehlerText = e.message; }
-        }));
-        zErl++; if (zErl % 10 === 0 || zErl === ids2.length) status('Suche Zeichnungen: ' + zErl + ' von ' + ids2.length + ' Objekten, ' + zeichZahl + ' gefunden …');
-      });
-      var ze = { ok: 0, fehler: 0, pakete: 0, einzeln: false, fehlerText: '' }, vorEco = zeichZahl;
+      melde('Zeichnungen', true);
+      var ids2 = Object.keys(items), ze = vorab.ze || ecoInfo(), vorEco = zeichZahl;
       status('Suche Zeichnungen per Zeigerbeziehung …');
-      var zl = await zeichnungenEco(ids2, ze);
+      var zv = await (vorab.zeich || vorabStart(function () { return zeichnungenEco(ids2, ze); })), zl = zv.ok || []; pruef();
+      if (zv.fehler) { ze.fehler++; if (!ze.fehlerText) ze.fehlerText = zv.fehler.message; }
       zl.forEach(function (x) { nimm(x, x.el, 'Zeigerbeziehung'); if (zeich[x.id] && x.v5) zeich[x.id].v5 = true; });
-      S.zgInfo.push('Zeigerbeziehung (getecosystem, eingehend): ' + ze.ok + ' Objekte geprüft' + (ze.pakete ? ' in ' + ze.pakete + ' Paketen' : '') + (ze.einzeln ? ', teils einzeln' : '') + ', ' + ze.fehler + ' Fehler, ' +
+      S.zgInfo.push('Zeigerbeziehung (getecosystem, eingehend): ' + ecoText(ze) + ', ' +
         zl.length + ' Verweise, ' + (zeichZahl - vorEco) + ' neue Zeichnungen' + (ze.fehlerText ? ' (erster Fehler: ' + ze.fehlerText + ')' : ''));
+      melde('Zeichnungen', true);
+      var zf = { eng: { ok: 0, fehler: 0, treffer: 0, fehlerText: '' }, xcad: { ok: 0, fehler: 0, treffer: 0, fehlerText: '' } }, zErl = 0;
+      var mitEng = !S.zqOk, ecoAus = ze.fehler > 0 && !ze.ok, xIds = ecoAus ? ids2.filter(function (id) { return /dsxcad/i.test(S.cadTyp[id] || ''); }) : [];
+      if (mitEng || xIds.length) {
+        status('Suche Zeichnungen je Objekt …');
+        await pool(ids2, PARALLEL, async function (id) {
+          var auf = [];
+          if (mitEng) auf.push(['eng', zeichnungenEng]);
+          if (xIds.indexOf(id) >= 0) auf.push(['xcad', zeichnungenXcad]);
+          await Promise.all(auf.map(async function (w) {
+            var z = zf[w[0]]; if ((z.fehler >= 3 && !z.ok) || S.abbruch) return;
+            try { var l = await w[1](id); z.ok++; z.treffer += l.length; l.forEach(function (x) { nimm(x, id, w[0] === 'eng' ? 'EngRepInstance' : 'dsxcad'); }); }
+            catch (e) { z.fehler++; if (!z.fehlerText) z.fehlerText = e.message; }
+          }));
+          zErl++; if (zErl % 10 === 0 || zErl === ids2.length) { status('Suche Zeichnungen: ' + zErl + ' von ' + ids2.length + ' Objekten, ' + zeichZahl + ' gefunden …'); melde('Zeichnungen'); }
+        });
+        pruef();
+      }
       if (mitEng) S.zgInfo.push('EngRepInstance je Objekt: ' + zf.eng.ok + ' ok, ' + zf.eng.fehler + ' Fehler, ' + zf.eng.treffer + ' Zeichnungen' + (zf.eng.fehlerText ? ' (erster Fehler: ' + zf.eng.fehlerText + ')' : ''));
-      else S.zgInfo.push('EngRepInstance je Objekt: übersprungen (Zone Query hat Zeichnungen geliefert)');
-      S.zgInfo.push('dsxcad Drawing je V5-Objekt (' + xIds.length + ' Objekte): ' + zf.xcad.ok + ' ok, ' + zf.xcad.fehler + ' Fehler, ' + zf.xcad.treffer + ' Zeichnungen' + (zf.xcad.fehlerText ? ' (erster Fehler: ' + zf.xcad.fehlerText + ')' : ''));
+      else S.zgInfo.push('EngRepInstance je Objekt: übersprungen (Zone Query verfügbar)');
+      if (ecoAus) S.zgInfo.push('dsxcad Drawing je V5-Objekt (' + xIds.length + ' Objekte): ' + zf.xcad.ok + ' ok, ' + zf.xcad.fehler + ' Fehler, ' + zf.xcad.treffer + ' Zeichnungen' + (zf.xcad.fehlerText ? ' (erster Fehler: ' + zf.xcad.fehlerText + ')' : ''));
+      else S.zgInfo.push('dsxcad Drawing je V5-Objekt: übersprungen (Zeigerbeziehung lesbar)');
       S.zgInfo.push('Ergebnis: ' + zeichZahl + ' Zeichnungen in ' + ((Date.now() - tz0) / 1000).toFixed(1) + ' s');
-      if (!zeichZahl && zf.eng.fehler && !zf.eng.ok && zf.xcad.fehler && !zf.xcad.ok) hinweise.push('Zeichnungen nicht lesbar (Details unter „Diagnose“).');
+      if (!zeichZahl && ecoAus && (!mitEng || (zf.eng.fehler && !zf.eng.ok)) && (!xIds.length || (zf.xcad.fehler && !zf.xcad.ok))) hinweise.push('Zeichnungen nicht lesbar (Details unter „Diagnose“).');
+      melde('Zeichnungen', true);
     }
 
-    // 2b. Spezifikationen und Attachments der Objekte
-    var doks = {}, dokKanten = [], dokZahl = 0, dokGrenze = false;
-    if (S.mitDok) {
-      var ids = Object.keys(items), erledigt = 0, zaehler = {};
+    // 2b. Spezifikationen und Attachments der Objekte (Hintergrund). Seit Adapter 29 zwei Schritte: (1) getecosystem ausgehend in Paketen findet,
+    // WO Dokumente hängen (statt drei Abfragen je Objekt); (2) die bisherige Abfrage documents/parentId nur noch für diese Objekte liefert Dateien,
+    // Beschreibung und alle Beziehungsarten. Ist getecosystem nicht vollständig lesbar: wie bisher alle Objekte einzeln (Rückfall).
+    S.dokInfo = [];
+    if (S.mitDok && Object.keys(items).length) {
+      var ids = Object.keys(items), erledigt = 0, zaehler = {}, tD = Date.now(), ecoK = {}, dokK = {};
       DOKREL.forEach(function (r) { zaehler[r.rel] = { ok: 0, fehler: 0 }; });
-      await pool(ids, PARALLEL, async function (id) {
+      var nimmDok = function (d, did, art, id, rel, ausEco) {
+        if (!doks[did]) {
+          if (nodes.length + anzahl + andere.length + dokZahl + zeichZahl >= S.max) { dokGrenze = true; return; }
+          doks[did] = { d: d, art: art }; dokZahl++;
+        } else {
+          if (art === 'spec') doks[did].art = 'spec';
+          if (!ausEco && doks[did].d && doks[did].d.eco) { doks[did].d = d; aend++; }   // Grunddaten aus getecosystem durch die vollständigen ersetzen
+        }
+        var key = did + '>' + id + '>' + art, k = dokK[key];
+        if (!k) { k = dokK[key] = { from: 'o:' + did, to: id, type: art, meta: { Beziehung: rel } }; dokKanten.push(k); if (ausEco) { k.eco = did; (ecoK[id] = ecoK[id] || []).push(k); } }
+        else if (!ausEco && k.eco) { k.meta = { Beziehung: rel }; delete k.eco; }
+      };
+      var de = vorab.de || ecoInfo(), dokEco = false;
+      if (!S.testOhneDokEco) {
+        status('Suche Spezifikationen und Attachments …');
+        var dv = await (vorab.dok || vorabStart(function () { return dokumenteEco(ids, de); })); pruef();
+        if (dv.fehler) { de.fehler++; if (!de.fehlerText) de.fehlerText = dv.fehler.message; }
+        else { dokEco = de.ok > 0 && !de.fehler; if (dokEco) dv.ok.forEach(function (x) { nimmDok(x.d, x.id, x.art, x.el, x.rel, true); }); }
+        S.dokInfo.push('getecosystem (ausgehend): ' + ecoText(de) + ', ' + de.links + ' Verweise' + (de.fehlerText ? ' (erster Fehler: ' + de.fehlerText + ')' : ''));
+        if (dokEco) melde('Dokumente', true);
+      }
+      var idsD = dokEco ? ids.filter(function (id) { return ecoK[id]; }) : ids, vorDet = dokZahl;
+      S.dokInfo.push(dokEco ? 'Weg: getecosystem, Details über documents/parentId für ' + idsD.length + ' von ' + ids.length + ' Objekten' : 'Weg: documents/parentId für alle ' + ids.length + ' Objekte (' + (S.testOhneDokEco ? 'getecosystem abgeschaltet' : 'Rückfall, getecosystem nicht vollständig') + ')');
+      await pool(idsD, PARALLEL, async function (id) {
         // alle Beziehungen eines Objekts gleichzeitig abfragen (seit Adapter 15), ausgewertet in fester Reihenfolge
-        async function eine(r) { var z = zaehler[r.rel]; if (z.fehler >= 3 && !z.ok) return null; try { var l = await dokumenteZu(id, r.rel); z.ok++; return l; } catch (e) { z.fehler++; return null; } }
+        async function eine(r) { var z = zaehler[r.rel]; if ((z.fehler >= 3 && !z.ok) || S.abbruch) return null; try { var l = await dokumenteZu(id, r.rel); z.ok++; return l; } catch (e) { z.fehler++; return null; } }
         var listen = [];
         if (S.dokSeriell) { for (var rs = 0; rs < DOKREL.length; rs++) listen.push(await eine(DOKREL[rs])); }   // nur für den Testvergleich
         else listen = await Promise.all(DOKREL.map(eine));
+        var gefunden = {}, gelesen = false;
         for (var ri = 0; ri < DOKREL.length; ri++) {
           var r = DOKREL[ri], liste = listen[ri];
           if (!liste) continue;
-          liste.forEach(function (d) {
-            var did = d && (d.id || d.identifier); if (!did) return;
-            if (!doks[did]) {
-              if (nodes.length + anzahl + andere.length + dokZahl + zeichZahl >= S.max) { dokGrenze = true; return; }
-              doks[did] = { d: d, art: r.art }; dokZahl++;
-            } else if (r.art === 'spec') doks[did].art = 'spec';
-            dokKanten.push({ from: 'o:' + did, to: id, type: r.art, meta: { Beziehung: r.rel } });
-          });
+          gelesen = true;
+          liste.forEach(function (d) { var did = d && (d.id || d.identifier); if (!did) return; gefunden[did] = 1; nimmDok(d, did, r.art, id, r.rel, false); });
         }
+        // Verweise aus getecosystem, die die genaue Abfrage unter anderer Art liefert, entfallen (sonst doppelte Kante); unbestätigte bleiben
+        if (gelesen) (ecoK[id] || []).forEach(function (k) { if (k.eco && gefunden[k.eco]) k.tot = true; });
         erledigt++;
-        if (erledigt % 10 === 0 || erledigt === ids.length) status('Lese Spezifikationen und Attachments: ' + erledigt + ' von ' + ids.length + ' Objekten, ' + dokZahl + ' Dokumente …');
+        if (erledigt % 10 === 0 || erledigt === idsD.length) { status('Lese Spezifikationen und Attachments: ' + erledigt + ' von ' + idsD.length + ' Objekten, ' + dokZahl + ' Dokumente …'); melde('Dokumente'); }
       });
+      pruef();
+      dokKanten = dokKanten.filter(function (k) { return !k.tot; });
       DOKREL.forEach(function (r) { var z = zaehler[r.rel]; if (z.fehler && !z.ok) hinweise.push('Beziehung „' + r.rel + '“ nicht lesbar.'); });
       if (dokGrenze) hinweise.push('Höchstzahl von ' + S.max + ' Objekten erreicht, nicht alle Dokumente gezeigt.');
+      S.dokInfo.push('documents/parentId: ' + DOKREL.map(function (r) { return r.rel + ' ' + zaehler[r.rel].ok + ' ok/' + zaehler[r.rel].fehler + ' Fehler'; }).join(', ') + (dokEco ? ', ' + (dokZahl - vorDet) + ' Dokumente zusätzlich zu getecosystem' : ''));
+      S.dokInfo.push('Ergebnis: ' + dokZahl + ' Dokumente in ' + ((Date.now() - tD) / 1000).toFixed(1) + ' s');
+      aend++; melde('Dokumente', true);
     }
 
     // 2c. Issues, Aufgaben und Personen
-    var exKnoten = [], exKanten = [], pers = {}, issues = {}, tasks = {};
     if (S.mitIssues || qIss) {
       var ziel = {};   // Plattform-ID -> Knoten-ID in der Darstellung
       ordner.forEach(function (o) { ziel[o.id] = 'bm:' + o.id; });
@@ -837,15 +989,24 @@
       var zustand = function (s) { return IZ[String(s || '').toUpperCase().replace(/_/g, ' ')] || s || ''; };
       // Issues: alle sichtbaren Issues lesen und die behalten, die ein geladenes Objekt betreffen
       try {
-        var iIds, iFertig = 0, ecoIss = null, ie = { ok: 0, fehler: 0, pakete: 0, einzeln: false, fehlerText: '', links: 0 }, iWeg = 'Start bei Issue/Person';
+        var iIds, iFertig = 0, ecoIss = null, ie = vorab.ie || ecoInfo(), iWeg = 'Start bei Issue/Person';
         if (!qIss) {
           status('Suche Issues zu den geladenen Objekten …');
-          var eObjs = [];
-          ordner.forEach(function (o) { if (ECOTAX[o.typ]) eObjs.push({ id: o.id, typ: o.typ, tax: ECOTAX[o.typ] }); });
-          Object.keys(items).forEach(function (id) { eObjs.push({ id: id, typ: (S.cadTyp[id] && !/dsxcad/i.test(S.cadTyp[id])) ? S.cadTyp[id] : 'VPMReference', tax: ECOTAX_PRD }); });
-          Object.keys(doks).forEach(function (id) { eObjs.push({ id: id, typ: 'Document', tax: ECOTAX_DOC }); });
-          Object.keys(zeich).forEach(function (id) { eObjs.push({ id: id, typ: 'Drawing', tax: ECOTAX_DRW }); });
-          if (!S.testOhneIssEco) { try { ecoIss = await issuesEco(eObjs, ie); } catch (e) { ie.fehler++; if (!ie.fehlerText) ie.fehlerText = e.message; ecoIss = null; } }
+          // Bookmark-Ordner und Strukturobjekte laufen schon (vorab); Dokumente und Zeichnungen kommen in einer zweiten, kleinen Abfrage dazu
+          var eObjB = [];
+          Object.keys(doks).forEach(function (id) { eObjB.push({ id: id, typ: 'Document', tax: ECOTAX_DOC }); });
+          Object.keys(zeich).forEach(function (id) { eObjB.push({ id: id, typ: 'Drawing', tax: ECOTAX_DRW }); });
+          if (!S.testOhneIssEco) {
+            var iv = await (vorab.iss || vorabStart(function () { return issuesEco(issObjA, ie); }));
+            if (iv.fehler) { ie.fehler++; if (!ie.fehlerText) ie.fehlerText = iv.fehler.message; } else ecoIss = iv.ok;
+            if (ecoIss && eObjB.length) {
+              try {
+                var g2 = await issuesEco(eObjB, ie);
+                Object.keys(g2).forEach(function (k) { var x = ecoIss[k]; if (!x) { ecoIss[k] = g2[k]; return; } g2[k].ids.forEach(function (i) { if (x.ids.indexOf(i) < 0) x.ids.push(i); }); g2[k].kontext.forEach(function (i) { if (x.kontext.indexOf(i) < 0) x.kontext.push(i); }); });
+              } catch (e) { ie.fehler++; if (!ie.fehlerText) ie.fehlerText = e.message; }
+            }
+            pruef();
+          }
           if (ecoIss && ie.ok && !ie.fehler) { iIds = Object.keys(ecoIss); iWeg = 'getecosystem (eingehend)'; }
           else { status('Suche Issues …'); iIds = await issueIds(); iWeg = S.testOhneIssEco ? 'alle Issues (getecosystem abgeschaltet)' : 'alle Issues (Rückfall, getecosystem nicht vollständig)'; ecoIss = null; }
         } else iIds = Object.keys(vorIssues);
@@ -878,6 +1039,7 @@
           var ro = S.personRollen[iid] || [];
           if (pId && ro.length && ro.indexOf('Zugewiesen') < 0) exKanten.push({ from: n.id, to: pId, type: 'zuweisung', label: ro.join(', '), meta: { Rolle: ro.join(', ') } });
         });
+        pruef(); melde('Issues', true);
         if (!ecoIss && !qIss && iIds.length >= MAXISSUES) hinweise.push('Nur die ersten ' + iIds.length + ' Issues der Plattform gelesen.');
         // Attachments direkt am Issue
         if (S.mitDok || qIss) {
@@ -893,8 +1055,9 @@
             aFertig++; if (aFertig % 10 === 0 || aFertig === aIds.length) status('Lese Attachments der Issues: ' + aFertig + ' von ' + aIds.length + ' …');
           });
           if (aFehler && !aOk) hinweise.push('Attachments der Issues nicht lesbar.');
+          pruef(); melde('Issues', true);
         }
-      } catch (e) { hinweise.push('Issues nicht lesbar (' + e.message + ').'); }
+      } catch (e) { if (S.abbruch) throw e; hinweise.push('Issues nicht lesbar (' + e.message + ').'); }
       // Aufgaben: eigene Aufgaben des Benutzers und Aufgaben mit einem geladenen Objekt als Kontext
       var nimmTask = function (t) {
         if (!t) return;
@@ -917,23 +1080,20 @@
         }
         bez.forEach(function (x) { if (!tasks[tid]._k[x]) { tasks[tid]._k[x] = 1; exKanten.push({ from: tasks[tid].id, to: ziel[x], type: 'aufgabe' }); } });
       };
-      try { status('Lese Aufgaben …'); (await taskAufruf(TSK, { showProjectTasks: 'true' })).forEach(nimmTask); } catch (e) { hinweise.push('Eigene Aufgaben nicht lesbar (' + e.message + ').'); }
+      try { status('Lese Aufgaben …'); (await taskAufruf(TSK, { showProjectTasks: 'true' })).forEach(nimmTask); } catch (e) { if (S.abbruch) throw e; hinweise.push('Eigene Aufgaben nicht lesbar (' + e.message + ').'); }
+      melde('Aufgaben', true);
       var sIds = ordner.map(function (o) { return o.id; }).concat(Object.keys(items)).concat(Object.keys(issues)), sOk = 0, sFehler = 0, sFertig = 0;
       await pool(sIds, PARALLEL, async function (sid) {
-        if (sFehler >= 3 && !sOk) return;
+        if ((sFehler >= 3 && !sOk) || S.abbruch) return;
         try { var l = await taskAufruf(TSK + '/scopeId/' + encodeURIComponent(sid), {}); sOk++; l.forEach(function (t) { if (t) { t._scope = sid; nimmTask(t); } }); } catch (e) { sFehler++; }
-        sFertig++; if (sFertig % 10 === 0 || sFertig === sIds.length) status('Lese Aufgaben: ' + sFertig + ' von ' + sIds.length + ' Objekten, ' + Object.keys(tasks).length + ' Aufgaben …');
+        sFertig++; if (sFertig % 10 === 0 || sFertig === sIds.length) { status('Lese Aufgaben: ' + sFertig + ' von ' + sIds.length + ' Objekten, ' + Object.keys(tasks).length + ' Aufgaben …'); melde('Aufgaben'); }
       });
+      pruef();
       if (sFehler && !sOk) hinweise.push('Aufgaben je Objekt nicht lesbar.');
       if (exGrenze) hinweise.push('Höchstzahl von ' + S.max + ' Objekten erreicht, nicht alle Issues/Aufgaben gezeigt.');
       exKnoten.forEach(function (n) { delete n._k; });
+      melde('Aufgaben', true);
     }
-
-    // 3. übrige Bookmark-Inhalte (Dokumente usw.)
-    await pool(andere, PARALLEL, async function (a) {
-      if (doks[a.id]) return;
-      if (/Document/i.test(a.typ)) { try { a.det = await dokument(a.id); } catch (e) { } }
-    });
 
     // 4. Knoten und Beziehungen
     function baue(nodes, edges, gesehen) {
@@ -978,7 +1138,7 @@
         if (x.state) n.state = ZUSTAND[String(x.state).toUpperCase().replace(/ /g, '_')] || x.state;
         gesehen['o:' + did] = 1; nodes.push(n);
       });
-      var kg = {}; (dokKanten || []).forEach(function (k) { var s = k.from + '>' + k.to + '>' + k.type; if ((doks || {})[k.from.slice(2)] && !kg[s]) { kg[s] = 1; edges.push(k); } });
+      var kg = {}; (dokKanten || []).forEach(function (k) { var s = k.from + '>' + k.to + '>' + k.type; if (!k.tot && (doks || {})[k.from.slice(2)] && !kg[s]) { kg[s] = 1; edges.push({ from: k.from, to: k.to, type: k.type, meta: k.meta }); } });
       andere.forEach(function (a) {
         var d = a.det || {}, id = 'o:' + a.id;
         if (!gesehen[id]) {
@@ -997,12 +1157,16 @@
       (exKanten || []).forEach(function (k) { if (vorhanden[k.from] && vorhanden[k.to]) edges.push(k); });
       return { nodes: nodes, edges: edges, fehlend: fehlend };
     }
+    pruef();
+    // Beziehungsübersicht für die Diagnose: läuft nebenher, das Ergebnis wartet nicht darauf
+    S.relInfo = null;
+    var uObj = Object.keys(items).sort(function (a, b) { return (items[a].tiefe || 0) - (items[b].tiefe || 0); }).slice(0, ECOPAKET).map(ecoProdukt), uNr = S.ladeNr;
+    if (uObj.length && !S.ohneUebersicht) beziehungsUebersicht(uObj).then(function (u) { if (S.ladeNr === uNr) { S.relInfo = u; diagnose(); } }, function (e) { if (S.ladeNr === uNr && !/abgebrochen/.test(e.message)) { S.relInfo = { fehler: e.message }; diagnose(); } });
     var fertigD = baue(nodes, edges, gesehen), fehlend = fertigD.fehlend;
     S.wurzelInfo = (S.wurzeln || []).map(function (id) { var d = (items[id] && items[id].det) || {}; return (d.title || '?') + ' ' + (d.revision || '') + ' [' + id + ']'; });
     if (fehlend) hinweise.push(fehlend + ' Objekte ohne Detaildaten (keine Leserechte oder kein Engineering Item).');
-    // Abstand wie vor Adapter 28 (Ordner damals 3, Zeichnung 0.9): größere Ordner/Zeichnungen sollen den Raum nicht auseinanderziehen
-    var abst = 3; nodes.forEach(function (n) { if (n.type === 'folder' || n.type === 'dwg') return; var g = +n.size > 0 ? +n.size : ((types[n.type] || {}).size || 1); if (g > abst) abst = g; });
-    return { daten: { types: types, relTypes: relTypes, nodes: nodes, edges: edges, spacing: +(2.8 * abst).toFixed(3), maxObjects: Math.max(500, nodes.length) }, hinweise: hinweise };
+    // Abstand wie vor Adapter 28 (Ordner damals 3, Zeichnung 0.9): größere Ordner/Zeichnungen sollen den Raum nicht auseinanderziehen (abstand())
+    return { daten: { types: types, relTypes: relTypes, nodes: nodes, edges: edges, spacing: abstand(nodes), maxObjects: Math.max(500, nodes.length) }, hinweise: hinweise };
   }
 
   // ---------- Darstellung (iframe) ----------
@@ -1052,7 +1216,6 @@
     S.dropInfo = ['Übergabe: ' + String(txt).slice(0, 1500), e.fehler ? 'Ergebnis: ' + e.fehler : 'Erkannt: ' + e.art + ' „' + e.title + '“ [' + e.id + '], Typ ' + (e.typ || '-') + ' / ' + (e.anzeige || '-')];
     clearTimeout(S.dzUhr); dropRuhe(); diagnose();
     if (e.fehler) { dropWarnung(e.fehler); return; }
-    if (S.laeuft) { dropWarnung('Es wird noch geladen, bitte warten und dann erneut ablegen.'); return; }
     if (e.art === 'produkt' && /dsxcad/i.test(e.typ)) S.cadTyp[e.id] = e.typ;
     laden({ drop: e });
   }
@@ -1082,45 +1245,103 @@
 
   // ---------- Bedienung ----------
   async function suchen() {
-    if (S.laeuft) return;
+    if (S.sucht) return;
     var text = q('.td-su').value.trim(), sel = q('.td-tr');
     try {
-      S.laeuft = true; status('Suche Bookmarks …');
+      S.sucht = true; await ruheWarten(); status('Suche Bookmarks …');
       if (/^[0-9A-Fa-f]{20,}$/.test(text)) S.treffer = [{ id: text, title: 'ID ' + text, art: 'bm' }];
       else S.treffer = await sucheBookmarks(text);
       sel.innerHTML = S.treffer.map(function (b, i) { return '<option value="' + i + '">' + esc(b.title || b.name || b.id) + (b.owner ? ' (' + esc(b.owner) + ')' : '') + '</option>'; }).join('');
       sel.style.display = S.treffer.length ? '' : 'none'; q('.td-la').style.display = S.treffer.length ? '' : 'none';
       status(S.treffer.length ? S.treffer.length + ' Bookmark(s) gefunden. Auswählen und „Laden“ drücken.' : 'Kein Bookmark gefunden.', !S.treffer.length);
-    } catch (e) { status('Suche fehlgeschlagen: ' + e.message, true); } finally { S.laeuft = false; diagnose(); }
+    } catch (e) { status('Suche fehlgeschlagen: ' + e.message, true); } finally { S.sucht = false; diagnose(); }
   }
+  // Im Nachlade-Modus (Häkchen umgeschaltet oder „↻ Neu lesen“, gleiches Objekt) bleibt das Bild stehen: Zwischenstände werden mit dem letzten
+  // fertigen Stand vereinigt, solange die Art der Objekte noch gewünscht ist. So verschwindet nichts, nur weil seine Stufe noch nicht wieder dran war.
+  function vereinige(daten) {
+    var alt = S.letzte; if (!alt) return daten;
+    var da = {}; daten.nodes.forEach(function (n) { da[n.id] = 1; });
+    var plus = alt.nodes.filter(function (n) { return !da[n.id] && !(n.type === 'dwg' && !S.mitZeich) && !((n.type === 'spec' || n.type === 'praes') && !S.mitDok) && !(/^(issue|task|person)$/.test(n.type) && !S.mitIssues); });
+    if (!plus.length) return daten;
+    plus.forEach(function (n) { da[n.id] = 1; });
+    var ke = {}; daten.edges.forEach(function (e) { ke[e.from + '>' + e.to + '>' + e.type] = 1; });
+    var kanten = alt.edges.filter(function (e) { return da[e.from] && da[e.to] && !ke[e.from + '>' + e.to + '>' + e.type]; });
+    var types = {}; Object.keys(alt.types).forEach(function (k) { types[k] = alt.types[k]; }); Object.keys(daten.types).forEach(function (k) { types[k] = daten.types[k]; });
+    return { types: types, relTypes: daten.relTypes, nodes: daten.nodes.concat(plus), edges: daten.edges.concat(kanten), spacing: daten.spacing, maxObjects: Math.max(500, daten.nodes.length + plus.length) };
+  }
+  // Laden in Stufen (Adapter 29): erst Bookmark und Struktur (erstes Bild), dann im Hintergrund Attribute, Zeichnungen, Dokumente, Issues, Aufgaben.
+  // Ein neues Laden (anderes Objekt, Drop, Häkchen, „↻“) löst ein laufendes ab: S.abbruch beendet es, danach startet das neue (S.naechstes).
+  // sonder: {drop: Objekt, nach: true = gleiches Objekt nachladen (Bild bleibt stehen), frisch: true = Zwischenspeicher vorher leeren}
   async function laden(sonder) {
-    if (S.laeuft) return;
     var b = sonder ? sonder.drop : S.treffer[+q('.td-tr').value]; if (!b) return;
+    if (S.laeuft) { S.naechstes = { drop: b, nach: !!(sonder && sonder.nach), frisch: !!(sonder && sonder.frisch) }; S.abbruch = true; S.vorn = ''; status('Löse das laufende Laden ab …'); return; }
     S.zuletzt = b; S.nachladen = false;
+    var t0 = Date.now(), fertig, gleich = !!(sonder && sonder.nach && S.gezeigt === S.lauf && S.lauf > 0);
+    S.laufP = new Promise(function (ja) { fertig = ja; });
     try {
-      S.laeuft = true; S.max = Math.max(10, parseInt(S.maxText, 10) || 1500); S.mitDok = q('.td-dk').checked; S.mitIssues = q('.td-ia').checked; S.mitExpand = q('.td-ex').checked; S.mitZone = q('.td-zq').checked; S.mitZeich = q('.td-zg').checked;
-      S.aufrufe = 0; S.issCacheZ = { treffer: 0, neu: 0 }; S.issueInfo = null;   // Issue-Abschnitt der Diagnose gilt nur für dieses Laden (Adapter 27)
-      var t0 = Date.now(), erg;
+      S.laeuft = true; S.abbruch = false; S.vorn = ''; S.ladeNr = (S.ladeNr || 0) + 1;
+      S.max = Math.max(10, parseInt(S.maxText, 10) || 1500); S.mitDok = q('.td-dk').checked; S.mitIssues = q('.td-ia').checked; S.mitExpand = q('.td-ex').checked; S.mitZone = q('.td-zq').checked; S.mitZeich = q('.td-zg').checked;
+      if (sonder && sonder.frisch) cacheLeeren(); else cacheAufraeumen();
+      S.aufrufe = 0; S.issCacheZ = { treffer: 0, neu: 0 }; S.cacheZ = { treffer: 0, neu: 0 }; S.issueInfo = null;   // Diagnose-Abschnitte gelten nur für dieses Laden
+      S.stufen = []; S.zwischen = gleich;
+      if (!gleich) { S.lauf = (S.lauf || 0) + 1; S.letzte = null; }
+      var nl = q('.td-nl'); if (nl) nl.style.display = '';
+      S.aufStufe = function (daten, name) {
+        var d = gleich ? vereinige(daten) : daten, sek = (Date.now() - t0) / 1000;
+        sende({ quelle: '3deep-adapter', daten: d, name: b.title || 'Daten', lauf: S.lauf, start: !S.zwischen, ergaenzen: true, steuerung: S.zwischen ? undefined : 'game' });
+        S.zwischen = true; S.gezeigt = S.lauf;
+        S.stufen.push({ name: name, s: sek, n: d.nodes.length, e: d.edges.length });
+        if (!S.vorn) { S.vorn = (gleich ? 'Lade nach' : 'Bild steht (' + d.nodes.length + ' Objekte nach ' + sek.toFixed(1) + ' s)') + ' – im Hintergrund: '; fortschritt('weitere Daten …'); }
+        diagnose();
+      };
+      var erg;
       if (b.art === 'issue') erg = await leseBookmark(null, null, { issues: [b.id], struktur: false });
       else if (b.art === 'produkt') erg = await leseBookmark(null, null, { produkte: [b.id], struktur: true });
       else if (b.art === 'person') erg = await leseBookmark(null, null, { person: { id: b.id, name: b.title }, struktur: false });
       else erg = await leseBookmark(b.id, b.title || b.name || '');
-      sende({ quelle: '3deep-adapter', daten: erg.daten, name: b.title || 'Daten', steuerung: 'game' });
-      status(erg.daten.nodes.length + ' Objekte, ' + erg.daten.edges.length + ' Beziehungen aus „' + (b.title || b.id) + '“ in ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s, ' + S.aufrufe + ' Abfragen.' + (erg.hinweise.length ? ' Hinweis: ' + erg.hinweise.join(' ') : ''), erg.hinweise.length > 0);
-    } catch (e) { status('Laden fehlgeschlagen: ' + e.message + ' (Details unter „Diagnose“)', true); } finally { S.laeuft = false; diagnose(); if (S.nachladen) haekchenGeaendert(); }
+      if (S.abbruch) throw new Error('abgebrochen');
+      sende({ quelle: '3deep-adapter', daten: erg.daten, name: b.title || 'Daten', lauf: S.lauf, start: !S.zwischen, ergaenzen: S.zwischen, fertig: true, steuerung: S.zwischen ? undefined : 'game' });
+      S.zwischen = true; S.gezeigt = S.lauf; S.letzte = erg.daten; S.vorn = '';
+      var sek = (Date.now() - t0) / 1000, erstes = S.stufen.length ? S.stufen[0].s : sek;
+      S.stufen.push({ name: 'Fertig', s: sek, n: erg.daten.nodes.length, e: erg.daten.edges.length });
+      status(erg.daten.nodes.length + ' Objekte, ' + erg.daten.edges.length + ' Beziehungen aus „' + (b.title || b.id) + '“ in ' + sek.toFixed(1) + ' s, ' + S.aufrufe + ' Abfragen' +
+        (S.cacheZ.treffer ? ' (+ ' + S.cacheZ.treffer + ' aus dem Zwischenspeicher)' : '') + '.' + (S.stufen.length > 1 && !gleich ? ' Erstes Bild nach ' + erstes.toFixed(1) + ' s.' : '') +
+        (erg.hinweise.length ? ' Hinweis: ' + erg.hinweise.join(' ') : ''), erg.hinweise.length > 0);
+    } catch (e) {
+      S.vorn = '';
+      if (!S.abbruch) status('Laden fehlgeschlagen: ' + e.message + ' (Details unter „Diagnose“)', true);
+    } finally {
+      S.laeuft = false; S.aufStufe = null; S.vorn = '';
+      var n = S.naechstes; S.naechstes = null; S.abbruch = false;
+      diagnose(); fertig();
+      if (n) laden(n); else if (S.nachladen) haekchenGeaendert();
+    }
   }
-  // Häkchen nach dem Laden geändert: zuletzt geladenes Objekt (Drop oder Bookmark) mit den neuen Einstellungen neu laden.
-  // Mehrere Häkchen kurz hintereinander = ein Ladevorgang; während eines Ladevorgangs wird danach einmal nachgeladen.
+  // Häkchen nach dem Laden geändert: zuletzt geladenes Objekt (Drop oder Bookmark) mit den neuen Einstellungen nachladen (Bild bleibt stehen).
+  // Mehrere Häkchen kurz hintereinander = ein Ladevorgang; ein noch laufendes Laden wird abgelöst.
   function haekchenGeaendert() {
     if (!S.zuletzt) return;
-    if (S.laeuft) { S.nachladen = true; status('Einstellung geändert – wird nach dem laufenden Laden neu geladen …'); return; }
     S.nachladen = false; clearTimeout(S.neuUhr);
-    status('Einstellung geändert – lade „' + (S.zuletzt.title || S.zuletzt.id) + '“ neu …');
-    S.neuUhr = setTimeout(function () { if (S.laeuft) { S.nachladen = true; return; } S.neuLaden = (S.neuLaden || 0) + 1; laden({ drop: S.zuletzt }); }, S.neuVerzug);
+    if (!S.laeuft) status('Einstellung geändert – lade „' + (S.zuletzt.title || S.zuletzt.id) + '“ nach …');
+    S.neuUhr = setTimeout(function () { S.neuLaden = (S.neuLaden || 0) + 1; laden({ drop: S.zuletzt, nach: true }); }, S.neuVerzug);
+  }
+  // „↻ Neu lesen“: Zwischenspeicher leeren und das zuletzt geladene Objekt frisch von der Plattform lesen (Bild bleibt stehen)
+  function neuLesen() {
+    if (!S.zuletzt) { var n0 = cacheLeeren(); status('Zwischenspeicher geleert (' + n0 + ' Einträge).'); diagnose(); return; }
+    clearTimeout(S.neuUhr); laden({ drop: S.zuletzt, nach: true, frisch: true });
   }
   function diagnoseText() {
-    var z = ['3Deep-Widget Diagnose (Adapter 28, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
+    var z = ['3Deep-Widget Diagnose (Adapter 29, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
       '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-') + (S.ctxZahl ? ' (automatisch gewählt, ' + S.ctxZahl + ' verfügbar)' : ''), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), ''];
+    if (S.stufen && S.stufen.length) {
+      z.push('', 'Ablauf (dieses Laden): ' + (S.aufrufe || 0) + ' Abfragen an die Plattform, ' + S.cacheZ.treffer + ' aus dem Zwischenspeicher' + (S.laeuft ? ' – läuft noch' : ''));
+      S.stufen.forEach(function (s) { z.push('  ' + s.s.toFixed(1).padStart(6) + ' s  ' + s.name + ' – ' + s.n + ' Objekte, ' + s.e + ' Beziehungen'); });
+    }
+    var cz = Object.keys(S.cache);
+    if (cz.length) {
+      var calt = cz.reduce(function (m, k) { return Math.min(m, S.cache[k].t); }, Date.now());
+      z.push('', 'Zwischenspeicher: ' + cz.length + ' Abfragen gespeichert (älteste vor ' + Math.round((Date.now() - calt) / 60000) + ' min, gültig ' + Math.round(S.cacheMs / 60000) + ' min). „↻“ in der Leiste liest das geladene Objekt frisch.');
+    }
     if (S.wurzelInfo) { z.push('', 'Produkte im Bookmark:'); S.wurzelInfo.forEach(function (w) { z.push('  ' + w); }); }
     if (S.issueInfo) {
       var ii = S.issueInfo, nachDatum = function (a, b) { return String(b.d).localeCompare(String(a.d)); };
@@ -1136,12 +1357,25 @@
     if (ic.length || S.issCacheZ.treffer) {
       var alt = ic.reduce(function (m, k) { return Math.min(m, S.issCache[k].t); }, Date.now());
       z.push('', 'Issue-Zwischenspeicher: ' + ic.length + ' Issues gespeichert (ältestes vor ' + Math.round((Date.now() - alt) / 60000) + ' min, gültig ' + Math.round(S.issCacheMs / 60000) + ' min)',
-        '  letztes Laden: ' + S.issCacheZ.treffer + ' aus dem Zwischenspeicher, ' + S.issCacheZ.neu + ' neu gelesen. „Issues neu lesen“ leert den Speicher.');
+        '  letztes Laden: ' + S.issCacheZ.treffer + ' aus dem Zwischenspeicher, ' + S.issCacheZ.neu + ' neu gelesen. „Zwischenspeicher leeren“ oder „↻“ leert den Speicher.');
     }
     if (S.dropInfo) { z.push('', 'Letzter Drop:'); S.dropInfo.forEach(function (c) { z.push('  ' + c); }); }
     if (S.personInfo) { var pp = S.personInfo; z.push('', 'Person: ' + (pp.voll || '-') + ', Benutzername ' + (pp.login || '-') + ' (aus ' + pp.quelle + (pp.fehler ? ', pno-Fehler: ' + pp.fehler : '') + ')' + (pp.issues ? ', ' + pp.issues : '')); }
     if (S.bmInfo && S.bmInfo.length) { z.push('', 'Bookmark-Ordner:'); S.bmInfo.forEach(function (c) { z.push('  ' + c); }); }
     if (S.zgInfo && S.zgInfo.length) { z.push('', 'Zeichnungen:'); S.zgInfo.forEach(function (c) { z.push('  ' + c); }); }
+    if (S.dokInfo && S.dokInfo.length) { z.push('', 'Dokumente:'); S.dokInfo.forEach(function (c) { z.push('  ' + c); }); }
+    if (S.relInfo) {
+      // Beziehungen, die das Widget heute auswertet; alle anderen stehen als „nicht ausgewertet“ da (Hinweis auf mögliche Erweiterungen oder Lücken)
+      var bekannt = /^(v6_structure_|v6_specdoc_|v6_annexdoc_|v6_cad_document_|issue_|issue_context_|workspaces_folders_|workspaces_bookmarks_)/;
+      if (S.relInfo.fehler) z.push('', 'Beziehungsübersicht (getrelationcount): nicht lesbar – ' + S.relInfo.fehler);
+      else {
+        var rn = Object.keys(S.relInfo.sum).sort(), zeile = function (n) { var s = S.relInfo.sum[n]; return n + ' (' + s.richtung + '): ' + s.objekte + ' Objekte, ' + s.zahl + ' Beziehungen'; };
+        z.push('', 'Beziehungsübersicht (getrelationcount, die ersten ' + S.relInfo.n + ' Strukturobjekte, ' + (S.relInfo.ms / 1000).toFixed(1) + ' s):');
+        rn.filter(function (n) { return bekannt.test(n); }).forEach(function (n) { z.push('  ausgewertet:       ' + zeile(n)); });
+        rn.filter(function (n) { return !bekannt.test(n); }).forEach(function (n) { z.push('  nicht ausgewertet: ' + zeile(n)); });
+        if (!rn.length) z.push('  (keine Beziehungen gemeldet)');
+      }
+    }
     if (S.zqInfo && S.zqInfo.length) { z.push('', 'Zone Query (Attribute):'); S.zqInfo.forEach(function (c) { z.push('  ' + c); }); }
     if (S.expandInfo && S.expandInfo.length) { z.push('', 'Produktstruktur:'); S.expandInfo.forEach(function (c) { z.push('  ' + c); }); }
     if (S.cadInfo.length) { z.push('', 'Downloads von Bauteilen/Baugruppen:'); S.cadInfo.forEach(function (c) { z.push('  ' + c); }); if (S.dlWeg) z.push('  zuletzt von Hand gewählt: ' + S.dlWeg); }
@@ -1165,23 +1399,25 @@
       '<button class="td-sb" style="' + knopf + '">Suchen</button>' +
       '<select class="td-tr" style="' + feld + ';max-width:260px;display:none"></select>' +
       '<button class="td-la" style="' + knopf + ';background:#368ec4;border-color:#368ec4;color:#fff;display:none">Laden</button>' +
+      '<button class="td-nl" title="Neu lesen: Zwischenspeicher leeren und das geladene Objekt frisch von der Plattform holen (Daten bleiben sonst 30 Minuten gespeichert)" style="' + knopf + ';display:none">↻</button>' +
       '<label title="Produktstruktur mit einer Abfrage je Produkt lesen (expand, schneller); aus = Ebene für Ebene wie bisher" style="display:flex;align-items:center;gap:4px"><input class="td-ex" type="checkbox" checked="checked" />Schnell</label>' +
       '<label title="Attribute aller Strukturobjekte (z. B. Teilenummer) mit einer Abfrage nachlesen (Zone Query); aus = wie bisher" style="display:flex;align-items:center;gap:4px"><input class="td-zq" type="checkbox" checked="checked" />Attribute</label>' +
-      '<label title="Spezifikationen und Attachments der Objekte mitlesen" style="display:flex;align-items:center;gap:4px"><input class="td-dk" type="checkbox" />Dokumente</label>' +
-      '<label title="Zeichnungen (Drawings) der Strukturobjekte suchen und anzeigen" style="display:flex;align-items:center;gap:4px"><input class="td-zg" type="checkbox" />Zeichnungen</label>' +
-      '<label title="Issues, Aufgaben und Personen zu den Objekten mitlesen" style="display:flex;align-items:center;gap:4px"><input class="td-ia" type="checkbox" />Issues/Aufgaben</label>' +
+      '<label title="Spezifikationen und Attachments der Objekte mitlesen (im Hintergrund, nach dem ersten Bild)" style="display:flex;align-items:center;gap:4px"><input class="td-dk" type="checkbox" checked="checked" />Dokumente</label>' +
+      '<label title="Zeichnungen (Drawings) der Strukturobjekte suchen und anzeigen (im Hintergrund, nach dem ersten Bild)" style="display:flex;align-items:center;gap:4px"><input class="td-zg" type="checkbox" checked="checked" />Zeichnungen</label>' +
+      '<label title="Issues, Aufgaben und Personen zu den Objekten mitlesen (im Hintergrund, nach dem ersten Bild)" style="display:flex;align-items:center;gap:4px"><input class="td-ia" type="checkbox" checked="checked" />Issues/Aufgaben</label>' +
       '<input class="td-ci" type="text" placeholder="Security Context: Rolle.Organisation.Collaborative Space" title="Security Context von Hand" style="' + feld + ';width:330px;display:none" />' +
       '<button class="td-db" style="' + knopf + '">Diagnose</button>' +
       '<span class="td-mo" style="padding:2px 8px;border-radius:10px;background:#fff3cd;color:#7a5c00;border:1px solid #e6cf7a;display:none">Testmodus: Beispieldaten</span>' +
       '<span class="td-st" style="flex:1;min-width:200px;color:#3d3d3d">Starte …</span></div>' +
       '<div class="td-dp" style="display:none;padding:6px 8px;background:#f4f5f6;border-bottom:1px solid #d1d4d4">' +
-      '<div style="margin-bottom:4px">Protokoll aller Abfragen. Zum Weitergeben: „Kopieren“ drücken, vorher Vertrauliches prüfen. <button class="td-dc" style="' + knopf + '">Kopieren</button> <button class="td-ir" title="Zwischenspeicher der Issue-Details leeren; beim nächsten Laden werden alle Issues neu gelesen" style="' + knopf + '">Issues neu lesen</button></div>' +
+      '<div style="margin-bottom:4px">Protokoll aller Abfragen. Zum Weitergeben: „Kopieren“ drücken, vorher Vertrauliches prüfen. <button class="td-dc" style="' + knopf + '">Kopieren</button> <button class="td-ir" title="Zwischenspeicher leeren (alle Abfragen und Issue-Details); beim nächsten Laden wird alles frisch von der Plattform gelesen" style="' + knopf + '">Zwischenspeicher leeren</button></div>' +
       '<textarea class="td-dx" readonly="readonly" style="' + feld + ';width:100%;height:180px;box-sizing:border-box;font:12px monospace;display:none"></textarea></div>' +
       '<iframe class="td-fr" title="3Deep Darstellung" allow="fullscreen" style="flex:1;width:100%;border:0;background:#0b1220"></iframe></div>';
     q('.td-sb').onclick = suchen; q('.td-la').onclick = function () { laden(); };
     q('.td-su').addEventListener('keydown', function (e) { if (e.key === 'Enter') suchen(); });
     q('.td-db').onclick = function () { var p = q('.td-dp'), d = q('.td-dx'), auf = p.style.display === 'none'; p.style.display = auf ? '' : 'none'; d.style.display = auf ? '' : 'none'; diagnose(); };
-    q('.td-ir').onclick = function () { var n = Object.keys(S.issCache).length; issueCacheLeeren(); status('Issue-Zwischenspeicher geleert (' + n + ' Issues). Beim nächsten Laden werden alle Issues neu gelesen.'); diagnose(); };
+    q('.td-ir').onclick = function () { var n = cacheLeeren(); status('Zwischenspeicher geleert (' + n + ' Einträge). Beim nächsten Laden wird alles neu gelesen.'); diagnose(); };
+    q('.td-nl').onclick = neuLesen;
     q('.td-dc').onclick = function () { var d = q('.td-dx'); d.value = diagnoseText(); d.select(); try { document.execCommand('copy'); } catch (e) { } if (navigator.clipboard) navigator.clipboard.writeText(d.value).catch(function () { }); };
     q('.td-ci').onchange = function (e) { S.ctx = e.target.value.trim(); try { localStorage.setItem('3deep_ctx', S.ctx); } catch (x) { } if (S.ctx) status('Security Context gesetzt. Bookmark-Namen eingeben und „Suchen“ drücken.'); };
     ['.td-ex', '.td-zq', '.td-dk', '.td-zg', '.td-ia'].forEach(function (k) { q(k).addEventListener('change', haekchenGeaendert); });
@@ -1330,6 +1566,35 @@
       setTimeout(function () {
         var skip = +p.$skip || 0, anz = +p.$top || 50, m;
         function seite(a) { return a.slice(skip, skip + anz); }
+        if (pfad === RCNT) {   // Test (Adapter 29): Beziehungsübersicht; S.testRelFehler = Fehler. „mkp_ctxt_from“ steht für eine Beziehung, die das Widget nicht auswertet
+          if (S.testRelFehler) return nein(new Error('500 Internal Server Error'));
+          var cn = [], zc = function (src, name, dir, n) { if (n) cn.push({ count: n, direction: dir, id: src + '_' + name, name: name, source: src }); };
+          ((body || {}).items || []).forEach(function (it, ix) {
+            zc(it.id, 'v6_structure_to', 'out', (TEST.kids[it.id] || []).length);
+            zc(it.id, 'v6_specdoc_to', 'out', (TEST.rel[it.id + '|SpecificationDocument'] || []).length);
+            zc(it.id, 'v6_annexdoc_to', 'out', (TEST.rel[it.id + '|PLMDocConnection'] || []).length + (TEST.rel[it.id + '|Reference Document'] || []).length);
+            zc(it.id, 'issue_from', 'in', Object.keys(TEST.iss).filter(function (k) { return refIds(TEST.iss[k].affectedItems).indexOf(it.id) >= 0; }).length);
+            if (ix === 0) zc(it.id, 'mkp_ctxt_from', 'in', 3);
+          });
+          return ja({ counts: cn, info: [{ domain: '3DSpace', success: true }], unindexedObjects: [] });
+        }
+        if (pfad === ECO && (body || {}).direction === 'out' && ((body || {}).relations || []).indexOf('v6_specdoc_to') >= 0) {
+          // Test (Adapter 29): Dokumente an Objekten. S.testEcoDokFehler = Fehler; S.testEcoOhnePlm = Beziehung PLMDocConnection erscheint hier nicht
+          if (S.testEcoDokFehler) return nein(new Error('500 Internal Server Error'));
+          var dob = [], dli = [];
+          ((body || {}).items || []).forEach(function (it) {
+            dob.push({ id: it.id, type: it.type });
+            [['SpecificationDocument', 'v6_specdoc_to'], ['Reference Document', 'v6_annexdoc_to'], ['PLMDocConnection', S.testEcoOhnePlm ? '' : 'v6_annexdoc_to']].forEach(function (rn) {
+              if (!rn[1]) return;
+              (TEST.rel[it.id + '|' + rn[0]] || []).forEach(function (did) {
+                var e = (TEST.doc[did] || {}).dataelements || {};
+                dob.push({ id: did, name: e.title, type: 'Document', 'ds6w:label': e.title, 'ds6w:identifier': e.name, revision: e.revision, 'ds6w:status': 'Document Release.' + (e.state || ''), 'ds6w:modified': e.modified, 'ds6w:responsible': e.owner });
+                dli.push({ type: rn[1], source: it.id, target: did, direction: 'out' });
+              });
+            });
+          });
+          return ja({ objects: dob, links: dli, info: [{ domain: '3DSpace', success: true }] });
+        }
         if (pfad === ECO) {   // Test (Adapter 25): getecosystem für Bookmark-Ordner; S.testEcoFehler = Fehler, S.testWieReal = Unter-Unterordner „Prüfberichte“ nur hier
           if ((body || {}).direction === 'in' && ((body || {}).relations || []).indexOf('issue_from') >= 0) {   // Test (Adapter 27): Issues eingehend; S.testEcoIssFehler = Fehler
             if (S.testEcoIssFehler) return nein(new Error('500 Internal Server Error'));
@@ -1345,6 +1610,10 @@
             var zo = [], zlk = [];
             ((body || {}).items || []).forEach(function (it) {
               zo.push({ id: it.id, type: 'VPMReference' });
+              (TEST.xdrw[it.id] || []).forEach(function (xz) { var xe = xz.dataelements || {};   // V5-Zeichnung des Testmodells: wie auf der Plattform per Zeigerbeziehung sichtbar
+                zo.push({ id: xz.id, name: xe.title, type: 'Drawing', 'ds6w:label': xe.title, 'ds6w:identifier': xe.name, revision: xe.revision, 'ds6w:status': 'VPLM_SMB_Definition.' + (xe.state || ''), 'ds6w:responsible': xe.owner, 'ds6w:modified': xe.modified,
+                  taxonomies: ['types/PLMEntity/PLMReference/PLMCoreRepReference/VPMRepReference/Drawing', 'interfaces/XCADRepExtension'] });
+                zlk.push({ type: 'v6_cad_document_to', source: xz.id, target: it.id, direction: 'in', 'ro.xcadbasedependency.v_cadlinktype': 'drawing' }); });
               if (S.testEcoZeichnung && it.id === TEST.bremse) { zo.push({ id: 'ECODRW0001', name: '_Bremsanlage', type: 'Drawing', 'ds6w:label': '_Bremsanlage', 'ds6w:identifier': 'drw-0001', revision: 'A.1', 'ds6w:status': 'VPLM_SMB_Definition.IN_WORK',
                 taxonomies: ['types/PLMEntity/PLMReference/PLMCoreRepReference/VPMRepReference/Drawing', 'interfaces/XCADRepExtension'] });
                 zlk.push({ type: 'v6_cad_document_to', source: 'ECODRW0001', target: it.id, direction: 'in', 'ro.xcadbasedependency.v_cadlinktype': 'drawing' }); }
