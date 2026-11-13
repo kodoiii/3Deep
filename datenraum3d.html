@@ -2,7 +2,7 @@
 <html lang="de"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>3Deep – Datenraum in 3D</title>
-<meta name="3deep-darstellung" content="77">
+<meta name="3deep-darstellung" content="78">
 <style>
 :root{--fg:#e6edf3;--panel:rgba(15,22,41,.86);--mut:#9fb0c4}
 html,body{margin:0;height:100%;background:linear-gradient(180deg,#d4ecff 0%,#93c3ea 55%,#5088c0 100%) fixed;color:var(--fg);font:13px/1.4 system-ui,sans-serif;overflow:hidden}
@@ -89,7 +89,7 @@ html{--lg:#0e2a4a;--lgh:rgba(255,255,255,.85)}html.space{--lg:#dbe7ff;--lgh:rgba
 <label class="s">Neuzeichnen<select id="es"><option value="max" selected>Maximal: im Stillstand kein Neuzeichnen</option><option value="auto">Automatisch: im Stillstand 15 Bilder/s</option><option value="aus">Aus: immer volle Bildrate</option></select></label>
 <label style="display:block;margin-top:8px"><input type="checkbox" id="introan" checked> Intro beim Start zeigen</label>
 </details>
-<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 77</div>
+<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 78</div>
 </div>
 <div id="det" class="pn"></div></div>
 <div id="dcap"></div><div id="dfade" style="position:fixed;inset:0;background:#0b1424;opacity:0;pointer-events:none;transition:opacity .6s;z-index:14"></div><div id="cross"></div><div id="info"></div>
@@ -187,7 +187,7 @@ function ladeDaten(d){CUR=d;$('legend').style.display='';AX=null;AXO=null;ST_T=d
  if(cached&&cached.length===n_)N.forEach((n,i)=>{n.x=cached[i][0];n.y=cached[i][1];n.z=cached[i][2]}); // gleiche Daten + gleiche Darstellung: Layout wiederverwenden
  else{kraftLayout();(d._lc=d._lc||{})[ck]=N.map(n=>[n.x,n.y,n.z])}
  RAD=Math.max(20,...N.map(n=>Math.hypot(n.x,n.y,n.z)));N.forEach(n=>{n.kx=n.x;n.ky=n.y;n.kz=n.z;n.tx=n.x;n.ty=n.y;n.tz=n.z});$('lay').value='kraft';animL=false;space=astro;LBL=[];document.documentElement.classList.toggle('space',space);
- hidden.clear();hiddenR.clear();waehle(null);fuelleAttr();fuelleAchsen(d);zustLeg();$('lgst').style.display=$('lgz').style.display=kris?'none':''; // Kristall: Reifegrad-Effekte vorerst aus (Version 77)
+ hidden.clear();hiddenR.clear();waehle(null);fuelleAttr();fuelleAchsen(d);zustLeg();$('lgst').style.display=$('lgz').style.display=''; // Kristall: eigene Reifegrad-Texte (Version 78)
  fuelleRel();$('q').value='';$('res').innerHTML='';
  $('rm').max=Math.max(200,n_);$('rm').value=Math.min(d.maxObjects||200,n_);needHome=true;CH=(d.chains||[]).concat(GEN);LAYERS=d.layers||null;tr=null;$('kres').innerHTML='';$('klt').textContent=[...new Set(E.map(e=>e.type))].filter(Boolean).join(', ');fuelleChains(null);orient=d.orient||orient;$('or').value=orient;if(d.layout){const dl=d.layout==='sonne'?'baum':d.layout;$('lay').value=dl;setLayout(dl,false)}
  const cnt={};N.forEach(n=>cnt[n.t]=(cnt[n.t]||0)+1);
@@ -801,8 +801,8 @@ function zeichneAchsen(proj,vis,foc){const B=AX.B,ax=AX.ax,X0=B[0][0],X1=B[0][1]
  AXO.forEach(i=>{if(!vis.has(i))return;const n=N[i];if(n.va<.05)return;const fl=[n.x,Y0,n.z];ctx.strokeStyle=n.c1;seg([n.x,n.y-n.r,n.z],fl,.32*n.va,1.1);
   const q=proj(...fl);if(q.z<.5)return;ctx.globalAlpha=.22*n.va;ctx.fillStyle=dk?'#000':'#0e2a4a';ctx.beginPath();ctx.ellipse(q.x,q.y,Math.max(1.5,n.r*q.k),Math.max(.8,n.r*q.k*.35),0,0,7);ctx.fill()});
  ctx.restore();ctx.globalAlpha=1}
-let ST_T='Reifegrad',ST_N=null;const ZL=[['work','◌','pulsierende Ringe'],['frozen','❄','Eis und Reif'],['released','✦','Funkeln'],['obsolete','✚','Spinnweben, Staub'],['todo','☐','kreisender Rahmen']],ZEN={work:'In Work',frozen:'Frozen',released:'Released',obsolete:'Obsolete',todo:'To do'};
-function zustLeg(){$('lgst').textContent=ST_T+':';$('lgz').innerHTML=ZL.map(([k,sy,tx])=>`<div class="lg" style="cursor:default">${sy} ${esc(ST_N&&ST_N[k]?ST_N[k]+' ('+ZEN[k]+')':ZEN[k])}: ${tx}</div>`).join('')}
+let ST_T='Reifegrad',ST_N=null;const ZL=[['work','◌','pulsierende Ringe'],['frozen','❄','Eis und Reif'],['released','✦','Funkeln'],['obsolete','✚','Spinnweben, Staub'],['todo','☐','kreisender Rahmen']],ZLK={work:'pulsierendes Leuchten',frozen:'bereifte Kanten',released:'Funkeln',obsolete:'trüb, stumpfe Farben',todo:'Rohling, wandernde Kanten'},ZEN={work:'In Work',frozen:'Frozen',released:'Released',obsolete:'Obsolete',todo:'To do'};
+function zustLeg(){$('lgst').textContent=ST_T+':';$('lgz').innerHTML=ZL.map(([k,sy,tx])=>`<div class="lg" style="cursor:default">${sy} ${esc(ST_N&&ST_N[k]?ST_N[k]+' ('+ZEN[k]+')':ZEN[k])}: ${kris?ZLK[k]:tx}</div>`).join('')}
 // ---------- UI ----------
 function upd(){maxD=+$('rd').value;maxO=+$('rm').value;$('vd').textContent=maxD;$('mo').textContent=maxO}
 $('rd').oninput=$('rm').oninput=upd;
@@ -971,8 +971,11 @@ const KM={};
   F.push([15,14,13,12,11,10,9,8]);for(let i=0;i<k;i++){const j=(i+1)%k;F.push([i,j,8+j]);F.push([i,8+j,8+i]);F.push([16,j,i])}KM.diamant={V,F}}}
 const KL=(()=>{const l=[-.45,.75,.5],m=Math.hypot(...l);return l.map(x=>x/m)})();
 function funkel(x,y,s2){ctx.save();ctx.globalCompositeOperation='lighter';ctx.fillStyle='#fff';ctx.beginPath();ctx.moveTo(x,y-s2);ctx.lineTo(x+s2*.15,y-s2*.15);ctx.lineTo(x+s2,y);ctx.lineTo(x+s2*.15,y+s2*.15);ctx.lineTo(x,y+s2);ctx.lineTo(x-s2*.15,y+s2*.15);ctx.lineTo(x-s2,y);ctx.lineTo(x-s2*.15,y-s2*.15);ctx.closePath();ctx.fill();ctx.restore()}
-function zeichneKristall(n,proj,q,t){const M=KM[n.cut]||KM.kristall,c=n.rgb,r=n.r,klar=n.gem==='klar',ga=ctx.globalAlpha,R=r*q.k;
- if(R<1.6){ctx.fillStyle=n.c1;ctx.beginPath();ctx.arc(q.x,q.y,Math.max(R,1.1),0,7);ctx.fill();return}
+function zeichneKristall(n,proj,q,t){const M=KM[n.cut]||KM.kristall,st=n.state,klar=n.gem==='klar',ga=ctx.globalAlpha,TP=2*Math.PI,pu=st==='work'?.5+.5*Math.sin(TP*(t*.8+n.i*.37)):0;
+ // Reifegrade (Darstellung 78): Frozen bereifte Kanten, Obsolete trüb und stumpf, Released Funkeln, In Work Pulsieren, To do Rohling (blass, wandernde gestrichelte Kanten)
+ let c=n.rgb;if(st==='obsolete'){const g=(c[0]+c[1]+c[2])/3;c=c.map(x=>x*.3+g*.45+35)}else if(st==='frozen')c=c.map((x,k)=>x*.8+[205,230,250][k]*.2);
+ const r=n.r*(1+.06*pu),R=r*q.k,fa=st==='todo'?.45:st==='obsolete'?.8:1;
+ if(R<1.6){ctx.fillStyle=st==='obsolete'||st==='frozen'?`rgb(${c.map(Math.round)})`:n.c1;ctx.beginPath();ctx.arc(q.x,q.y,Math.max(R,1.1),0,7);ctx.fill();return}
  const a=t*.22+n.i*1.7,ca=Math.cos(a),sa=Math.sin(a),b=(n.cut==='kristall'?.42:n.cut==='diamant'?.32:.18)*(hs(n.i,5)<.5?1:-1),cb=Math.cos(b),sb=Math.sin(b);
  const Vr=M.V.map(v=>{const x=v[0]*ca+v[2]*sa,z=-v[0]*sa+v[2]*ca,y=v[1];return[x,y*cb-z*sb,y*sb+z*cb]}),P=Vr.map(v=>proj(n.x+v[0]*r,n.y+v[1]*r,n.z+v[2]*r));if(P.some(p=>p.z<.3))return;
  const cm=[0,1,2].map(k=>Vr.reduce((s,v)=>s+v[k],0)/Vr.length);
@@ -980,13 +983,22 @@ function zeichneKristall(n,proj,q,t){const M=KM[n.cut]||KM.kristall,c=n.rgb,r=n.
   const vis=nv[0]*(cam.x-n.x-m[0]*r)+nv[1]*(cam.y-n.y-m[1]*r)+nv[2]*(cam.z-n.z-m[2]*r)>0;return{f,nv,vis,z:f.reduce((s,i)=>s+P[i].z,0)/f.length}}).sort((p,q2)=>q2.z-p.z);
  const col=(k,al)=>`rgba(${c.map(x=>Math.round(Math.min(255,x*k))).join(',')},${al.toFixed(3)})`,wh=(k,al)=>`rgba(${c.map(x=>Math.round(x+(255-x)*k)).join(',')},${al.toFixed(3)})`;
  const pfad=f=>{ctx.beginPath();f.forEach((i,k)=>k?ctx.lineTo(P[i].x,P[i].y):ctx.moveTo(P[i].x,P[i].y));ctx.closePath()};
- fs.forEach(F=>{pfad(F.f);if(!F.vis){ctx.fillStyle=col(.55,klar?.2:.35);ctx.fill();return}const d=Math.max(0,F.nv[0]*KL[0]+F.nv[1]*KL[1]+F.nv[2]*KL[2]);
-  if(R>10){const p0=P[F.f[0]],p2=P[F.f[Math.floor(F.f.length/2)]],lg=ctx.createLinearGradient(p0.x,p0.y,p2.x,p2.y);lg.addColorStop(0,wh(.75*d+.1,klar?.55:.75));lg.addColorStop(.5,col(.95+.25*d,klar?.32:.5+.2*d));lg.addColorStop(1,col(.6,klar?.3:.62));ctx.fillStyle=lg}
-  else ctx.fillStyle=col(.8+.4*d,klar?.35:.7);ctx.fill()});
+ fs.forEach(F=>{pfad(F.f);if(!F.vis){ctx.fillStyle=col(.55,(klar?.2:.35)*fa);ctx.fill();return}const d=Math.max(0,F.nv[0]*KL[0]+F.nv[1]*KL[1]+F.nv[2]*KL[2]);
+  if(R>10){const p0=P[F.f[0]],p2=P[F.f[Math.floor(F.f.length/2)]],lg=ctx.createLinearGradient(p0.x,p0.y,p2.x,p2.y);lg.addColorStop(0,wh(.75*d+.1,(klar?.55:.75)*fa));lg.addColorStop(.5,col(.95+.25*d,(klar?.32:.5+.2*d)*fa));lg.addColorStop(1,col(.6,(klar?.3:.62)*fa));ctx.fillStyle=lg}
+  else ctx.fillStyle=col(.8+.4*d,(klar?.35:.7)*fa);ctx.fill();
+  if(st==='obsolete'){ctx.fillStyle=`rgba(214,210,198,${(.3+.12*(1-d)).toFixed(3)})`;ctx.fill()}});
+ if(st==='work'&&R>4){ctx.save();ctx.globalCompositeOperation='lighter';const rg=ctx.createRadialGradient(q.x,q.y,0,q.x,q.y,R*1.05);rg.addColorStop(0,wh(.7,.55*pu));rg.addColorStop(.5,wh(.3,.22*pu));rg.addColorStop(1,wh(0,0));ctx.fillStyle=rg;ctx.beginPath();ctx.arc(q.x,q.y,R*1.05,0,7);ctx.fill();ctx.restore()}
  if(M.inn&&R>8){ctx.globalAlpha=ga*.45;ctx.strokeStyle=wh(.6,1);ctx.lineWidth=Math.max(.5,R*.012);[[.55,.65,.5],[.3,.4,.6]].forEach(([kx,ky,kz])=>{const I=Vr.map(v=>proj(n.x+v[0]*r*kx,n.y+v[1]*r*ky,n.z+v[2]*r*kz));ctx.beginPath();M.F.forEach(f=>{f.forEach((i,k)=>k?ctx.lineTo(I[i].x,I[i].y):ctx.moveTo(I[i].x,I[i].y));ctx.closePath()});ctx.stroke()})}
- ctx.lineJoin='round';fs.forEach(F=>{ctx.globalAlpha=ga*(F.vis?.9:.3);ctx.strokeStyle=F.vis?'rgba(255,255,255,.85)':wh(.4,1);ctx.lineWidth=Math.max(.6,Math.min(2,R*(F.vis?.03:.015)));pfad(F.f);ctx.stroke()});
+ ctx.lineJoin='round';if(st==='todo'){const dl=Math.max(3,R*.09);ctx.setLineDash([dl,dl*.8]);ctx.lineDashOffset=-t*dl*2.2}
+ const kw=st==='obsolete'?'rgba(150,148,140,.6)':st==='frozen'?'rgba(240,250,255,.95)':st==='work'?`rgba(255,255,255,${(.6+.4*pu).toFixed(3)})`:'rgba(255,255,255,.85)';
+ if(st==='frozen'&&R>5){ctx.globalAlpha=ga*.35;ctx.strokeStyle='rgba(235,248,255,1)';ctx.lineWidth=Math.max(2,Math.min(10,R*.07));fs.forEach(F=>{if(F.vis){pfad(F.f);ctx.stroke()}})}
+ fs.forEach(F=>{ctx.globalAlpha=ga*(F.vis?.9:.3);ctx.strokeStyle=F.vis?kw:wh(.4,1);ctx.lineWidth=Math.max(.6,Math.min(2,R*(F.vis?.03:.015)))*(st==='frozen'&&F.vis?1.6:1);pfad(F.f);ctx.stroke()});ctx.setLineDash([]);
+ if(st==='frozen'&&R>5){ctx.globalAlpha=ga*.85;ctx.strokeStyle='rgba(235,248,255,.9)';ctx.lineWidth=Math.max(.5,R*.012);ctx.beginPath(); // Reif: Eisnadeln entlang der sichtbaren Kanten
+  fs.forEach(F=>{if(!F.vis)return;F.f.forEach((i,k)=>{const j=F.f[(k+1)%F.f.length],A=P[i],B=P[j],dx=B.x-A.x,dy=B.y-A.y,L=Math.hypot(dx,dy);if(L<3)return;const m=Math.min(6,Math.floor(L/(R*.16))+1);
+   for(let u=0;u<m;u++){const h=hs(n.i*53+i*7+j,u),w=(u+.5)/m,x=A.x+dx*w,y=A.y+dy*w,a=Math.atan2(dy,dx)+(h<.5?1:-1)*(.8+.9*hs(i+j,u+3)),l=Math.min(9,R*(.03+.05*hs(i*j+3,u+5)));ctx.moveTo(x,y);ctx.lineTo(x+Math.cos(a)*l,y+Math.sin(a)*l)}})});ctx.stroke()}
  ctx.globalAlpha=ga;const tw=Math.sin(t*1.7+n.i*2.3),hoch=()=>P.reduce((p,q2)=>q2.y<p.y?q2:p);
- if(tw>.93&&R>6){const h=hoch();funkel(h.x,h.y,R*.45*(tw-.93)/.07)}if(n.kfun>0){const h=hoch();funkel(h.x,h.y,Math.max(4,R*.7)*n.kfun)}}
+ if(st!=='obsolete'&&st!=='todo'&&tw>.93&&R>6){const h=hoch();funkel(h.x,h.y,R*.45*(tw-.93)/.07)}
+ if(st==='released'&&R>4)for(let j=0;j<3;j++){const b=Math.pow(Math.max(0,Math.sin(TP*(t*.6+j*.33+hs(n.i,j+5)))),8);if(b<.03)continue;const v=P[Math.floor(hs(n.i,j+11)*P.length)];ctx.globalAlpha=ga*Math.min(1,b*1.3);funkel(v.x,v.y,R*(.15+.4*b))}ctx.globalAlpha=ga;if(n.kfun>0){const h=hoch();funkel(h.x,h.y,Math.max(4,R*.7)*n.kfun)}}
 // Wechsel Standard <-> Kristall: Objekte „kristallisieren“ vom Zentrum nach außen (ca. 1,1 s), mit Funkeln
 function startKris(ziel){wechselTheme(ziel);if(!N.length)return;const C=[0,1,2].map(k=>N.reduce((m,n)=>m+n['xyz'[k]],0)/N.length),ds=N.map(n=>Math.hypot(n.x-C[0],n.y-C[1],n.z-C[2])),dm=Math.max(...ds)||1;
  ani={kris:true,t0:null,p1:N.map(n=>n.r),dl:ds.map((d,i)=>.6*d/dm+.08*hs(i,9)),ph:2,u:1,fa:0,swap:false};N.forEach(n=>{n.r=.02});sperre(true);fly=null}
@@ -999,7 +1011,8 @@ function startBH(ziel){const sy=Math.sin(yaw),cy=Math.cos(yaw),cp=Math.cos(pitch
  ani={t0:null,bh,ax:f,p0:P0,dl:ds.map((d,i)=>(.88*(d-dn)/dr+.12*hs(i,7))*.65),ph:0,u:0,fa:0,ts:0,swap:false,ziel:ziel||'std'};sperre(true);fly=null;animL=false;needHome=false;waehle(null);tr=null;$('kres').innerHTML=''}
 function sperre(b){['lay','or','ds'].forEach(k=>$(k).disabled=b)}
 function animStep(now){const a=ani;
- if(a.kris){if(a.t0==null)a.t0=now;const el=(now-a.t0)/1000;let fertig=true;N.forEach((n,i)=>{const k=Math.max(0,Math.min(1,(el-a.dl[i])/.5));if(k<1)fertig=false;n.r=a.p1[i]*Math.max(.02,(1-Math.pow(1-k,3))*(1+.18*Math.sin(k*Math.PI)));n.kfun=k>0&&k<1?Math.sin(k*Math.PI):0});
+ if(a.kris){const pn=performance.now();if(a.t0==null)a.t0=pn;const el=(pn-a.t0)/1000; // eigene Uhr: Frame-Zeitstempel kann beim Start veraltet sein (78)
+ let fertig=true;N.forEach((n,i)=>{const k=Math.max(0,Math.min(1,(el-a.dl[i])/.5));if(k<1)fertig=false;n.r=a.p1[i]*Math.max(.02,(1-Math.pow(1-k,3))*(1+.18*Math.sin(k*Math.PI)));n.kfun=k>0&&k<1?Math.sin(k*Math.PI):0});
   if(fertig){N.forEach((n,i)=>{n.r=a.p1[i];n.kfun=0});ani=null;sperre(false)}return}
  if(a.bang){if(a.t0==null)a.t0=now;const el=now-a.t0,uu=Math.min(1,el/3200),e=1-Math.pow(1-uu,4),sc=Math.min(1,e*2.2+.03);
   N.forEach((n,i)=>{const p=a.p1[i];n.x=a.C[0]+(p[0]-a.C[0])*e;n.y=a.C[1]+(p[1]-a.C[1])*e;n.z=a.C[2]+(p[2]-a.C[2])*e;n.r=p[3]*sc});
