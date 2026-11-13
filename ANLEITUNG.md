@@ -63,4 +63,5 @@ Hosting: Repository `kodoiii/3Deep` (öffentlich), Adresse `https://kodoiii.gith
 | Dokument-Beziehungen je Objekt gleichzeitig abfragen | mit Beispieldaten getestet |
 | Person per Drop: Benutzername über `pno/person/{ID}` | vermutet, nur mit Beispieldaten getestet |
 | Unterordner eines Bookmarks | vermutet |
+| Vorschaubild in der Profilkarte (Feld `preview_url` aus getecosystem, Adresse auf dem FCS) | vermutet, nur mit Beispieldaten getestet; Diagnose „Vorschaubilder“ und Knopf „Bilder prüfen“ |
 | WASD mit eingefangener Maus, SpaceMouse im Dashboard | offen |

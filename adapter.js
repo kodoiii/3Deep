@@ -1,11 +1,11 @@
-/* 3Deep-Widget, Adapter Version 29.
+/* 3Deep-Widget, Adapter Version 30.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
    im Format der echten Schnittstellen-Antworten. */
 (function () {
   'use strict';
-  var DARSTELLUNG = '71';   // Version von datenraum3d.html; muss zu <meta name="3deep-darstellung"> dort passen (tests/test-gleichstand.js)
+  var DARSTELLUNG = '72';   // Version von datenraum3d.html; muss zu <meta name="3deep-darstellung"> dort passen (tests/test-gleichstand.js)
   var BKS = '/resources/v1/modeler/dsbks/dsbks:Bookmark';
   var ENG = '/resources/v1/modeler/dseng/dseng:EngItem';
   var DOC = '/resources/v1/modeler/documents';
@@ -38,7 +38,7 @@
   var DOKREL = [{ rel: 'SpecificationDocument', art: 'spec' }, { rel: 'PLMDocConnection', art: 'praes' }, { rel: 'Reference Document', art: 'praes' }];
   var S = { live: false, WAF: null, space: '', tenant: '', ctx: '', root: null, log: [], roh: {}, bereit: false, wartend: null,
     frame: null, viewerUrl: '', max: 1500, issCache: {}, issCacheZ: { treffer: 0, neu: 0 }, issCacheMs: 30 * 60 * 1000,
-    cache: {}, cacheMs: 30 * 60 * 1000, cacheZ: { treffer: 0, neu: 0 }, stufen: [], lauf: 0, abbruch: false, vorn: '', zuletzt: null, nachladen: false, neuVerzug: 500, neuLaden: 0, laeuft: false, treffer: [], dateien: {}, csrf: '', cad: {}, cadTyp: {}, cadInfo: [] };
+    cache: {}, cacheMs: 30 * 60 * 1000, cacheZ: { treffer: 0, neu: 0 }, stufen: [], lauf: 0, abbruch: false, vorn: '', zuletzt: null, nachladen: false, neuVerzug: 500, neuLaden: 0, laeuft: false, treffer: [], dateien: {}, csrf: '', cad: {}, cadTyp: {}, cadInfo: [], vorschau: {}, vorschauZahl: 0, vorschauInfo: null, vorschauTest: null };
 
   // ---------- kleine Helfer ----------
   function q(sel) { return S.root.querySelector(sel); }
@@ -302,6 +302,7 @@
           computeWithInstances: false, allRelationsMode: true, publicationsMode: false, attributesForView: ['ds6w:label', 'ds6w:type', 'ds6w:identifier'], ghostMode: false,
           excludedRelations: ['v6_structure_roots_from'], direction: 'out', restrictedMode: false, responseMode: 'ObjectsAndLinks', items: [eintraege[i]], redirectQueryToSGI: true });
         var obj = {}; ((r && r.objects) || []).forEach(function (x) { if (x && x.id) obj[x.id] = x; });
+        vorschauMerken((r && r.objects) || []);
         var kinder = ((r && r.links) || []).filter(function (l) { return l && l.type === 'workspaces_bookmarks_to' && l.source === o.id && l.target && l.target !== o.id; }).map(function (l) {
           var x = obj[l.target] || {}; return { id: l.target, titel: x['ds6w:label'] || x.name || '', typ: x.type || 'Workspace Vault' }; });
         return { kinder: kinder, objekte: ((r && r.links) || []).filter(function (l) { return l && l.type === 'workspaces_folders_to'; }).length, variante: i };
@@ -543,6 +544,7 @@
           ghostMode: false, excludedRelations: ['v6_structure_roots_from'], direction: richtung, restrictedMode: false, responseMode: 'ObjectsAndLinks', redirectQueryToSGI: true,
           items: pk.map(function (o) { return { id: o.id, relTypesTaxonomies: o.tax, serviceId: '3DSpace', type: o.typ }; }) }); } finally { ecoFrei(); }
         var obj = {}; ((r && r.objects) || []).forEach(function (x) { if (x && x.id) obj[x.id] = x; });
+        vorschauMerken((r && r.objects) || []);
         auswerten(r || {}, obj); info.ok += pk.length; info.pakete++;
       } catch (e) {
         if (S.abbruch) return;
@@ -554,6 +556,78 @@
     }
     var pakete = []; for (var i = 0; i < objs.length; i += ECOPAKET) pakete.push(objs.slice(i, i + ECOPAKET));
     await pool(pakete, ECOPARALLEL, paket);
+  }
+  // Vorschaubilder (Adapter 30): getecosystem liefert je Objekt ein Bildfeld (laut Nutzer preview_url, Adresse auf dem FCS; Aufbau noch nicht per
+  // Mitschnitt gesichert). Es wird aus den ohnehin laufenden Sammelabfragen (Zeichnungen, Dokumente, Issues) mitgenommen: keine eigene Abfrage.
+  // Die Darstellung bekommt die Adresse als allgemeines Knotenfeld img. Gespeichert je Objekt-ID mit Zeitpunkt (Alter = Hinweis auf die Gültigkeit).
+  function vorschauFeld(x) {
+    if (typeof x.preview_url === 'string' && x.preview_url) return 'preview_url';
+    var k = Object.keys(x).filter(function (k) { return /preview|thumbnail|thumb/i.test(k) && typeof x[k] === 'string' && x[k]; });
+    return k[0] || '';
+  }
+  function vorschauAdr(v) {
+    v = String(v || '').trim(); if (/^(https?:|data:image\/|blob:)/i.test(v)) return v;
+    if (/^\/\//.test(v)) return 'https:' + v;
+    if (/^\//.test(v) && S.space) return S.space.replace(/^(https?:\/\/[^\/]+).*$/, '$1') + v;
+    return '';
+  }
+  function vorschauMerken(objs) {
+    var vi = S.vorschauInfo; if (!vi) vi = S.vorschauInfo = { gesehen: {}, mit: 0, felder: {}, ohneBsp: null, mitBsp: null, roh: {} };
+    objs.forEach(function (x) {
+      if (!x || !x.id) return;
+      var neu = !vi.gesehen[x.id]; vi.gesehen[x.id] = 1;
+      var f = vorschauFeld(x), u = f ? vorschauAdr(x[f]) : '';
+      if (!f) { if (!vi.ohneBsp) vi.ohneBsp = { typ: x.type || '?', felder: Object.keys(x).slice(0, 40) }; return; }
+      if (neu) { vi.mit++; vi.felder[f] = (vi.felder[f] || 0) + 1; }
+      if (!u) { if (!vi.roh[f]) vi.roh[f] = String(x[f]).slice(0, 80); return; }
+      if (!vi.mitBsp) vi.mitBsp = { typ: x.type || '?', feld: f };
+      [x.id, x.physicalid].forEach(function (id) {
+        if (!id) return; var a = S.vorschau[id];
+        if (!a || a.u !== u) { S.vorschau[id] = { u: u, t: Date.now(), feld: f, typ: x.type || '' }; S.vorschauZahl++; }
+      });
+    });
+  }
+  function vorschauAufraeumen() {
+    var ks = Object.keys(S.vorschau), jetzt = Date.now();
+    ks.forEach(function (k) { if (jetzt - S.vorschau[k].t > 4 * 3600 * 1000) delete S.vorschau[k]; });
+    ks = Object.keys(S.vorschau); if (ks.length > 20000) ks.sort(function (a, b) { return S.vorschau[a].t - S.vorschau[b].t; }).slice(0, ks.length - 20000).forEach(function (k) { delete S.vorschau[k]; });
+  }
+  function adrKurz(u) {
+    if (/^data:/i.test(u)) return u.slice(0, u.indexOf(',') + 1) + '… (' + u.length + ' Zeichen)';
+    return u.replace(/([?&][^=&#]+)=[^&#]*/g, '$1=…').slice(0, 220);
+  }
+  // Ladetest im Browser des Widgets: lädt das Bild wie die Darstellung (img, ohne eigene Kopfzeilen); Pixel nur lesbar mit CORS-Freigabe oder data:
+  function bildTest(u) {
+    return new Promise(function (ja) {
+      var t0 = Date.now(), im = new Image(), aus = false, uhr = setTimeout(function () { if (!aus) { aus = true; ja({ ok: false, text: 'keine Antwort nach 15 s' }); } }, 15000);
+      im.onload = function () {
+        if (aus) return; aus = true; clearTimeout(uhr);
+        var r = { ok: true, w: im.naturalWidth, h: im.naturalHeight, ms: Date.now() - t0 };
+        var p = new Image(); p.crossOrigin = 'anonymous';
+        p.onload = function () {
+          try {
+            var c = document.createElement('canvas'); c.width = p.naturalWidth || 1; c.height = p.naturalHeight || 1; var g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(p, 0, 0);
+            var w = c.width - 1, h = c.height - 1, ecken = [[0, 0], [w, 0], [0, h], [w, h]].map(function (q) { return g.getImageData(q[0], q[1], 1, 1).data; });
+            var tr = ecken.filter(function (d) { return d[3] < 20; }).length;
+            r.hg = tr >= 3 ? 'transparent' : 'fest (Ecken ' + ecken.map(function (d) { return 'rgb(' + d[0] + ',' + d[1] + ',' + d[2] + ')' + (d[3] < 255 ? ' α' + d[3] : ''); }).join(' / ') + ')';
+          } catch (e) { r.hg = 'nicht prüfbar (Pixel gesperrt)'; }
+          ja(r);
+        };
+        p.onerror = function () { r.hg = 'nicht prüfbar (keine CORS-Freigabe)'; ja(r); };
+        p.src = u;
+      };
+      im.onerror = function () { if (aus) return; aus = true; clearTimeout(uhr); ja({ ok: false, ms: Date.now() - t0, text: 'lädt nicht (Fehler, abgelaufen oder keine Berechtigung)' }); };
+      im.src = u;
+    });
+  }
+  // Bis zu 3 verschiedene Adressen prüfen (bevorzugt Strukturobjekte); „Bilder prüfen“ in der Diagnose wiederholt den Test (Gültigkeitsdauer).
+  async function vorschauPruefen() {
+    var ids = Object.keys(S.vorschau), gesehen = {}, wahl = [];
+    ids.sort(function (a, b) { return (/VPMReference|Part|Product/i.test(S.vorschau[b].typ) ? 1 : 0) - (/VPMReference|Part|Product/i.test(S.vorschau[a].typ) ? 1 : 0); });
+    ids.forEach(function (id) { var v = S.vorschau[id]; if (wahl.length < 3 && !gesehen[v.u]) { gesehen[v.u] = 1; wahl.push({ id: id, v: v }); } });
+    if (!wahl.length) { S.vorschauTest = { t: Date.now(), erg: [] }; diagnose(); return; }
+    var erg = await Promise.all(wahl.map(function (w) { return bildTest(w.v.u).then(function (r) { r.id = w.id; r.typ = w.v.typ; r.alter = Date.now() - w.v.t; return r; }); }));
+    S.vorschauTest = { t: Date.now(), erg: erg }; diagnose();
   }
   function ecoInfo() { return { ok: 0, fehler: 0, pakete: 0, einzeln: false, fehlerText: '', links: 0 }; }
   function ecoText(i) { return i.ok + ' Objekte geprüft' + (i.pakete ? ' in ' + i.pakete + ' Paketen' : '') + (i.einzeln ? ', teils geteilt' : '') + ', ' + i.fehler + ' Fehler'; }
@@ -613,7 +687,7 @@
     });
     return gef;
   }
-  // Beziehungsübersicht für die Diagnose (Adapter 29): welche Beziehungen haben die ersten Objekte überhaupt? Ein Aufruf getrelationcount
+  // Beziehungsübersicht (Adapter 29) für die Diagnose: welche Beziehungen haben die ersten Objekte überhaupt? Ein Aufruf getrelationcount
   // (Aufbau wie im Mitschnitt: relations ["use-auto-by-type-relations"], mehrere items). Zeigt, ob es Beziehungen gibt, die das Widget noch nicht liest.
   async function beziehungsUebersicht(objs) {
     var tok = ''; try { tok = await csrf(); } catch (e) { }
@@ -654,7 +728,7 @@
       if (!S.aufStufe || S.abbruch || (!sofort && Date.now() - letzteMeldung < 1500)) return;
       var g = {}; Object.keys(gesehen).forEach(function (k) { g[k] = gesehen[k]; });
       var z = baue(nodes.slice(), edges.slice(), g); if (!z.nodes.length) return;
-      var sig = z.nodes.length + '/' + z.edges.length + '/' + aend; if (sig === letzteSig) return;
+      var sig = z.nodes.length + '/' + z.edges.length + '/' + aend + '/' + S.vorschauZahl; if (sig === letzteSig) return;
       letzteSig = sig; letzteMeldung = Date.now();
       S.aufStufe({ types: types, relTypes: relTypes, nodes: z.nodes, edges: z.edges, spacing: abstand(z.nodes), maxObjects: Math.max(500, z.nodes.length) }, name);
     }
@@ -1153,6 +1227,8 @@
         if (a.bm) edges.push({ from: id, to: 'bm:' + a.bm, type: 'inhalt' });
       });
       (exKnoten || []).forEach(function (n) { nodes.push(n); });
+      var vk = {}, vz = 0; nodes.forEach(function (n) { var v = S.vorschau[String(n.id).replace(/^(o|z|i|t|p|bm):/, '')]; if (v) { n.img = v.u; vz++; vk[n.type] = (vk[n.type] || 0) + 1; } else delete n.img; });
+      S.vorschauKnoten = vz + ' von ' + nodes.length + ' Objekten mit Bild' + (vz ? ' (' + Object.keys(vk).map(function (k) { return ((types[k] || {}).label || k) + ' ' + vk[k]; }).join(', ') + ')' : '');
       var vorhanden = {}; nodes.forEach(function (n) { vorhanden[n.id] = 1; });
       (exKanten || []).forEach(function (k) { if (vorhanden[k.from] && vorhanden[k.to]) edges.push(k); });
       return { nodes: nodes, edges: edges, fehlend: fehlend };
@@ -1282,7 +1358,7 @@
       S.laeuft = true; S.abbruch = false; S.vorn = ''; S.ladeNr = (S.ladeNr || 0) + 1;
       S.max = Math.max(10, parseInt(S.maxText, 10) || 1500); S.mitDok = q('.td-dk').checked; S.mitIssues = q('.td-ia').checked; S.mitExpand = q('.td-ex').checked; S.mitZone = q('.td-zq').checked; S.mitZeich = q('.td-zg').checked;
       if (sonder && sonder.frisch) cacheLeeren(); else cacheAufraeumen();
-      S.aufrufe = 0; S.issCacheZ = { treffer: 0, neu: 0 }; S.cacheZ = { treffer: 0, neu: 0 }; S.issueInfo = null;   // Diagnose-Abschnitte gelten nur für dieses Laden
+      S.aufrufe = 0; S.issCacheZ = { treffer: 0, neu: 0 }; S.cacheZ = { treffer: 0, neu: 0 }; S.issueInfo = null; S.vorschauInfo = null; vorschauAufraeumen();   // Diagnose-Abschnitte gelten nur für dieses Laden
       S.stufen = []; S.zwischen = gleich;
       if (!gleich) { S.lauf = (S.lauf || 0) + 1; S.letzte = null; }
       var nl = q('.td-nl'); if (nl) nl.style.display = '';
@@ -1307,6 +1383,8 @@
       status(erg.daten.nodes.length + ' Objekte, ' + erg.daten.edges.length + ' Beziehungen aus „' + (b.title || b.id) + '“ in ' + sek.toFixed(1) + ' s, ' + S.aufrufe + ' Abfragen' +
         (S.cacheZ.treffer ? ' (+ ' + S.cacheZ.treffer + ' aus dem Zwischenspeicher)' : '') + '.' + (S.stufen.length > 1 && !gleich ? ' Erstes Bild nach ' + erstes.toFixed(1) + ' s.' : '') +
         (erg.hinweise.length ? ' Hinweis: ' + erg.hinweise.join(' ') : ''), erg.hinweise.length > 0);
+      // Vorschaubilder einmal testen (3 Bilder, keine REST-Abfrage), höchstens alle 5 min; Ergebnis nur in der Diagnose
+      if (Object.keys(S.vorschau).length && (!S.vorschauTest || Date.now() - S.vorschauTest.t > 5 * 60000)) vorschauPruefen();
     } catch (e) {
       S.vorn = '';
       if (!S.abbruch) status('Laden fehlgeschlagen: ' + e.message + ' (Details unter „Diagnose“)', true);
@@ -1331,7 +1409,7 @@
     clearTimeout(S.neuUhr); laden({ drop: S.zuletzt, nach: true, frisch: true });
   }
   function diagnoseText() {
-    var z = ['3Deep-Widget Diagnose (Adapter 29, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
+    var z = ['3Deep-Widget Diagnose (Adapter 30, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
       '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-') + (S.ctxZahl ? ' (automatisch gewählt, ' + S.ctxZahl + ' verfügbar)' : ''), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), ''];
     if (S.stufen && S.stufen.length) {
       z.push('', 'Ablauf (dieses Laden): ' + (S.aufrufe || 0) + ' Abfragen an die Plattform, ' + S.cacheZ.treffer + ' aus dem Zwischenspeicher' + (S.laeuft ? ' – läuft noch' : ''));
@@ -1364,6 +1442,22 @@
     if (S.bmInfo && S.bmInfo.length) { z.push('', 'Bookmark-Ordner:'); S.bmInfo.forEach(function (c) { z.push('  ' + c); }); }
     if (S.zgInfo && S.zgInfo.length) { z.push('', 'Zeichnungen:'); S.zgInfo.forEach(function (c) { z.push('  ' + c); }); }
     if (S.dokInfo && S.dokInfo.length) { z.push('', 'Dokumente:'); S.dokInfo.forEach(function (c) { z.push('  ' + c); }); }
+    if (S.vorschauInfo || S.vorschauTest) {
+      var vi = S.vorschauInfo || { gesehen: {}, mit: 0, felder: {}, roh: {} }, vf = Object.keys(vi.felder);
+      z.push('', 'Vorschaubilder (Feld aus getecosystem, keine eigene Abfrage):', '  getecosystem-Objekte: ' + Object.keys(vi.gesehen).length + ' gesehen, ' + vi.mit + ' mit Bildfeld' + (vf.length ? ' (' + vf.map(function (k) { return k + ': ' + vi.felder[k]; }).join(', ') + ')' : ''));
+      if (S.vorschauKnoten) z.push('  im Bild: ' + S.vorschauKnoten);
+      Object.keys(vi.roh || {}).forEach(function (k) { z.push('  Feld ' + k + ' ohne verwertbare Adresse, z. B. „' + vi.roh[k] + '“'); });
+      if (vi.ohneBsp) z.push('  Beispiel ohne Bildfeld (Typ ' + vi.ohneBsp.typ + '), Felder: ' + vi.ohneBsp.felder.join(', '));
+      var bsp = Object.keys(S.vorschau).map(function (k) { return S.vorschau[k]; })[0];
+      if (bsp) z.push('  Beispieladresse (Werte ausgeblendet): ' + adrKurz(bsp.u));
+      var vt = S.vorschauTest;
+      if (!vt) z.push('  Ladetest: noch nicht gelaufen („Bilder prüfen“).');
+      else if (!vt.erg.length) z.push('  Ladetest: keine Bildadressen bekannt.');
+      else {
+        z.push('  Ladetest vor ' + Math.round((Date.now() - vt.t) / 60000) + ' min (' + vt.erg.filter(function (r) { return r.ok; }).length + ' von ' + vt.erg.length + ' geladen; „Bilder prüfen“ wiederholt ihn, z. B. nach 30 und 60 min):');
+        vt.erg.forEach(function (r) { z.push('    ' + (r.typ || '?') + ' ' + r.id + ', Adresse ' + Math.round(r.alter / 60000) + ' min alt: ' + (r.ok ? 'ok, ' + r.w + '×' + r.h + ' px, ' + r.ms + ' ms, Hintergrund ' + r.hg : r.text)); });
+      }
+    }
     if (S.relInfo) {
       // Beziehungen, die das Widget heute auswertet; alle anderen stehen als „nicht ausgewertet“ da (Hinweis auf mögliche Erweiterungen oder Lücken)
       var bekannt = /^(v6_structure_|v6_specdoc_|v6_annexdoc_|v6_cad_document_|issue_|issue_context_|workspaces_folders_|workspaces_bookmarks_)/;
@@ -1410,7 +1504,7 @@
       '<span class="td-mo" style="padding:2px 8px;border-radius:10px;background:#fff3cd;color:#7a5c00;border:1px solid #e6cf7a;display:none">Testmodus: Beispieldaten</span>' +
       '<span class="td-st" style="flex:1;min-width:200px;color:#3d3d3d">Starte …</span></div>' +
       '<div class="td-dp" style="display:none;padding:6px 8px;background:#f4f5f6;border-bottom:1px solid #d1d4d4">' +
-      '<div style="margin-bottom:4px">Protokoll aller Abfragen. Zum Weitergeben: „Kopieren“ drücken, vorher Vertrauliches prüfen. <button class="td-dc" style="' + knopf + '">Kopieren</button> <button class="td-ir" title="Zwischenspeicher leeren (alle Abfragen und Issue-Details); beim nächsten Laden wird alles frisch von der Plattform gelesen" style="' + knopf + '">Zwischenspeicher leeren</button></div>' +
+      '<div style="margin-bottom:4px">Protokoll aller Abfragen. Zum Weitergeben: „Kopieren“ drücken, vorher Vertrauliches prüfen. <button class="td-dc" style="' + knopf + '">Kopieren</button> <button class="td-vb" title="Vorschaubilder: Laden, Größe und Hintergrund testen (für die Gültigkeitsdauer später wiederholen)" style="' + knopf + '">Bilder prüfen</button> <button class="td-ir" title="Zwischenspeicher leeren (alle Abfragen und Issue-Details); beim nächsten Laden wird alles frisch von der Plattform gelesen" style="' + knopf + '">Zwischenspeicher leeren</button></div>' +
       '<textarea class="td-dx" readonly="readonly" style="' + feld + ';width:100%;height:180px;box-sizing:border-box;font:12px monospace;display:none"></textarea></div>' +
       '<iframe class="td-fr" title="3Deep Darstellung" allow="fullscreen" style="flex:1;width:100%;border:0;background:#0b1220"></iframe></div>';
     q('.td-sb').onclick = suchen; q('.td-la').onclick = function () { laden(); };
@@ -1418,6 +1512,7 @@
     q('.td-db').onclick = function () { var p = q('.td-dp'), d = q('.td-dx'), auf = p.style.display === 'none'; p.style.display = auf ? '' : 'none'; d.style.display = auf ? '' : 'none'; diagnose(); };
     q('.td-ir').onclick = function () { var n = cacheLeeren(); status('Zwischenspeicher geleert (' + n + ' Einträge). Beim nächsten Laden wird alles neu gelesen.'); diagnose(); };
     q('.td-nl').onclick = neuLesen;
+    q('.td-vb').onclick = function () { status('Prüfe Vorschaubilder …'); vorschauPruefen().then(function () { status('Vorschaubilder geprüft – Ergebnis in der Diagnose unter „Vorschaubilder“.'); }); };
     q('.td-dc').onclick = function () { var d = q('.td-dx'); d.value = diagnoseText(); d.select(); try { document.execCommand('copy'); } catch (e) { } if (navigator.clipboard) navigator.clipboard.writeText(d.value).catch(function () { }); };
     q('.td-ci').onchange = function (e) { S.ctx = e.target.value.trim(); try { localStorage.setItem('3deep_ctx', S.ctx); } catch (x) { } if (S.ctx) status('Security Context gesetzt. Bookmark-Namen eingeben und „Suchen“ drücken.'); };
     ['.td-ex', '.td-zq', '.td-dk', '.td-zg', '.td-ia'].forEach(function (k) { q(k).addEventListener('change', haekchenGeaendert); });
@@ -1560,7 +1655,25 @@
   }
   function T5(i) { return TEST.v5[i] && TEST.v5[i].typ; }
   function eref2(typ, i) { return { source: '$3DSpace', type: typ, identifier: i, relativePath: '/…/' + i }; }
+  // Testmodus (Adapter 30): getecosystem-Antworten bekommen ein Bildfeld preview_url wie (laut Nutzer) auf der Plattform.
+  // S.testVorschau: 'frei' (Voreinstellung, transparent), 'weiss' (fester weißer Hintergrund), 'kaputt' (Adresse lädt nicht), 'aus' (kein Feld)
+  function testBild(id, weiss) {
+    var h = 0; for (var i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+    var c = function (l) { return 'hsl(' + [210, 28, 192, 220][h % 4] + ',16%,' + l + '%)'; }, b = 20 + (h % 3) * 8;
+    return 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="128" height="104" viewBox="0 0 128 104">' + (weiss ? '<rect width="128" height="104" fill="#ffffff"/>' : '') +
+      '<polygon points="64,' + (40 - b) + ' 112,' + (64 - b) + ' 64,' + (88 - b) + ' 16,' + (64 - b) + '" fill="' + c(80) + '"/><polygon points="16,' + (64 - b) + ' 64,' + (88 - b) + ' 64,96 16,72" fill="' + c(42) + '"/>' +
+      '<polygon points="64,' + (88 - b) + ' 112,' + (64 - b) + ' 112,72 64,96" fill="' + c(60) + '"/><ellipse cx="64" cy="' + (64 - b) + '" rx="13" ry="6.5" fill="' + c(24) + '"/></svg>');
+  }
   function testGet(pfad, p, methode, body) {
+    return testGetRoh(pfad, p, methode, body).then(function (r) {
+      if (pfad === ECO && r && r.objects && S.testVorschau !== 'aus') r.objects.forEach(function (x) {
+        if (!x || !x.id || /Issue|Person|Workspace/i.test(x.type || '')) return;
+        x.preview_url = S.testVorschau === 'kaputt' ? 'https://fcs.invalid/fcs/servlet/fcs/thumbnail?__fcs__jobTicket=TEST' + x.id + '&file=thumb.jpg' : testBild(x.id, S.testVorschau === 'weiss');
+      });
+      return r;
+    });
+  }
+  function testGetRoh(pfad, p, methode, body) {
     if (!TEST) TEST = testDaten();
     return new Promise(function (ja, nein) {
       setTimeout(function () {
