@@ -19,6 +19,7 @@ Hosting: Repository `kodoiii/3Deep` (öffentlich), Adresse `https://kodoiii.gith
 - Dauerhaft (Admin): Platform Management → Members → Additional Apps → Create Additional App, Typ Widget, Source code URL wie oben. (Noch nicht ausprobiert.)
 
 ## Bedienung
+- Projekte (seit Adapter 37, erster Entwurf): Im Suchfeld auch einen Projektnamen eingeben; Treffer „Projekt: …“ wählen und „Laden“, oder ein Projekt ins Drop-Feld ziehen. Es erscheinen Projekt, Phasen, Tasks, Meilensteine, Gates, Abhängigkeiten, Zuständige, Deliverables, Risiken und (Häkchen „Issues“) die Issues des Projekts im Layout „Projektplan / Zeitachse“ (kritischer Pfad rot, Heute-Linie). Zum Prüfen der neuen Schnittstellen: „Diagnose“ → „Projekt-Aufrufe prüfen“. Neues Häkchen „Aufgaben“ (Standard aus): sucht bei Bookmarks und Produkten Aufgaben mit Bezug zu den geladenen Objekten, mit einer einzigen Abfrage.
 - Links oben das Drop-Feld (siehe unten), daneben die Bookmark-Suche: Namen oder ID eingeben, „Suchen“, Treffer wählen, „Laden“.
 - Produktstruktur und Attribute (seit Adapter 32 ohne eigene Häkchen, immer an): Struktur mit einer Abfrage je Produkt (expand), geht das nicht, automatisch Ebene für Ebene; Attribute aller Strukturobjekte (z. B. Teilenummer, Reifegrad, Besitzer) mit einer einzigen Abfrage (Zone Query, `POST /cvservlet/zonequeries`), fehlt sie, geht es ohne Attribute weiter. Die Diagnose zeigt, ob ein Rückfall gegriffen hat.
 - Beim Öffnen (seit Adapter 33): Das Widget lädt automatisch das zuletzt geöffnete Objekt (Bookmark oder abgelegtes Objekt), während das Intro läuft; danach erscheint es im 3D. Gemerkt wird im Browser; lässt sich das Objekt nicht mehr laden, wird es vergessen.
@@ -63,6 +64,7 @@ Hosting: Repository `kodoiii/3Deep` (öffentlich), Adresse `https://kodoiii.gith
 | Produktstruktur in einer Abfrage (`dseng:EngItem/{ID}/expand`), Rückfall Ebene für Ebene | auf der Plattform bestätigt (ca. 2 s statt ca. 80 s) |
 | Attribute über Zone Query (`/cvservlet/zonequeries`, Body laut Doku R2026x) | Aufruf laut Doku; Prädikate außer `ds6w:label`/`ds6w:type`, Adresse und Teilenummer vermutet, nur mit Beispieldaten getestet |
 | Dokument-Beziehungen je Objekt gleichzeitig abfragen | mit Beispieldaten getestet |
+| Projektmanagement (Adapter 37): Projekt per Suche oder Drop, `projects/{id}` mit Tasks, Abhängigkeiten, Risiken, Issues; Rückfälle `tasks/ids`, `tasks?showProjectTasks` | Aufrufe laut DS-SDK gesichert; Umfang der Antwort, Phase/Gate/Meilenstein als Task-Typ und Hierarchie aus `taskWBS` vermutet; nur mit Beispieldaten getestet. Prüfen: Diagnose → „Projekt-Aufrufe prüfen“ |
 | Person per Drop: Benutzername über `pno/person/{ID}` | vermutet, nur mit Beispieldaten getestet |
 | Unterordner eines Bookmarks | vermutet |
 | Vorschaubild in der Profilkarte (Feld `preview_url` aus getecosystem, Adresse auf dem FCS) | vermutet, nur mit Beispieldaten getestet; Diagnose „Vorschaubilder“ und Knopf „Bilder prüfen“ |

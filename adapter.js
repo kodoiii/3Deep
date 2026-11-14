@@ -1,17 +1,18 @@
-/* 3Deep-Widget, Adapter Version 36.
+/* 3Deep-Widget, Adapter Version 37.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
    im Format der echten Schnittstellen-Antworten. */
 (function () {
   'use strict';
-  var DARSTELLUNG = '91';   // Version von datenraum3d.html; muss zu <meta name="3deep-darstellung"> dort passen (tests/test-gleichstand.js)
+  var DARSTELLUNG = '92';   // Version von datenraum3d.html; muss zu <meta name="3deep-darstellung"> dort passen (tests/test-gleichstand.js)
   var BKS = '/resources/v1/modeler/dsbks/dsbks:Bookmark';
   var ENG = '/resources/v1/modeler/dseng/dseng:EngItem';
   var DOC = '/resources/v1/modeler/documents';
   var PNO = '/resources/modeler/pno/person';
   var ISS = '/resources/v1/modeler/dsiss/issue';
   var TSK = '/resources/v1/modeler/tasks';
+  var PRJ = '/resources/v1/modeler/projects', RSK = '/resources/v1/modeler/risks';   // Adapter 37: Projektmanagement
   var XCAD = '/resources/v1/modeler/dsxcad/', DSDO = '/resources/v1/modeler/dsdo/';
   // bevorzugte abgeleitete Formate (Derived Outputs) für den Download von Bauteilen
   var CADFORMATE = ['STEP', 'STP', '3DXML', 'JT', 'IGES', 'IGS', 'STL', 'CGR', 'PDF'];
@@ -737,6 +738,192 @@
 
   // q fehlt: Start beim Bookmark. q.issues = [IDs]: Start bei diesen Issues (per Drag & Drop).
   // q.produkte = [IDs]: Start bei Physical Products (nur abwärts). q.person = {id, name}: Start bei einer Person (ihre Issues und Aufgaben).
+  // ---------- Projektmanagement (Adapter 37) ----------
+  // Quelle: DS-SDK ws3dx-dotnet (Project 1.2.0, Risk 1.1.0, Task 1.1.0). Gesichert laut SDK: GET projects, projects/search (searchStr, $top, $skip),
+  // projects/{id} (relateddata: tasks, members, risks, issues, folders, ownerInfo), projects/{id}/risks, projects/{id}/issues, risks, POST tasks/ids.
+  // Vermutet: dass projects/{id} die Tasks vollständig mitliefert (sonst Rückfall tasks/ids, dann tasks?showProjectTasks), Phase/Gate/Milestone als Task-Typ,
+  // Hierarchie aus taskWBS, Form des Rumpfs von tasks/ids, Einheit des Versatzes.
+  function isoTag(t) {
+    if (t == null || t === '') return '';
+    var s = String(t).trim(), m = s.match(/^(\d{4})-(\d{2})-(\d{2})/); if (m) return m[0];
+    m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); if (m) return m[3] + '-' + ('0' + m[1]).slice(-2) + '-' + ('0' + m[2]).slice(-2);
+    var d = new Date(/^\d{9,}$/.test(s) ? +s : s); if (isNaN(d)) return '';
+    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  }
+  function wahr(v) { return v === true || /^(true|yes|ja|1)$/i.test(String(v == null ? '' : v)); }
+  function liste(x) { return Array.isArray(x) ? x : []; }
+  function flach(l) { var aus = []; liste(l).forEach(function (x) { if (!x) return; if (Array.isArray(x.elements)) aus = aus.concat(flach(x.elements)); else aus.push(x); }); return aus; }
+  function ohneLeere(o) { Object.keys(o).forEach(function (k) { if (o[k] === '' || o[k] == null) delete o[k]; }); return o; }
+  function prozent(v) { var z = parseFloat(v); return isNaN(z) ? undefined : Math.max(0, Math.min(100, z)); }
+  function sucheProjekte(text) {
+    var s = String(text || '').replace(/\*/g, '').toLowerCase();
+    return hole(PRJ + '/search', { searchStr: text || '*', $top: 50, $skip: 0 }).then(mitglieder, function (e) {
+      if (S.abbruch) throw e;
+      return hole(PRJ, {}).then(mitglieder).then(function (l) { return l.filter(function (p) { var d = (p && p.dataelements) || {}; return !s || String(d.title || d.name || '').toLowerCase().indexOf(s) >= 0; }); });
+    }).then(function (l) {
+      return l.filter(function (p) { return p && (p.id || p.identifier); }).map(function (p) { var d = p.dataelements || {}; return { id: p.id || p.identifier, title: 'Projekt: ' + (d.title || d.name || p.id), name: d.title || d.name || '', art: 'projekt' }; });
+    });
+  }
+  var PTYPEN = {
+    projekt: { color: '#27408b', size: 4.2, shape: 'box', label: 'Projekt' },
+    phase: { color: '#6c7fd8', size: 3, shape: 'bar', label: 'Phase', band: true },
+    task: { color: '#f2c400', size: 1.5, shape: 'dodecahedron', label: 'Task' },
+    meilenstein: { color: '#12b5cb', size: 1.9, shape: 'diamond', label: 'Meilenstein' },
+    gate: { color: '#8e44ad', size: 2.5, shape: 'octagon', label: 'Gate' },
+    risiko: { color: '#ff8c1a', size: 1.9, shape: 'triangle', label: 'Risiko' },
+    issue: { color: '#ff4d6d', size: 2.2, shape: 'torus', label: 'Issue' },
+    person: { color: '#5fcf3f', size: 2.2, shape: 'bust', label: 'Person' },
+    part: { color: '#2fc4ad', size: 1.96, label: 'Bauteil / Baugruppe' },
+    dok: { color: '#c9a227', size: 1.3, shape: 'book', label: 'Dokument' },
+    objekt: { color: '#9aa5b1', size: 1.3, label: 'Bezugsobjekt' }
+  };
+  var PREL = {
+    teil: { label: 'Projektstruktur (gehört zu)', color: '#2f3f5c', directed: false, hierarchy: true },
+    folgt: { label: 'Abhängigkeit (Vorgänger → Nachfolger)', color: '#3d5a80', directed: true, dependency: true },
+    liefert: { label: 'Deliverable', color: '#1f8f80', directed: true },
+    bezug: { label: 'Bezug (Scope / Referenz)', color: '#5d6975', directed: true },
+    risiko: { label: 'Risiko für', color: '#d9730d', directed: true },
+    kontext: { label: 'Issue im Projekt', color: '#2e8fb8', directed: true },
+    zuweisung: { label: 'Zugewiesen an', color: '#3a8f2f', directed: true },
+    mitglied: { label: 'Projektmitglied', color: '#7a9f6a', directed: true }
+  };
+  async function leseProjekt(b) {
+    var pid = String(b.id), hinweise = [], info = S.projInfo = ['Projekt „' + (b.title || pid) + '“ [' + pid + ']'], nodes = [], edges = [], idx = {}, kanten = {};
+    function knoten(n) { if (idx[n.id]) return idx[n.id]; ohneLeere(n); idx[n.id] = n; nodes.push(n); return n; }
+    function kante(from, to, type, plus) {
+      if (!idx[from] || !idx[to] || from === to) return; var k = from + '|' + to + '|' + type; if (kanten[k]) return; kanten[k] = 1;
+      var e = { from: from, to: to, type: type }; Object.keys(plus || {}).forEach(function (x) { e[x] = plus[x]; }); edges.push(e);
+    }
+    function person(a) {
+      var d = (a && a.dataelements) || a || {}, login = d.name || (a && a.name) || '', voll = d.fullname || [d.firstname, d.lastname].filter(Boolean).join(' ') || login; if (!login && !voll) return null;
+      var id = 'p:' + String(login || voll).toLowerCase(); knoten({ id: id, type: 'person', name: voll || login, meta: ohneLeere({ Benutzername: login, 'E-Mail': d.email || '' }) }); return id;
+    }
+    function bezug(x, von, typ) {
+      var d = (x && x.dataelements) || {}, id = x && (x.id || x.identifier || d.objectId); if (!id) return;
+      if (idx['t:' + id]) { kante(von, 't:' + id, typ); return; }
+      var art = d.typeNLS || x.type || 'Objekt', tk = /Issue/i.test(art) ? 'issue' : /Document|Dokument/i.test(art) ? 'dok' : /Physical ?Product|VPMReference|Product|Part|Engineering|3D/i.test(art) ? 'part' : 'objekt';
+      knoten({ id: String(id), type: tk, name: d.title || d.name || ('Objekt ' + String(id).slice(-6)), state: d.stateNLS || '',
+        meta: ohneLeere({ Typ: art, Name: d.name, Revision: d.revision, Reifegrad: d.stateNLS, Besitzer: d.ownerFullname, 'Collaborative Space': d.collabSpaceTitle || d.collabSpace, ID: String(id) }) });
+      kante(von, String(id), typ);
+    }
+    function daten() { return { types: PTYPEN, relTypes: PREL, nodes: nodes.slice(), edges: edges.slice(), layout: 'plan', stateTitle: 'Status', spacing: 9.4, maxObjects: Math.max(500, nodes.length) }; }
+    function stufe(name) { if (S.aufStufe && !S.abbruch) S.aufStufe(daten(), name); }
+
+    // 1. Projekt samt Tasks (ein Aufruf)
+    status('Lese Projekt …');
+    var p = (await taskAufruf(PRJ + '/' + encodeURIComponent(pid), {}))[0];
+    if (!p) throw new Error('Projekt nicht gefunden (Antwort ohne Daten)');
+    var pe = p.dataelements || {}, prd = p.relateddata || {};
+    knoten({ id: pid, type: 'projekt', name: pe.title || pe.name || b.name || 'Projekt', start: isoTag(pe.estimatedStartDate || pe.actualStartDate), end: isoTag(pe.estimatedFinishDate || pe.dueDate || pe.actualFinishDate),
+      progress: prozent(pe.percentComplete), state: pe.state || pe.status || '',
+      meta: ohneLeere({ Name: pe.name, Beschreibung: pe.description, Status: pe.state, 'Ist-Start': isoTag(pe.actualStartDate), 'Ist-Ende': isoTag(pe.actualFinishDate), Typ: pe.nlsType || p.type || 'Project Space', 'Collaborative Space': pe.project, 'Geändert': datum(pe.modified), ID: pid }) });
+    var tl = liste(prd.tasks), weg = 'projects/{id}';
+    info.push('projects/{id}: ' + tl.length + ' Tasks, ' + liste(prd.members).length + ' Mitglieder, ' + liste(prd.risks).length + ' Risiken, ' + liste(prd.issues).length + ' Issues, ' + liste(prd.folders).length + ' Ordner; Schlüssel relateddata: ' + (Object.keys(prd).join(', ') || '-'));
+    if (tl.length && !tl.some(function (t) { return t && t.dataelements && (t.dataelements.title || t.dataelements.estimatedStartDate); })) {   // nur IDs geliefert: Details in einem Aufruf nachholen
+      var tids = refIds(tl);
+      try { var l2 = mitglieder(await postMitCsrf(TSK + '/ids', tids.join(','))); if (l2.length) { tl = l2; weg = 'tasks/ids'; } info.push('tasks/ids (' + tids.length + ' IDs): ' + l2.length + ' Tasks'); }
+      catch (e) { if (S.abbruch) throw e; info.push('tasks/ids: FEHLER ' + e.message); }
+    }
+    if (!tl.length) {   // Rückfall: alle sichtbaren Projekt-Tasks in einem Aufruf, hier nach Projekt gefiltert
+      try {
+        var alle = await taskAufruf(TSK, { showProjectTasks: 'true' });
+        tl = alle.filter(function (t) { var e = (t && t.dataelements) || {}, dp = liste(((t || {}).relateddata || {}).DPMProject); return String(e.taskProjectId || '') === pid || dp.some(function (x) { return x && String(x.id || x.identifier || (x.dataelements || {}).objectId) === pid; }); });
+        weg = 'tasks?showProjectTasks'; info.push('tasks?showProjectTasks=true: ' + alle.length + ' Tasks, davon ' + tl.length + ' in diesem Projekt');
+        if (!tl.length) hinweise.push('Keine Tasks zum Projekt gefunden.');
+      } catch (e) { if (S.abbruch) throw e; info.push('tasks?showProjectTasks: FEHLER ' + e.message); hinweise.push('Tasks nicht lesbar (' + e.message + ').'); }
+    }
+    var T = [], wbs = {};
+    tl.forEach(function (t) {
+      var id = t && (t.id || t.identifier); if (!id) return; var e = t.dataelements || {}, re = t.relelements || {};
+      T.push({ id: String(id), t: t, e: e, rd: t.relateddata || {}, wbs: String(re.taskWBS || e.taskWBS || ''), seq: parseFloat(re.sequenceOrder) || 0, kinder: 0 });
+    });
+    T.sort(function (x, y) { return x.seq - y.seq; });
+    T.forEach(function (x) { if (x.wbs) wbs[x.wbs] = x; });
+    T.forEach(function (x) { x.el = x.wbs.indexOf('.') > 0 ? wbs[x.wbs.replace(/\.[^.]*$/, '')] || null : null; if (x.el) x.el.kinder++; });
+    T.forEach(function (x) {
+      var s = String(x.t.type || '') + ' ' + String(x.e.nlsType || '');
+      x.start = isoTag(x.e.estimatedStartDate || x.e.actualStartDate || x.e.forecastStartDate); x.ende = isoTag(x.e.dueDate || x.e.estimatedFinishDate || x.e.actualFinishDate || x.e.forecastFinishDate);
+      x.art = /Gate/i.test(s) ? 'gate' : /Milestone|Meilenstein/i.test(s) ? 'meilenstein' : /Phase/i.test(s) ? 'phase' : (!x.kinder && x.start && x.start === x.ende && parseFloat(x.e.estimatedDuration) === 0) ? 'meilenstein' : 'task';
+    });
+    if (!T.some(function (x) { return x.art === 'phase'; })) T.forEach(function (x) { if (!x.el && x.art === 'task' && (x.kinder || wahr(x.e.isSummaryTask))) x.art = 'phase'; });   // vermutet: oberste Sammel-Tasks als Phasen
+    var hatKrit = T.some(function (x) { return (x.e.criticalTask != null && x.e.criticalTask !== '') || (x.e.isOverallCritical != null && x.e.isOverallCritical !== ''); }), zahl = {};
+    T.forEach(function (x) {
+      var e = x.e, n = { id: 't:' + x.id, type: x.art, name: e.title || e.name || ('Task ' + x.id.slice(-6)), start: x.start, end: x.ende, progress: prozent(e.percentComplete), state: e.state || e.status || '',
+        meta: ohneLeere({ Typ: e.nlsType || x.t.type || 'Task', PSP: x.wbs, Status: e.state, Beschreibung: e.description, 'Ist-Start': isoTag(e.actualStartDate), 'Ist-Ende': isoTag(e.actualFinishDate),
+          'Puffer gesamt': e.totalFloat, 'Abweichung': e.Deviation, Einschränkung: e.constraintType, 'Geändert': datum(e.modified), ID: x.id }) };
+      if (hatKrit) n.critical = wahr(e.criticalTask) || wahr(e.isOverallCritical);
+      knoten(n); zahl[x.art] = (zahl[x.art] || 0) + 1;
+    });
+    var dep = 0, depExtern = 0, lief = 0;
+    T.forEach(function (x) {
+      var tid = 't:' + x.id; kante(tid, x.el ? 't:' + x.el.id : pid, 'teil');
+      liste(x.rd.predecessors).forEach(function (v) {
+        var vid = v && (v.id || v.identifier), re = (v && v.relelements) || {}; if (!vid) return; if (!idx['t:' + vid]) { depExtern++; return; }
+        var wert = parseFloat(re.lagTimeInputValue != null && re.lagTimeInputValue !== '' ? re.lagTimeInputValue : re.lagTime) || 0; if (/^h/i.test(String(re.lagTimeInputUnit || ''))) wert = Math.round(wert / 8 * 10) / 10;
+        var plus = { kind: String(re.dependencyType || 'FS').toUpperCase() }; if (wert) plus.lag = wert; kante('t:' + vid, tid, 'folgt', plus); dep++;
+      });
+      liste(x.rd.assignees).forEach(function (a) { var pp = person(a); if (pp) kante(tid, pp, 'zuweisung'); });
+      flach(x.rd.deliverables).forEach(function (d) { bezug(d, tid, 'liefert'); lief++; });
+      flach(x.rd.scopes).concat(flach(x.rd.references)).concat(flach(x.rd.contents)).forEach(function (d) { bezug(d, tid, 'bezug'); });
+    });
+    liste(prd.ownerInfo).forEach(function (a) { var pp = person(a); if (pp) kante(pid, pp, 'zuweisung', { label: 'Projektleitung' }); });
+    liste(prd.members).forEach(function (a) { var pp = person(a); if (pp) kante(pp, pid, 'mitglied'); });
+    info.push('Tasks über ' + weg + ': ' + T.length + ' (' + (Object.keys(zahl).map(function (k) { return zahl[k] + ' ' + k; }).join(', ') || '-') + '), ' + dep + ' Abhängigkeiten' + (depExtern ? ' (+ ' + depExtern + ' zu anderen Projekten, nicht gezeigt)' : '') +
+      ', ' + lief + ' Deliverables; mit Start/Ende: ' + T.filter(function (x) { return x.start || x.ende; }).length + ', mit taskWBS: ' + T.filter(function (x) { return x.wbs; }).length + ', kritischer Pfad ' + (hatKrit ? 'geliefert' : 'nicht geliefert (wird gerechnet)'));
+    if (T[0]) info.push('Felder des ersten Tasks: ' + Object.keys(T[0].e).slice(0, 40).join(', ') + ' | relelements: ' + (Object.keys(T[0].t.relelements || {}).join(', ') || '-') + ' | relateddata: ' + (Object.keys(T[0].rd).join(', ') || '-'));
+    stufe('Projekt und Tasks');
+
+    // 2. Risiken (mitgeliefert oder ein eigener Aufruf)
+    var rl = liste(prd.risks);
+    if (!rl.length || !rl.some(function (r) { return r && (r.dataelements || r.title); })) {
+      try { status('Lese Risiken …'); rl = await taskAufruf(PRJ + '/' + encodeURIComponent(pid) + '/risks', {}); info.push('projects/{id}/risks: ' + rl.length + ' Risiken'); }
+      catch (e) { if (S.abbruch) throw e; rl = []; info.push('projects/{id}/risks: FEHLER ' + e.message); hinweise.push('Risiken nicht lesbar (' + e.message + ').'); }
+    }
+    rl.forEach(function (r) {
+      var id = r && (r.id || r.identifier); if (!id) return; var e = r.dataelements || r, rd = r.relateddata || r, rid = 'r:' + id, titel = e.title || e.name || ('Risiko ' + String(id).slice(-6));
+      knoten({ id: rid, type: 'risiko', name: titel, state: e.state || '', imgText: e.description || titel,
+        meta: ohneLeere({ Name: e.name, Beschreibung: e.description, Status: e.state, Wahrscheinlichkeit: e.probability, Auswirkung: e.impact, Risikozahl: e.rpnValue, 'Maßnahme': e.abatement, Art: e.mitigationType || e.classType, Erfolgsmaß: e.measureOfSuccess, ID: String(id) }) });
+      kante(rid, pid, 'risiko');
+      flach(rd.affectedItems).forEach(function (d) { bezug(d, rid, 'risiko'); });
+      liste(rd.assignees).concat(liste(rd.ownerInfo)).forEach(function (a) { var pp = person(a); if (pp) kante(rid, pp, 'zuweisung'); });
+    });
+    if (rl.length) stufe('Risiken');
+
+    // 3. Issues des Projekts (Häkchen „Issues“)
+    if (S.mitIssues) {
+      var il = liste(prd.issues);
+      if (!il.length || !il.some(function (r) { return r && r.dataelements; })) {
+        try { status('Lese Issues des Projekts …'); il = await taskAufruf(PRJ + '/' + encodeURIComponent(pid) + '/issues', {}); info.push('projects/{id}/issues: ' + il.length + ' Issues'); }
+        catch (e) { if (S.abbruch) throw e; il = []; info.push('projects/{id}/issues: FEHLER ' + e.message); hinweise.push('Issues des Projekts nicht lesbar (' + e.message + ').'); }
+      }
+      il.forEach(function (r) {
+        var id = r && (r.id || r.identifier); if (!id) return; var e = r.dataelements || {}, rd = r.relateddata || {}, titel = e.title || e.name || ('Issue ' + String(id).slice(-6));
+        knoten({ id: String(id), type: 'issue', name: e.name || titel, state: e.state || '', imgText: titel, meta: ohneLeere({ Titel: e.title, Beschreibung: e.description, Status: e.state, 'Priorität': e.priority, 'Fällig am': isoTag(e.estimatedFinishDate), ID: String(id) }) });
+        kante(String(id), pid, 'kontext');
+        liste(rd.assignees).forEach(function (a) { var pp = person(a); if (pp) kante(String(id), pp, 'zuweisung'); });
+      });
+      if (il.length) stufe('Issues');
+    }
+    if (nodes.length > S.max) hinweise.push('Projekt hat ' + nodes.length + ' Objekte (mehr als die Höchstzahl ' + S.max + '); alle werden gezeigt.');
+    return { daten: daten(), hinweise: hinweise };
+  }
+  // Prüfabschnitt in der Diagnose (Knopf „Projekt-Aufrufe prüfen“): jeder neue Aufruf einmal, nur lesend
+  async function projektPruefen() {
+    var z = S.projTest = ['Prüfung ' + new Date().toLocaleTimeString('de-DE') + ' (gesichert = im DS-SDK belegt, vermutet = Annahme)'], erstes = null;
+    async function probe(name, stand, fn, text) { var t0 = Date.now(); try { var r = await fn(); z.push('  ok      ' + name + ' [' + stand + ']: ' + text(r) + ' (' + (Date.now() - t0) + ' ms)'); return r; } catch (e) { z.push('  FEHLER  ' + name + ' [' + stand + ']: ' + e.message); return null; } }
+    var zahl = function (r) { return mitglieder(r).length + ' Einträge'; };
+    var pl = await probe('GET projects', 'gesichert', function () { return hole(PRJ, {}); }, function (r) { var l = mitglieder(r); erstes = l[0] && (l[0].id || l[0].identifier); return l.length + ' Projekte' + (l[0] ? ', erstes: „' + ((l[0].dataelements || {}).title || '?') + '“' : ''); });
+    await probe('GET projects/search?searchStr=*', 'gesichert', function () { return hole(PRJ + '/search', { searchStr: '*', $top: 5, $skip: 0 }); }, zahl);
+    if (erstes) {
+      await probe('GET projects/{id} (Sammelabfrage)', 'gesichert, Umfang vermutet', function () { return taskAufruf(PRJ + '/' + encodeURIComponent(erstes), {}); }, function (l) { var rd = (l[0] || {}).relateddata || {}, t = liste(rd.tasks);
+        return 'relateddata: ' + (Object.keys(rd).map(function (k) { return k + ' ' + liste(rd[k]).length; }).join(', ') || '-') + '; Tasks mit Details: ' + t.filter(function (x) { return x && x.dataelements; }).length + ', mit predecessors: ' + t.filter(function (x) { return x && liste((x.relateddata || {}).predecessors).length; }).length; });
+      await probe('GET projects/{id}/risks', 'gesichert', function () { return hole(PRJ + '/' + encodeURIComponent(erstes) + '/risks', {}); }, zahl);
+      await probe('GET projects/{id}/issues', 'gesichert', function () { return hole(PRJ + '/' + encodeURIComponent(erstes) + '/issues', {}); }, zahl);
+    } else if (pl) z.push('  (kein Projekt sichtbar: Einzelabruf nicht geprüft)');
+    await probe('GET risks', 'gesichert', function () { return hole(RSK, {}); }, zahl);
+    await probe('GET tasks?showProjectTasks=true', 'gesichert (Adapter 6)', function () { return taskAufruf(TSK, { showProjectTasks: 'true' }); }, function (l) { return l.length + ' Tasks, mit DPMProject: ' + l.filter(function (t) { return t && liste((t.relateddata || {}).DPMProject).length; }).length; });
+    diagnose();
+  }
   async function leseBookmark(bmId, bmTitel, q) {
     var nodes = [], edges = [], gesehen = {}, hinweise = [], qIss = !!(q && (q.issues || q.person)), pi = null;
     var status = fortschritt;   // alle Fortschrittsmeldungen dieses Ladens (mit Vorspann, sobald das erste Bild steht)
@@ -762,6 +949,7 @@
       part: { color: '#2fc4ad', size: 1.96, label: 'Einzelteil' },
       issue: { color: '#ff4d6d', size: 2.2, shape: 'torus', label: 'Issue' },
       task: { color: '#f2c400', size: 1.4, shape: 'dodecahedron', label: 'Aufgabe' },
+      projekt: PTYPEN.projekt,
       person: { color: '#5fcf3f', size: 2.2, shape: 'bust', label: 'Person' },
       spec: { color: '#e5534b', size: 1.3, shape: 'book', label: 'Spezifikation' },
       praes: { color: '#f08a3c', size: 0.9, label: 'Attachment' },
@@ -773,6 +961,7 @@
       betrifft: { label: 'Issue betrifft (Affected Item)', color: '#c2255c', directed: true },
       kontext: { label: 'Issue-Kontext (Context)', color: '#2e8fb8', directed: true },   // Adapter 36
       aufgabe: { label: 'Aufgabe für', color: '#b59500', directed: true },
+      teil: PREL.teil,
       zuweisung: { label: 'Zugewiesen an', color: '#3a8f2f', directed: true },
       spec: { label: 'Spezifikationslink', color: '#b8403a', directed: true },
       praes: { label: 'Attachment-Link', color: '#c76a1c', directed: true },
@@ -1161,7 +1350,10 @@
       // Aufgaben: eigene Aufgaben des Benutzers und Aufgaben mit einem geladenen Objekt als Kontext.
       // Adapter 36 (Wunsch des Nutzers): vorerst abgeschaltet (auf der Plattform keine Aufgaben mit Bezug zu Bauteilen/Personen);
       // Code bleibt für das spätere Projektmanagement in 3Deep, einschaltbar mit S.mitAufgaben = true.
-      if (S.mitAufgaben) {
+      // Adapter 37 (neu geordnet): EINE Sammelabfrage tasks?showProjectTasks=true; Bezug über scopes/references/deliverables/contents der Antwort.
+      // Die Abfrage je Objekt (tasks/scopeId, N Aufrufe) läuft nur noch mit S.aufgabenJeObjekt = true. Aufgaben tragen Start/Ende/Fortschritt und hängen an ihrem Projekt.
+      if (S.mitAufg) {
+      var projekte = {};
       var nimmTask = function (t) {
         if (!t) return;
         var tid = t.id || t.identifier, e = t.dataelements || {}, rd = t.relateddata || {}; if (!tid) return;
@@ -1175,7 +1367,11 @@
             Projekt: e.project || '', Erstellt: datum(e.originated), 'Geändert': datum(e.modified), Typ: e.nlsType || t.type || 'Task', ID: tid };
           Object.keys(meta).forEach(function (k) { if (meta[k] === '') delete meta[k]; });
           var n = { id: 't:' + tid, type: 'task', name: e.title || ('Aufgabe ' + String(tid).slice(-6)), meta: meta, _k: {} }; if (e.state) n.state = zustand(e.state);
+          n.start = isoTag(e.estimatedStartDate || e.actualStartDate); n.end = isoTag(e.dueDate || e.estimatedFinishDate || e.actualFinishDate); var pcT = prozent(e.percentComplete); if (pcT != null) n.progress = pcT;
           tasks[tid] = n; exKnoten.push(n);
+          liste(rd.DPMProject).forEach(function (pj) { var pjId = pj && (pj.id || pj.identifier || (pj.dataelements || {}).objectId); if (!pjId) return;
+            if (!projekte[pjId]) { var pd = pj.dataelements || {}; projekte[pjId] = { id: 'j:' + pjId, type: 'projekt', name: pd.title || pd.name || e.project || 'Projekt', meta: { Typ: pd.typeNLS || pj.type || 'Projekt', ID: String(pjId) }, _k: {} }; exKnoten.push(projekte[pjId]); }
+            exKanten.push({ from: n.id, to: projekte[pjId].id, type: 'teil' }); });
           (Array.isArray(rd.assignees) ? rd.assignees : []).forEach(function (a) {
             var ad = (a && a.dataelements) || {}, voll = ad.fullname || [ad.firstname, ad.lastname].filter(Boolean).join(' ');
             var p = person(ad.name || a.name || voll, voll, ad.email); if (p) exKanten.push({ from: n.id, to: p, type: 'zuweisung' });
@@ -1185,6 +1381,7 @@
       };
       try { status('Lese Aufgaben …'); (await taskAufruf(TSK, { showProjectTasks: 'true' })).forEach(nimmTask); } catch (e) { if (S.abbruch) throw e; hinweise.push('Eigene Aufgaben nicht lesbar (' + e.message + ').'); }
       melde('Aufgaben', true);
+      if (S.aufgabenJeObjekt) {
       var sIds = ordner.map(function (o) { return o.id; }).concat(Object.keys(items)).concat(Object.keys(issues)), sOk = 0, sFehler = 0, sFertig = 0;
       await pool(sIds, PARALLEL, async function (sid) {
         if ((sFehler >= 3 && !sOk) || S.abbruch) return;
@@ -1193,6 +1390,7 @@
       });
       pruef();
       if (sFehler && !sOk) hinweise.push('Aufgaben je Objekt nicht lesbar.');
+      }
       }
       if (exGrenze) hinweise.push('Höchstzahl von ' + S.max + ' Objekten erreicht, nicht alle Issues/Aufgaben gezeigt.');
       exKnoten.forEach(function (n) { delete n._k; });
@@ -1290,6 +1488,7 @@
   // ---------- Drag & Drop aus 3DEXPERIENCE (Format 3DXContent: {protocol:'3DXContent', data:{items:[{objectId, objectType, displayName, displayType, …}]}}) ----------
   function dropArt(it) {
     var t = String(it.objectType || it.type || '') + ' ' + String(it.displayType || '');
+    if (/Project ?Space|Project ?Concept|Project ?Template|^Project\b|DPMProject/i.test(t)) return 'projekt';   // Adapter 37
     if (/Issue/i.test(t)) return 'issue';
     if (/Person/i.test(t)) return 'person';
     if (/Bookmark|Workspace/i.test(t)) return 'bm';
@@ -1305,7 +1504,7 @@
     if (items.length > 1) return { fehler: 'Bitte nur EIN Objekt ablegen (' + items.length + ' erhalten). Es wurde nichts geladen.' };
     var it = items[0] || {}, id = it.objectId || it.physicalid || it.id, art = dropArt(it), titel = it.displayName || it.objectTitle || it.title || id;
     if (!id) return { fehler: 'Objekt ohne ID erhalten.' };
-    if (!art) return { fehler: 'Objekttyp „' + (it.displayType || it.objectType || '?') + '“ wird nicht unterstützt. Möglich: Physical Product, Bookmark, Issue, Person.' };
+    if (!art) return { fehler: 'Objekttyp „' + (it.displayType || it.objectType || '?') + '“ wird nicht unterstützt. Möglich: Physical Product, Bookmark, Projekt, Issue, Person.' };
     return { art: art, id: id, title: titel, typ: it.objectType || '', anzeige: it.displayType || '', ctx: it.contextId || '' };
   }
   function dropWarnung(text) {
@@ -1356,11 +1555,13 @@
     var text = q('.td-su').value.trim(), sel = q('.td-tr');
     try {
       S.sucht = true; await ruheWarten(); status('Suche Bookmarks …');
-      if (/^[0-9A-Fa-f]{20,}$/.test(text)) S.treffer = [{ id: text, title: 'ID ' + text, art: 'bm' }];
-      else S.treffer = await sucheBookmarks(text);
+      S.projSuche = '';
+      if (/^[0-9A-Fa-f]{20,}$/.test(text)) S.treffer = [{ id: text, title: 'ID ' + text, art: 'bm' }, { id: text, title: 'Projekt-ID ' + text, art: 'projekt' }];
+      else { var beide = await Promise.all([sucheBookmarks(text), sucheProjekte(text).catch(function (e) { S.projSuche = e.message; return []; })]); S.treffer = beide[0].concat(beide[1]); }   // Adapter 37: auch Projekte
+      var nProj = S.treffer.filter(function (b) { return b.art === 'projekt'; }).length, nBm = S.treffer.length - nProj;
       sel.innerHTML = S.treffer.map(function (b, i) { return '<option value="' + i + '">' + esc(b.title || b.name || b.id) + (b.owner ? ' (' + esc(b.owner) + ')' : '') + '</option>'; }).join('');
       sel.style.display = S.treffer.length ? '' : 'none'; q('.td-la').style.display = S.treffer.length ? '' : 'none';
-      status(S.treffer.length ? S.treffer.length + ' Bookmark(s) gefunden. Auswählen und „Laden“ drücken.' : 'Kein Bookmark gefunden.', !S.treffer.length);
+      status(S.treffer.length ? (nProj ? nBm + ' Bookmark(s) und ' + nProj + ' Projekt(e) gefunden.' : nBm + ' Bookmark(s) gefunden.') + ' Auswählen und „Laden“ drücken.' : 'Kein Bookmark gefunden.', !S.treffer.length);
     } catch (e) { status('Suche fehlgeschlagen: ' + e.message, true); } finally { S.sucht = false; diagnose(); }
   }
   // Im Nachlade-Modus (Häkchen umgeschaltet oder „↻ Neu lesen“, gleiches Objekt) bleibt das Bild stehen: Zwischenstände werden mit dem letzten
@@ -1387,9 +1588,9 @@
     S.laufP = new Promise(function (ja) { fertig = ja; });
     try {
       S.laeuft = true; S.abbruch = false; S.vorn = ''; S.ladeNr = (S.ladeNr || 0) + 1;
-      S.max = Math.max(10, parseInt(S.maxText, 10) || 1500); S.mitDok = q('.td-dk').checked; S.mitIssues = q('.td-ia').checked; S.mitExpand = !S.ohneExpand; S.mitZone = !S.ohneZone; /* Adapter 32: Häkchen „Schnell“ und „Attribute“ entfernt, immer an (Rückfälle bleiben); S.ohneExpand/S.ohneZone nur für Tests */ S.mitZeich = q('.td-zg').checked;
+      S.max = Math.max(10, parseInt(S.maxText, 10) || 1500); S.mitDok = q('.td-dk').checked; S.mitIssues = q('.td-ia').checked; S.mitAufg = !!S.mitAufgaben || !!(q('.td-ag') && q('.td-ag').checked); S.mitExpand = !S.ohneExpand; S.mitZone = !S.ohneZone; /* Adapter 32: Häkchen „Schnell“ und „Attribute“ entfernt, immer an (Rückfälle bleiben); S.ohneExpand/S.ohneZone nur für Tests */ S.mitZeich = q('.td-zg').checked;
       if (sonder && sonder.frisch) cacheLeeren(); else cacheAufraeumen();
-      S.aufrufe = 0; S.issCacheZ = { treffer: 0, neu: 0 }; S.cacheZ = { treffer: 0, neu: 0 }; S.issueInfo = null; S.vorschauInfo = null; vorschauAufraeumen();   // Diagnose-Abschnitte gelten nur für dieses Laden
+      S.aufrufe = 0; S.issCacheZ = { treffer: 0, neu: 0 }; S.cacheZ = { treffer: 0, neu: 0 }; S.issueInfo = null; S.projInfo = null; S.vorschauInfo = null; vorschauAufraeumen();   // Diagnose-Abschnitte gelten nur für dieses Laden
       S.stufen = []; S.zwischen = gleich;
       if (!gleich) { S.lauf = (S.lauf || 0) + 1; S.letzte = null; }
       var nl = q('.td-nl'); if (nl) nl.style.display = '';
@@ -1404,6 +1605,7 @@
       var erg;
       if (b.art === 'issue') erg = await leseBookmark(null, null, { issues: [b.id], struktur: false });
       else if (b.art === 'produkt') erg = await leseBookmark(null, null, { produkte: [b.id], struktur: true });
+      else if (b.art === 'projekt') erg = await leseProjekt(b);
       else if (b.art === 'person') erg = await leseBookmark(null, null, { person: { id: b.id, name: b.title }, struktur: false });
       else erg = await leseBookmark(b.id, b.title || b.name || '');
       if (S.abbruch) throw new Error('abgebrochen');
@@ -1460,7 +1662,7 @@
     clearTimeout(S.neuUhr); laden({ drop: S.zuletzt, nach: true, frisch: true });
   }
   function diagnoseText() {
-    var z = ['3Deep-Widget Diagnose (Adapter 36, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
+    var z = ['3Deep-Widget Diagnose (Adapter 37, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
       '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-') + (S.ctxZahl ? ' (automatisch gewählt, ' + S.ctxZahl + ' verfügbar)' : ''), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), ''];
     z.push('Zuletzt geöffnet (gemerkt, wird beim Öffnen geladen): ' + (S.letztesGemerkt ? (S.letztesGemerkt.title || '-') + ' [' + S.letztesGemerkt.id + '], ' + (S.letztesGemerkt.art || 'bm') : '-'));
     if (S.stufen && S.stufen.length) {
@@ -1523,6 +1725,9 @@
         if (!rn.length) z.push('  (keine Beziehungen gemeldet)');
       }
     }
+    if (S.projInfo && S.projInfo.length) { z.push('', 'Projekt (Projektmanagement, dieses Laden):'); S.projInfo.forEach(function (c) { z.push('  ' + c); }); }
+    if (S.projSuche) z.push('', 'Projektsuche: FEHLER ' + S.projSuche);
+    if (S.projTest && S.projTest.length) { z.push('', 'Projekt-Aufrufe (Knopf „Projekt-Aufrufe prüfen“):'); S.projTest.forEach(function (c) { z.push('  ' + c); }); }
     if (S.zqInfo && S.zqInfo.length) { z.push('', 'Zone Query (Attribute):'); S.zqInfo.forEach(function (c) { z.push('  ' + c); }); }
     if (S.expandInfo && S.expandInfo.length) { z.push('', 'Produktstruktur:'); S.expandInfo.forEach(function (c) { z.push('  ' + c); }); }
     if (S.cadInfo.length) { z.push('', 'Downloads von Bauteilen/Baugruppen:'); S.cadInfo.forEach(function (c) { z.push('  ' + c); }); if (S.dlWeg) z.push('  zuletzt von Hand gewählt: ' + S.dlWeg); }
@@ -1541,8 +1746,8 @@
     root.innerHTML =
       '<div class="td-w" style="position:fixed;left:0;top:0;right:0;bottom:0;display:flex;flex-direction:column;background:#0b1220;color:#3d3d3d;font:13px/1.35 system-ui,Segoe UI,Arial,sans-serif">' +
       '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 10px;background:#fff;border-bottom:1px solid #e2e4e3;accent-color:#368ec4">' +
-      '<div class="td-dz" title="Ein Objekt aus einer 3DEXPERIENCE-Suche hierher ziehen: Physical Product (Struktur abwärts), Bookmark, Issue oder Person" style="border:2px dashed #368ec4;border-radius:4px;padding:3px 10px;color:#368ec4;white-space:nowrap">⤓ Objekt hierher ziehen</div>' +
-      '<input class="td-su" type="text" placeholder="Bookmark-Name oder ID" title="Bookmark nach Name oder ID suchen" style="' + feld + ';width:190px" />' +
+      '<div class="td-dz" title="Ein Objekt aus einer 3DEXPERIENCE-Suche hierher ziehen: Physical Product (Struktur abwärts), Bookmark, Projekt, Issue oder Person" style="border:2px dashed #368ec4;border-radius:4px;padding:3px 10px;color:#368ec4;white-space:nowrap">⤓ Objekt hierher ziehen</div>' +
+      '<input class="td-su" type="text" placeholder="Bookmark oder Projekt (Name, ID)" title="Bookmark oder Projekt nach Name oder ID suchen" style="' + feld + ';width:190px" />' +
       '<button class="td-sb" style="' + knopf + '">Suchen</button>' +
       '<select class="td-tr" style="' + feld + ';max-width:260px;display:none"></select>' +
       '<button class="td-la" style="' + knopf + ';background:#368ec4;border-color:#368ec4;color:#fff;display:none">Laden</button>' +
@@ -1550,12 +1755,13 @@
       '<label title="Spezifikationen und Attachments der Objekte mitlesen (im Hintergrund, nach dem ersten Bild)" style="display:flex;align-items:center;gap:4px"><input class="td-dk" type="checkbox" checked="checked" />Dokumente</label>' +
       '<label title="Zeichnungen (Drawings) der Strukturobjekte suchen und anzeigen (im Hintergrund, nach dem ersten Bild)" style="display:flex;align-items:center;gap:4px"><input class="td-zg" type="checkbox" checked="checked" />Zeichnungen</label>' +
       '<label title="Issues und Personen zu den Objekten mitlesen (im Hintergrund, nach dem ersten Bild; Aufgaben vorerst nicht)" style="display:flex;align-items:center;gap:4px"><input class="td-ia" type="checkbox" checked="checked" />Issues</label>' +
+      '<label title="Aufgaben zu den geladenen Objekten suchen (eine Sammelabfrage über alle sichtbaren Projekt-Tasks; im Hintergrund)" style="display:flex;align-items:center;gap:4px"><input class="td-ag" type="checkbox" />Aufgaben</label>' +
       '<input class="td-ci" type="text" placeholder="Security Context: Rolle.Organisation.Collaborative Space" title="Security Context von Hand" style="' + feld + ';width:330px;display:none" />' +
       '<button class="td-db" style="' + knopf + '">Diagnose</button>' +
       '<span class="td-mo" style="padding:2px 8px;border-radius:10px;background:#fff3cd;color:#7a5c00;border:1px solid #e6cf7a;display:none">Testmodus: Beispieldaten</span>' +
       '<span class="td-st" style="flex:1;min-width:200px;color:#3d3d3d">Starte …</span></div>' +
       '<div class="td-dp" style="display:none;padding:6px 8px;background:#f4f5f6;border-bottom:1px solid #d1d4d4">' +
-      '<div style="margin-bottom:4px">Protokoll aller Abfragen. Zum Weitergeben: „Kopieren“ drücken, vorher Vertrauliches prüfen. <button class="td-dc" style="' + knopf + '">Kopieren</button> <button class="td-vb" title="Vorschaubilder: Laden, Größe und Hintergrund testen (für die Gültigkeitsdauer später wiederholen)" style="' + knopf + '">Bilder prüfen</button> <button class="td-ir" title="Zwischenspeicher leeren (alle Abfragen und Issue-Details); beim nächsten Laden wird alles frisch von der Plattform gelesen" style="' + knopf + '">Zwischenspeicher leeren</button></div>' +
+      '<div style="margin-bottom:4px">Protokoll aller Abfragen. Zum Weitergeben: „Kopieren“ drücken, vorher Vertrauliches prüfen. <button class="td-dc" style="' + knopf + '">Kopieren</button> <button class="td-pb" title="Projekt-Schnittstellen einmal lesend prüfen (Projekte, Suche, Projekt mit Tasks, Risiken, Issues); Ergebnis in der Diagnose" style="' + knopf + '">Projekt-Aufrufe prüfen</button> <button class="td-vb" title="Vorschaubilder: Laden, Größe und Hintergrund testen (für die Gültigkeitsdauer später wiederholen)" style="' + knopf + '">Bilder prüfen</button> <button class="td-ir" title="Zwischenspeicher leeren (alle Abfragen und Issue-Details); beim nächsten Laden wird alles frisch von der Plattform gelesen" style="' + knopf + '">Zwischenspeicher leeren</button></div>' +
       '<textarea class="td-dx" readonly="readonly" style="' + feld + ';width:100%;height:180px;box-sizing:border-box;font:12px monospace;display:none"></textarea></div>' +
       '<iframe class="td-fr" title="3Deep Darstellung" allow="fullscreen; autoplay" style="flex:1;width:100%;border:0;background:#0b1220"></iframe></div>';
     q('.td-sb').onclick = suchen; q('.td-la').onclick = function () { laden(); };
@@ -1563,10 +1769,11 @@
     q('.td-db').onclick = function () { var p = q('.td-dp'), d = q('.td-dx'), auf = p.style.display === 'none'; p.style.display = auf ? '' : 'none'; d.style.display = auf ? '' : 'none'; diagnose(); };
     q('.td-ir').onclick = function () { var n = cacheLeeren(); status('Zwischenspeicher geleert (' + n + ' Einträge). Beim nächsten Laden wird alles neu gelesen.'); diagnose(); };
     q('.td-nl').onclick = neuLesen;
+    q('.td-pb').onclick = function () { status('Prüfe Projekt-Aufrufe …'); projektPruefen().then(function () { status('Projekt-Aufrufe geprüft – Ergebnis in der Diagnose unter „Projekt-Aufrufe“.'); }); };
     q('.td-vb').onclick = function () { status('Prüfe Vorschaubilder …'); vorschauPruefen().then(function () { status('Vorschaubilder geprüft – Ergebnis in der Diagnose unter „Vorschaubilder“.'); }); };
     q('.td-dc').onclick = function () { var d = q('.td-dx'); d.value = diagnoseText(); d.select(); try { document.execCommand('copy'); } catch (e) { } if (navigator.clipboard) navigator.clipboard.writeText(d.value).catch(function () { }); };
     q('.td-ci').onchange = function (e) { S.ctx = e.target.value.trim(); try { localStorage.setItem('3deep_ctx', S.ctx); } catch (x) { } if (S.ctx) status('Security Context gesetzt. Bookmark-Namen eingeben und „Suchen“ drücken.'); };
-    ['.td-dk', '.td-zg', '.td-ia'].forEach(function (k) { q(k).addEventListener('change', haekchenGeaendert); });
+    ['.td-dk', '.td-zg', '.td-ia', '.td-ag'].forEach(function (k) { q(k).addEventListener('change', haekchenGeaendert); });
     S.frame = q('.td-fr');
     dropEinrichten(q('.td-dz'));
   }
@@ -1704,6 +1911,41 @@
     T.bm[haupt] = { id: haupt, title: 'E-Fahrzeug-Review', description: 'Review-Ordner (Beispiel)', owner: 'A. Bauer', created: '2026-09-14T08:00:00Z', modified: '2026-10-21T15:40:00Z', collabspace: 'Common Space', type: 'Workspace Vault',
       items: [ref('VPMReference', fahrwerk), ref('VPMReference', antrieb), ref('VPMReference', lose), ref('Workspace Vault', unter)] };
     T.unter2 = id(); T.bm[T.unter2] = { id: T.unter2, title: 'Prüfberichte', description: 'Unter-Unterordner (nur Test S.testUnterFeld)', owner: 'A. Bauer', created: '2026-09-20T08:00:00Z', modified: '2026-10-02T09:00:00Z', collabspace: 'Common Space', type: 'Workspace Vault', items: [] };
+    // Projekt (Adapter 37): Antwortformat laut DS-SDK (Project 1.2.0, Risk 1.1.0); Datumsformat wie auf der Plattform (MM/TT/JJJJ hh:mm:ss AM)
+    T.prj = {}; T.ptsk = {}; T.risk = {};
+    (function () {
+      var pj = id(), us = function (iso) { var m = iso.split('-'); return m[1] + '/' + m[2] + '/' + m[0] + ' 08:00:00 AM'; };
+      var AB = ['abauer', 'A.', 'Bauer'], CM = ['cmeier', 'C.', 'Meier'], pe = function (w) { return { id: id(), type: 'Person', dataelements: { name: w[0], firstname: w[1], lastname: w[2], email: w[0] + '@example.com' } }; };
+      var obj = function (d) { return { id: d, type: 'VPMReference', identifier: d, dataelements: { title: T.it[d].title, name: T.it[d].name, revision: 'A.1', stateNLS: 'In Work', typeNLS: 'Physical Product', ownerFullname: 'A. Bauer' } }; };
+      function pt(typ, wbsNr, titel, a, b, pc, state, vor, o) {
+        var i = id(); o = o || {};
+        T.ptsk[i] = { id: i, type: typ, identifier: i, source: '$3DSpace', relativePath: '/resources/v1/modeler/tasks/' + i,
+          dataelements: { title: titel, state: state, description: 'Beispiel', estimatedStartDate: us(a), dueDate: us(b), estimatedDuration: a === b ? '0.0' : '10.0', percentComplete: String(pc), nlsType: typ, criticalTask: o.krit ? 'TRUE' : 'FALSE', isSummaryTask: o.sum ? 'TRUE' : 'FALSE', totalFloat: o.krit ? '0.0' : '5.0', taskProjectId: pj, modified: us('2026-11-01') },
+          relelements: { sequenceOrder: String(Object.keys(T.ptsk).length + 1), taskWBS: wbsNr },
+          relateddata: { predecessors: (vor || []).map(function (v) { return { id: v[0], type: 'Task', identifier: v[0], dataelements: { title: T.ptsk[v[0]].dataelements.title }, relelements: { dependencyType: v[1], lagTime: String(v[2] || 0), lagTimeInputValue: String(v[2] || 0), lagTimeInputUnit: 'd' } }; }),
+            assignees: (o.wer || []).map(pe), deliverables: (o.lief || []).map(obj), scopes: [], references: [], DPMProject: [{ id: pj, type: 'Project Space', dataelements: { title: 'E-Fahrzeug Entwicklung' } }] } };
+        return i;
+      }
+      pt('Phase', '1', 'Konzept', '2026-09-01', '2026-10-15', 100, 'Complete', [], { sum: true });
+      var a = pt('Task', '1.1', 'Lastenheft', '2026-09-01', '2026-09-30', 100, 'Complete', [], { krit: true, wer: [AB] });
+      var b = pt('Task', '1.2', 'Fahrzeugkonzept', '2026-10-01', '2026-10-15', 100, 'Complete', [[a, 'FS', 0]], { krit: true, wer: [CM], lief: [fahrwerk] });
+      var g1 = pt('Gate', '2', 'Gate 1: Konzeptfreigabe', '2026-10-15', '2026-10-15', 100, 'Complete', [[b, 'FS', 0]], { krit: true });
+      pt('Phase', '3', 'Entwicklung', '2026-10-16', '2026-12-20', 40, 'Active', [], { sum: true });
+      var c = pt('Task', '3.1', 'Konstruktion Fahrwerk', '2026-10-16', '2026-12-05', 55, 'Active', [[g1, 'FS', 0]], { krit: true, wer: [AB], lief: [fahrwerk, bremse] });
+      pt('Task', '3.1.1', 'Bremsanlage auslegen', '2026-10-16', '2026-11-10', 100, 'Complete', [], { lief: [bremse], wer: [CM] });
+      var d = pt('Task', '3.2', 'Konstruktion Antrieb', '2026-10-20', '2026-11-28', 50, 'Active', [[g1, 'FS', 2]], { wer: [CM], lief: [antrieb] });
+      var e = pt('Task', '3.3', 'Design-Review', '2026-12-06', '2026-12-20', 0, 'Create', [[c, 'FS', 0], [d, 'FF', 0]], { krit: true });
+      pt('Milestone', '3.4', 'Design Freeze', '2026-12-20', '2026-12-20', 0, 'Create', [[e, 'FS', 0]], { krit: true });
+      function risiko(titel, betr, typB) { var i = id(); T.risk[i] = { id: i, type: 'Risk', identifier: i, dataelements: { title: titel, name: 'RSK-' + n, state: 'Create', probability: '3', impact: '4', rpnValue: '12', abatement: 'Zweitlieferant qualifizieren', description: titel },
+        relateddata: { affectedItems: [typB === 'task' ? { id: betr, type: 'Task', identifier: betr, dataelements: { title: T.ptsk[betr].dataelements.title, typeNLS: 'Task' } } : obj(betr)], assignees: [pe(CM)] } }; return T.risk[i]; }
+      var ik = Object.keys(T.iss)[0], io = T.iss[ik];
+      T.prj[pj] = { id: pj, type: 'Project Space', identifier: pj, source: '$3DSpace', relativePath: '/resources/v1/modeler/projects/' + pj,
+        dataelements: { title: 'E-Fahrzeug Entwicklung', name: 'PRJ-0001', state: 'Active', description: 'Beispielprojekt', estimatedStartDate: us('2026-09-01'), estimatedFinishDate: us('2026-12-20'), percentComplete: '60', project: 'Common Space', modified: us('2026-11-01') },
+        relateddata: { ownerInfo: [pe(AB)], members: [pe(AB), pe(CM)], tasks: Object.keys(T.ptsk).map(function (k) { return T.ptsk[k]; }),
+          risks: [risiko('Lieferengpass Bremssattel', sattel), risiko('Fahrwerk: Erprobung verzögert sich', c, 'task')],
+          issues: [{ id: ik, type: 'Issue', identifier: ik, dataelements: { title: io.title, name: io.name, state: 'Open', priority: 'High', description: io.description }, relateddata: { assignees: [pe(AB)] } }], folders: [] } };
+      T.projekt = pj;
+    })();
     return T;
   }
   function T5(i) { return TEST.v5[i] && TEST.v5[i].typ; }
@@ -1890,6 +2132,25 @@
         if ((m = pfad.match(/dsiss\/issue\/([^\/]+)$/))) { var io = TEST.iss[m[1]]; if (!io || S.testIssDetailFehler) return nein(new Error('404'));   // S.testIssDetailFehler (Adapter 27): Details nicht lesbar
           var flach = {}; Object.keys(io).forEach(function (k) { if (p.$fields || ['members', 'affectedItems', 'contexts'].indexOf(k) < 0) flach[k] = io[k]; });
           return ja(flach); }
+        // Projektmanagement (Adapter 37). Schalter: S.testProjSucheFehler (Suche 500, Rückfall auf GET projects), S.testProjOhneTasks (Projekt ohne Tasks, Rückfall tasks?showProjectTasks),
+        // S.testProjNurIds (nur IDs der Tasks, Rückfall tasks/ids), S.testProjOhneRisiken (Risiken/Issues nicht mitgeliefert, eigene Aufrufe)
+        if (pfad === PRJ + '/search' || pfad === PRJ) {
+          if (S.testProjSucheFehler && pfad !== PRJ) return nein(new Error('500 Internal Server Error'));
+          var ps = pfad === PRJ ? '' : String(p.searchStr || '').toLowerCase().replace(/\*/g, '');
+          return ja({ success: true, data: Object.keys(TEST.prj).map(function (k) { var x = TEST.prj[k]; return { id: x.id, type: x.type, identifier: x.id, dataelements: x.dataelements }; }).filter(function (x) { return !ps || x.dataelements.title.toLowerCase().indexOf(ps) >= 0; }) });
+        }
+        if ((m = pfad.match(/\/projects\/([^\/]+)\/(risks|issues)$/))) { var pp = TEST.prj[m[1]]; return pp ? ja({ success: true, data: pp.relateddata[m[2]] }) : nein(new Error('404')); }
+        if ((m = pfad.match(/\/projects\/([^\/]+)$/))) {
+          var pq = TEST.prj[m[1]]; if (!pq) return nein(new Error('404 Projekt nicht gefunden'));
+          var kp = {}, kr = {}; Object.keys(pq).forEach(function (k) { kp[k] = pq[k]; }); Object.keys(pq.relateddata).forEach(function (k) { kr[k] = pq.relateddata[k]; }); kp.relateddata = kr;
+          if (S.testProjOhneTasks) kr.tasks = [];
+          if (S.testProjNurIds) kr.tasks = kr.tasks.map(function (x) { return { id: x.id, identifier: x.id, type: x.type }; });
+          if (S.testProjOhneRisiken) { delete kr.risks; delete kr.issues; }
+          return ja({ success: true, data: [kp] });
+        }
+        if (pfad === TSK + '/ids') { var bi = String(typeof body === 'string' ? body : JSON.stringify(body || '')).split(/[^0-9A-Fa-f]+/).filter(function (x) { return TEST.ptsk[x]; }); return ja({ success: true, data: bi.map(function (x) { return TEST.ptsk[x]; }) }); }
+        if (pfad === RSK) return ja({ success: true, data: Object.keys(TEST.risk).map(function (k) { return TEST.risk[k]; }) });
+        if (pfad === TSK && (S.testProjOhneTasks || S.testProjTasksInListe)) { return ja({ success: true, data: Object.keys(TEST.tsk).filter(function (k) { return !(TEST.tsk[k].relateddata.scopes || []).length; }).map(function (k) { return TEST.tsk[k]; }).concat(Object.keys(TEST.ptsk).map(function (k) { return TEST.ptsk[k]; })) }); }
         if (pfad === TSK) { return ja({ success: true, data: Object.keys(TEST.tsk).filter(function (k) { return !(TEST.tsk[k].relateddata.scopes || []).length; }).map(function (k) { return TEST.tsk[k]; }) }); }
         if ((m = pfad.match(/tasks\/scopeId\/([^\/]+)$/))) { return ja({ success: true, data: (TEST.scope[m[1]] || []).map(function (k) { return TEST.tsk[k]; }) }); }
         if ((m = pfad.match(/documents\/parentId\/([^\/]+)$/))) {
@@ -1912,7 +2173,7 @@
   }
 
   // ---------- Einstieg (vom Lader index.html aufgerufen) ----------
-  window.__3deep = { S: S, testGet: testGet, leseBookmark: leseBookmark, dropLesen: dropLesen, basis: '',
+  window.__3deep = { S: S, testGet: testGet, leseBookmark: leseBookmark, leseProjekt: leseProjekt, projektPruefen: projektPruefen, dropLesen: dropLesen, basis: '',
     testDaten: function () { if (!TEST) TEST = testDaten(); return TEST; },
     start: function (live, basis) {
       if (S.root) return; this.basis = basis || '';
