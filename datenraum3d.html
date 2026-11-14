@@ -2,7 +2,7 @@
 <html lang="de"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>3Deep – Datenraum in 3D</title>
-<meta name="3deep-darstellung" content="89">
+<meta name="3deep-darstellung" content="90">
 <style>
 :root{--fg:#e6edf3;--panel:rgba(15,22,41,.86);--mut:#9fb0c4}
 html,body{margin:0;height:100%;background:linear-gradient(180deg,#d4ecff 0%,#93c3ea 55%,#5088c0 100%) fixed;color:var(--fg);font:13px/1.4 system-ui,sans-serif;overflow:hidden}
@@ -52,7 +52,6 @@ html{--lg:#0e2a4a;--lgh:rgba(255,255,255,.85)}html.space{--lg:#dbe7ff;--lgh:rgba
 <label class="s">Achse unten → oben<select id="axy"></select></label>
 <label class="s">Achse hinten → vorne<select id="axz"></select></label>
 <div class="m" style="margin-top:6px">Logarithmische Skala: <label style="margin-left:4px"><input type="checkbox" id="axlx">x</label> <label style="margin-left:6px"><input type="checkbox" id="axly">y</label> <label style="margin-left:6px"><input type="checkbox" id="axlz">z</label></div>
-<label class="m" style="display:block;margin-top:4px" title="Objekte mit gleichen Werten (z. B. Zählwerte wie 0, 1, 2, 3) leicht versetzen, damit sie nicht übereinanderliegen"><input type="checkbox" id="axst" checked> Gleiche Werte leicht streuen</label>
 <div id="axinf" class="m" style="margin-top:6px;font-size:12px"></div></div>
 <label class="s">Ausrichtung<select id="or"><option value="h">Horizontal (Ebenen nebeneinander)</option><option value="v">Vertikal (Ebenen übereinander)</option><option value="auto" selected>Automatisch (passt am besten ins Fenster)</option></select></label>
 <button id="hm" style="margin-top:8px">Startansicht (H)</button><button id="dmb" style="margin-top:8px">▶ Demo abspielen</button><button id="dmp" style="margin-top:8px;display:none">⏸ Pause (P)</button>
@@ -92,7 +91,7 @@ html{--lg:#0e2a4a;--lgh:rgba(255,255,255,.85)}html.space{--lg:#dbe7ff;--lgh:rgba
 <label class="s">Neuzeichnen<select id="es"><option value="max" selected>Maximal: im Stillstand kein Neuzeichnen</option><option value="auto">Automatisch: im Stillstand 15 Bilder/s</option><option value="aus">Aus: immer volle Bildrate</option></select></label>
 <label style="display:block;margin-top:8px"><input type="checkbox" id="introan" checked> Intro beim Start zeigen</label><label style="display:block;margin-top:4px"><input type="checkbox" id="intromu"> Musik im Intro (leise)</label>
 </details>
-<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 89</div>
+<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 90</div>
 </div>
 <div id="det" class="pn"></div></div>
 <div id="dcap"></div><div id="dfade" style="position:fixed;inset:0;background:#0b1424;opacity:0;pointer-events:none;transition:opacity .6s;z-index:14"></div><div id="cross"></div><div id="info"></div>
@@ -760,7 +759,7 @@ function kaufData(){s=23;const R=n=>Math.floor(rnd()*n),pk=a=>a[R(a.length)],rr=
  return{types,relTypes,nodes,edges,chains,axes,layout:'achsen',attr:'Branche',spacing:13,stateTitle:'Vertragsstatus',
   stateNames:{todo:'Angebot',work:'In Verhandlung / läuft',released:'Aktiv / abgeschlossen / im Verkauf',frozen:'Gekündigt (läuft aus)',obsolete:'Abgelaufen / abgekündigt'},maxObjects:nodes.length}}
 // ---------- Wertediagramm 3D: Kennzahlen auf drei Achsen (x links→rechts, y unten→oben, z hinten→vorne) ----------
-let AX=null,AXO=null,AXS={p:0,k:['','',''],inv:[false,false,false],log:[false,false,false],streu:true},AXP=[];
+let AX=null,AXO=null,AXS={p:0,k:['','',''],inv:[false,false,false],log:[false,false,false]},AXP=[];
 const numv=v=>{if(typeof v==='number')return isFinite(v)?v:null;const t=String(v==null?'':v).trim();if(!/^[+\-−]?\d[\d.,]*(\s*[^\d\s.,+\-−][^\d]*)?$/.test(t))return null;
  let m=t.match(/^[+\-−]?\d[\d.,]*/)[0].replace('−','-');if(m.includes(','))m=m.replace(/\./g,'').replace(',','.');else if(/^[+-]?\d{1,3}(\.\d{3})+$/.test(m))m=m.replace(/\./g,'');const x=parseFloat(m);return isFinite(x)?x:null};
 const einheit=k=>{for(const n of N){const v=n.meta[k];if(v!=null&&numv(v)!=null){const u=String(v).replace(/^[\s+\-−]*\d[\d.,]*\s*/,'').trim();return u}}return ''};
@@ -782,7 +781,7 @@ function fuelleAchsen(d){const ks=numAttr(),opt='<option value="">(keine: Mitte)
  $('axp').innerHTML=AXP.map((p,i)=>`<option value="${i}">${esc(p.name)}</option>`).join('')+'<option value="eigen">Eigene Auswahl</option>';
  if(d._ax){AXS=d._ax}else{AXS={p:AXP.length?0:'eigen',k:['','',''],inv:[false,false,false],log:[false,false,false]};if(AXP.length)vorlageAx(0,false)}d._ax=AXS;zeigeAx()}
 function vorlageAx(i,go){const p=AXP[i];if(!p)return;AXS.p=i;AXS.k=[p.x||'',p.y||'',p.z||''];AXS.inv=[!!p.xinv,!!p.yinv,!!p.zinv];AXS.log=[!!p.xlog,!!p.ylog,!!p.zlog];zeigeAx();if(go){$('lay').value='achsen';setLayout('achsen',true)}}
-function zeigeAx(){if(!AXS.log)AXS.log=[false,false,false];$('axst').checked=AXS.streu!==false;$('axp').value=String(AXS.p);['axx','axy','axz'].forEach((id,j)=>$(id).value=AXS.k[j]);['axlx','axly','axlz'].forEach((id,j)=>$(id).checked=!!AXS.log[j])}
+function zeigeAx(){if(!AXS.log)AXS.log=[false,false,false];$('axp').value=String(AXS.p);['axx','axy','axz'].forEach((id,j)=>$(id).value=AXS.k[j]);['axlx','axly','axlz'].forEach((id,j)=>$(id).checked=!!AXS.log[j])}
 function achsenLayout(){const ks=AXS.k,LA=Math.max(80,MIND*6),LEN=[LA,LA*.7,LA*.8],P=N.map(n=>[n.kx,n.ky,n.kz]);
  if(!ks.some(Boolean)){AX=null;AXO=null;$('axinf').textContent='Keine Kennzahlen gewählt (Datenraum enthält keine Zahlenwerte).';return P}
  const val=N.map(n=>ks.map(k=>k?numv(n.meta[k]):0)),inn=new Set();N.forEach((n,i)=>{if(val[i].every(v=>v!=null))inn.add(i)});
@@ -791,11 +790,6 @@ function achsenLayout(){const ks=AXS.k,LA=Math.max(80,MIND*6),LEN=[LA,LA*.7,LA*.
  const pos=(j,v)=>{const A=ax[j];if(!A)return 0;return(axF(A,v)-.5)*A.L};
  const B=[[-LEN[0]/2,LEN[0]/2],[-LEN[1]/2,LEN[1]/2],[-LEN[2]/2,LEN[2]/2]];
  inn.forEach(i=>{P[i]=[pos(0,val[i][0]),pos(1,val[i][1]),pos(2,val[i][2])]});
- // Version 89 (Wunsch des Nutzers): gleiche Werte leicht streuen. Je Achse höchstens ±35 % des kleinsten Abstands zweier verschiedener Werte,
- // nur auf Achsen, auf denen sich Werte wiederholen; fest je Objekt (gleiches Bild bei jedem Aufruf). Die Achsenwerte bleiben ablesbar.
- let gestreut=0;if(AXS.streu!==false){const L0=[...inn];[0,1,2].forEach(j=>{const A=ax[j];if(!A)return;const ps=L0.map(i=>P[i][j]),u=[...new Set(ps.map(v=>Math.round(v*1e4)/1e4))].sort((a,b)=>a-b);
-  if(u.length>=L0.length*.8)return;let g=A.L;for(let k=1;k<u.length;k++)g=Math.min(g,u[k]-u[k-1]);if(u.length<2)g=A.L*.25;const amp=Math.min(.35*g,A.L*.12);if(amp<.05)return;
-  L0.forEach(i=>{P[i][j]+=(hs(i,j+400)*2-1)*amp});gestreut++})}
  // Objekte mit (fast) gleichen Werten minimal auseinanderschieben, damit sie sich nicht durchdringen
  const L=[...inn];for(let it=0;it<40;it++){let mv=false;for(let a=0;a<L.length;a++)for(let b=a+1;b<L.length;b++){const p=P[L[a]],q=P[L[b]],m=N[L[a]].r+N[L[b]].r+.3;let dx=q[0]-p[0],dy=q[1]-p[1],dz=q[2]-p[2],d=Math.hypot(dx,dy,dz);
   if(d<m){mv=true;if(d<1e-6){dx=.6;dy=.3;dz=.7;d=Math.hypot(dx,dy,dz)}const k=(m-d)/2/d;q[0]+=dx*k;q[1]+=dy*k;q[2]+=dz*k;p[0]-=dx*k;p[1]-=dy*k;p[2]-=dz*k}}if(!mv)break}
@@ -803,12 +797,11 @@ function achsenLayout(){const ks=AXS.k,LA=Math.max(80,MIND*6),LEN=[LA,LA*.7,LA*.
  N.forEach((n,i)=>{if(!inn.has(i))P[i]=[0,B[1][0],0]});
  AX={ax,B};AXO=inn;
  const cnt={};inn.forEach(i=>{const l=T[N[i].t].l;cnt[l]=(cnt[l]||0)+1});const pre=AXP[AXS.p];
- $('axinf').innerHTML=`Im Diagramm: ${Object.keys(cnt).map(k=>cnt[k]+' × '+esc(k)).join(', ')}. ${N.length-inn.size} Objekte ohne diese Kennzahlen sind ausgeblendet. Größe der Körper = Wert aus dem Datenraum (z. B. Umsatz, Masse).${gestreut?'<br>Gleiche Werte leicht gestreut (höchstens ±35 % des Werteabstands, Achsenwerte bleiben ablesbar).':''}${ax.some(A=>A&&A.log)?'<br>Logarithmische Achse: gleiche Abstände = gleicher Faktor (z. B. 10.000 → 100.000 → 1 Mio).':''}${nolog.length?'<br><span style="color:#ff9aa8">Logarithmisch nicht möglich für „'+nolog.map(esc).join('“, „')+'“ (Werte ≤ 0), dort linear.</span>':''}${pre&&pre.note?'<br>'+esc(pre.note):''}`;
+ $('axinf').innerHTML=`Im Diagramm: ${Object.keys(cnt).map(k=>cnt[k]+' × '+esc(k)).join(', ')}. ${N.length-inn.size} Objekte ohne diese Kennzahlen sind ausgeblendet. Größe der Körper = Wert aus dem Datenraum (z. B. Umsatz, Masse).${ax.some(A=>A&&A.log)?'<br>Logarithmische Achse: gleiche Abstände = gleicher Faktor (z. B. 10.000 → 100.000 → 1 Mio).':''}${nolog.length?'<br><span style="color:#ff9aa8">Logarithmisch nicht möglich für „'+nolog.map(esc).join('“, „')+'“ (Werte ≤ 0), dort linear.</span>':''}${pre&&pre.note?'<br>'+esc(pre.note):''}`;
  return P}
 $('axp').onchange=e=>{if(e.target.value==='eigen'){AXS.p='eigen';return}vorlageAx(+e.target.value,true)};
 ['axx','axy','axz'].forEach((id,j)=>$(id).onchange=e=>{AXS.k[j]=e.target.value;AXS.inv[j]=false;AXS.p='eigen';zeigeAx();$('lay').value='achsen';setLayout('achsen',true)});
 ['axlx','axly','axlz'].forEach((id,j)=>$(id).onchange=e=>{AXS.log[j]=e.target.checked;$('lay').value='achsen';setLayout('achsen',true)});
-$('axst').onchange=e=>{AXS.streu=e.target.checked;$('lay').value='achsen';setLayout('achsen',true)};
 // Startansicht für das Diagramm: schräg von rechts vorne oben auf den Achsenwürfel
 function homeAchsen(sofort){const B=AX.B,C=[0,0,0],hd=Math.hypot(B[0][1]-B[0][0],B[1][1]-B[1][0],B[2][1]-B[2][0])/2,hf=Math.min(35*Math.PI/180,Math.atan(Math.tan(35*Math.PI/180)*W/H)),dist=hd/Math.sin(hf)*1.3;
  const dv=[.5,.5,1],l=Math.hypot(...dv),d=dv.map(x=>x/l),yw=Math.atan2(d[0],d[2]),pp=Math.asin(-d[1]),sh=W>900?Math.min(220,panelB()*.6)*dist/(H/2/Math.tan(35*Math.PI/180)):0,tx=C[0]+d[0]*dist+Math.cos(yw)*sh,ty=C[1]+d[1]*dist,tz=C[2]+d[2]*dist-Math.sin(yw)*sh;CEN=C; // Panel rechts: Diagramm etwas nach links rücken
