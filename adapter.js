@@ -1,11 +1,11 @@
-/* 3Deep-Widget, Adapter Version 34.
+/* 3Deep-Widget, Adapter Version 35.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
    im Format der echten Schnittstellen-Antworten. */
 (function () {
   'use strict';
-  var DARSTELLUNG = '84';   // Version von datenraum3d.html; muss zu <meta name="3deep-darstellung"> dort passen (tests/test-gleichstand.js)
+  var DARSTELLUNG = '85';   // Version von datenraum3d.html; muss zu <meta name="3deep-darstellung"> dort passen (tests/test-gleichstand.js)
   var BKS = '/resources/v1/modeler/dsbks/dsbks:Bookmark';
   var ENG = '/resources/v1/modeler/dseng/dseng:EngItem';
   var DOC = '/resources/v1/modeler/documents';
@@ -1454,7 +1454,7 @@
     clearTimeout(S.neuUhr); laden({ drop: S.zuletzt, nach: true, frisch: true });
   }
   function diagnoseText() {
-    var z = ['3Deep-Widget Diagnose (Adapter 34, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
+    var z = ['3Deep-Widget Diagnose (Adapter 35, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
       '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-') + (S.ctxZahl ? ' (automatisch gewählt, ' + S.ctxZahl + ' verfügbar)' : ''), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), ''];
     z.push('Zuletzt geöffnet (gemerkt, wird beim Öffnen geladen): ' + (S.letztesGemerkt ? (S.letztesGemerkt.title || '-') + ' [' + S.letztesGemerkt.id + '], ' + (S.letztesGemerkt.art || 'bm') : '-'));
     if (S.stufen && S.stufen.length) {
@@ -1551,7 +1551,7 @@
       '<div class="td-dp" style="display:none;padding:6px 8px;background:#f4f5f6;border-bottom:1px solid #d1d4d4">' +
       '<div style="margin-bottom:4px">Protokoll aller Abfragen. Zum Weitergeben: „Kopieren“ drücken, vorher Vertrauliches prüfen. <button class="td-dc" style="' + knopf + '">Kopieren</button> <button class="td-vb" title="Vorschaubilder: Laden, Größe und Hintergrund testen (für die Gültigkeitsdauer später wiederholen)" style="' + knopf + '">Bilder prüfen</button> <button class="td-ir" title="Zwischenspeicher leeren (alle Abfragen und Issue-Details); beim nächsten Laden wird alles frisch von der Plattform gelesen" style="' + knopf + '">Zwischenspeicher leeren</button></div>' +
       '<textarea class="td-dx" readonly="readonly" style="' + feld + ';width:100%;height:180px;box-sizing:border-box;font:12px monospace;display:none"></textarea></div>' +
-      '<iframe class="td-fr" title="3Deep Darstellung" allow="fullscreen" style="flex:1;width:100%;border:0;background:#0b1220"></iframe></div>';
+      '<iframe class="td-fr" title="3Deep Darstellung" allow="fullscreen; autoplay" style="flex:1;width:100%;border:0;background:#0b1220"></iframe></div>';
     q('.td-sb').onclick = suchen; q('.td-la').onclick = function () { laden(); };
     q('.td-su').addEventListener('keydown', function (e) { if (e.key === 'Enter') suchen(); });
     q('.td-db').onclick = function () { var p = q('.td-dp'), d = q('.td-dx'), auf = p.style.display === 'none'; p.style.display = auf ? '' : 'none'; d.style.display = auf ? '' : 'none'; diagnose(); };

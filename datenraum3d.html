@@ -2,7 +2,7 @@
 <html lang="de"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>3Deep – Datenraum in 3D</title>
-<meta name="3deep-darstellung" content="84">
+<meta name="3deep-darstellung" content="85">
 <style>
 :root{--fg:#e6edf3;--panel:rgba(15,22,41,.86);--mut:#9fb0c4}
 html,body{margin:0;height:100%;background:linear-gradient(180deg,#d4ecff 0%,#93c3ea 55%,#5088c0 100%) fixed;color:var(--fg);font:13px/1.4 system-ui,sans-serif;overflow:hidden}
@@ -32,6 +32,7 @@ html{--lg:#0e2a4a;--lgh:rgba(255,255,255,.85)}html.space{--lg:#dbe7ff;--lgh:rgba
 .tr{position:fixed;left:12px;color:var(--lg);text-shadow:0 0 3px var(--lgh),0 0 3px var(--lgh),0 0 7px var(--lgh);font-size:12px;pointer-events:none}
 #legend{top:8px}#hint{bottom:8px;line-height:1.5}.tr .m{color:var(--lg);opacity:.75}#legend label{pointer-events:auto}
 #intro{position:fixed;inset:0;z-index:60;transition:opacity 1.4s ease;cursor:pointer;background:#9dbbe4}#intro canvas{position:absolute;inset:0;width:100%;height:100%}#intro.aus{opacity:0;pointer-events:none}
+#intro .ton{position:absolute;right:18px;bottom:16px;z-index:2;margin:0;padding:6px 12px;border-radius:16px;background:rgba(255,255,255,.28);color:#fff;font:500 13px system-ui,sans-serif;border:1px solid rgba(255,255,255,.55);cursor:pointer;backdrop-filter:blur(4px)}#intro .ton:hover{background:rgba(255,255,255,.42)}
 #intro .it{position:absolute;left:0;right:0;bottom:calc(13% + clamp(29px,5vw,56px));text-align:center;color:#fff;text-shadow:0 2px 22px rgba(20,50,100,.5),0 0 2px rgba(20,50,100,.3);opacity:0;animation:itin 1.8s ease .9s forwards;pointer-events:none}
 #intro .it b{display:block;font:600 clamp(40px,7vw,78px)/1 system-ui,sans-serif;letter-spacing:.05em}#intro .it span{display:block;margin-top:10px;font:300 clamp(13px,1.6vw,20px) system-ui,sans-serif;letter-spacing:.35em;text-transform:uppercase}
 @keyframes itin{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
@@ -88,9 +89,9 @@ html{--lg:#0e2a4a;--lgh:rgba(255,255,255,.85)}html.space{--lg:#dbe7ff;--lgh:rgba
 </details>
 <details><summary>Energiesparen</summary>
 <label class="s">Neuzeichnen<select id="es"><option value="max" selected>Maximal: im Stillstand kein Neuzeichnen</option><option value="auto">Automatisch: im Stillstand 15 Bilder/s</option><option value="aus">Aus: immer volle Bildrate</option></select></label>
-<label style="display:block;margin-top:8px"><input type="checkbox" id="introan" checked> Intro beim Start zeigen</label>
+<label style="display:block;margin-top:8px"><input type="checkbox" id="introan" checked> Intro beim Start zeigen</label><label style="display:block;margin-top:4px"><input type="checkbox" id="intromu"> Musik im Intro (leise)</label>
 </details>
-<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 84</div>
+<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 85</div>
 </div>
 <div id="det" class="pn"></div></div>
 <div id="dcap"></div><div id="dfade" style="position:fixed;inset:0;background:#0b1424;opacity:0;pointer-events:none;transition:opacity .6s;z-index:14"></div><div id="cross"></div><div id="info"></div>
@@ -1415,6 +1416,25 @@ function leererRaum(){if(DM.on&&!DM.laden)demoStop();ani=null;sperre(false);CUR=
 const INTRO={on:false,q:[],stop:null};
 function introAn(){try{return localStorage.getItem('intro')!=='aus'}catch(_){return true}}
 $('introan').checked=introAn();$('introan').onchange=e=>{try{localStorage.setItem('intro',e.target.checked?'an':'aus')}catch(_){}};
+// Version 85 (Wunsch des Nutzers): leise Musik im Intro, im Browser erzeugt (Web Audio, keine Datei, keine Rechte Dritter): Knistern wie eine alte Platte,
+// eine weiche Klangfläche und gläserne Glockentöne passend zu den Glaswürfeln. Häkchen „Musik im Intro“ (Voreinstellung aus, localStorage 'introMusik').
+// Browser spielen Ton oft erst nach einer Nutzeraktion: dann erscheint „♪ Ton an“ (beendet das Intro nicht). Ende des Intros = Ton blendet aus.
+function musikAn(){try{return localStorage.getItem('introMusik')==='an'}catch(_){return false}}
+$('intromu').checked=musikAn();$('intromu').onchange=e=>{try{localStorage.setItem('introMusik',e.target.checked?'an':'aus')}catch(_){}};
+const MUSIK={ctx:null,ende:null,start:0};
+function introMusik(dauer){const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;let ac;try{ac=new AC()}catch(_){return null}
+ MUSIK.ctx=ac;const T=ac.currentTime+.05,L=dauer+1.6,out=ac.createGain(),lp=ac.createBiquadFilter();lp.type='lowpass';lp.frequency.value=5200;out.connect(lp);lp.connect(ac.destination);
+ out.gain.setValueAtTime(0,T);out.gain.linearRampToValueAtTime(.55,T+1.2);out.gain.setValueAtTime(.55,T+dauer-.2);out.gain.linearRampToValueAtTime(0,T+L);
+ // Knistern: kurze Knackser zufälliger Stärke in Rauschpuffer, bandbegrenzt
+ const sr=ac.sampleRate,buf=ac.createBuffer(1,Math.ceil(sr*L),sr),d=buf.getChannelData(0);let r=12345;const rn=()=>{r=(r*1103515245+12345)&0x7fffffff;return r/0x7fffffff};
+ for(let i=0;i<d.length;i++)d[i]=(rn()-.5)*.012;for(let k=0;k<L*55;k++){const p=Math.floor(rn()*d.length),a=(rn()<.12?.5:.16)*(rn()*.8+.2),n=Math.floor(sr*(.0006+rn()*.0018));for(let j=0;j<n&&p+j<d.length;j++)d[p+j]+=a*(rn()-.5)*Math.exp(-j/(n*.35))}
+ const kn=ac.createBufferSource();kn.buffer=buf;const bp=ac.createBiquadFilter();bp.type='bandpass';bp.frequency.value=2600;bp.Q.value=.5;const kg=ac.createGain();kg.gain.value=1.1;kn.connect(bp);bp.connect(kg);kg.connect(out);kn.start(T);
+ // Klangfläche: leiser Akkord (A-Moll add9), leicht verstimmt, langsam ein- und ausgeblendet
+ [110,164.81,220,246.94,329.63].forEach((f,i)=>[-3,3].forEach(c=>{const o=ac.createOscillator(),g=ac.createGain();o.type=i<2?'triangle':'sine';o.frequency.value=f;o.detune.value=c+i;g.gain.setValueAtTime(0,T);g.gain.linearRampToValueAtTime(.035/(1+i*.4),T+2.2);g.gain.linearRampToValueAtTime(0,T+L);o.connect(g);g.connect(out);o.start(T);o.stop(T+L+.1)}));
+ // Glastöne (Pentatonik), zeitlich passend zu den aufsteigenden Würfeln
+ [[.7,880],[1.5,1318.5],[2.3,1046.5],[3.0,1760],[3.6,1318.5],[4.3,2093]].forEach(([t,f])=>{if(t>dauer)return;[1,2.76].forEach((m,k)=>{const o=ac.createOscillator(),g=ac.createGain();o.type='sine';o.frequency.value=f*m;const t0=T+t;g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(k?.012:.05,t0+.008);g.gain.exponentialRampToValueAtTime(.0001,t0+(k?.6:2.2));o.connect(g);g.connect(out);o.start(t0);o.stop(t0+2.3)})});
+ MUSIK.start=T;MUSIK.ende=()=>{try{const n=ac.currentTime;out.gain.cancelScheduledValues(n);out.gain.setValueAtTime(out.gain.value,n);out.gain.linearRampToValueAtTime(0,n+1.2);setTimeout(()=>{try{ac.close()}catch(_){}},1500)}catch(_){}};
+ try{ac.resume()}catch(_){}return ac}
 function introStart(){if(!introAn()||navigator.webdriver)return;
  const wrap=document.createElement('div'),cvI=document.createElement('canvas');wrap.id='intro';wrap.appendChild(cvI);
  wrap.insertAdjacentHTML('beforeend','<div class="it"><b>3Deep</b><span>Datenraum in 3D</span></div>');document.body.appendChild(wrap);
@@ -1437,8 +1457,10 @@ function introStart(){if(!introAn()||navigator.webdriver)return;
  for(let i=0;i<90;i++)FL.push({x:ra(i,300,-70,70),z:ra(i,301,-300,40),w:ra(i,302,2,14),d:ra(i,303,.3,1.2),dk:hs(i,304)<.6});
  const FC=[[0,1,3,2],[4,6,7,5],[0,4,5,1],[2,3,7,6],[0,2,6,4],[1,5,7,3]],EK=[[0,1],[2,3],[4,5],[6,7],[0,2],[1,3],[4,6],[5,7],[0,4],[1,5],[2,6],[3,7]];
  let t0=null,ende=false;
- const fertig=()=>{if(ende)return;ende=true;wrap.classList.add('aus');aktiv();setTimeout(()=>{wrap.remove();removeEventListener('resize',rs);INTRO.on=false;aktiv();const mq=INTRO.q;INTRO.q=[];mq.forEach(adapterNachricht)},1450)};
+ const fertig=()=>{if(ende)return;ende=true;wrap.classList.add('aus');if(MUSIK.ende){MUSIK.ende();MUSIK.ende=null}aktiv();setTimeout(()=>{wrap.remove();removeEventListener('resize',rs);INTRO.on=false;aktiv();const mq=INTRO.q;INTRO.q=[];mq.forEach(adapterNachricht)},1450)};
  INTRO.stop=fertig;wrap.addEventListener('click',fertig);
+ if(musikAn()){const ac=introMusik(5);if(ac)setTimeout(()=>{if(ende||ac.state==='running')return;const bt=document.createElement('button');bt.className='ton';bt.textContent='♪ Ton an';bt.title='Musik einschalten (der Browser verlangt dafür einen Klick)';
+  bt.onclick=e=>{e.stopPropagation();ac.resume().then(()=>bt.remove(),()=>{})};wrap.appendChild(bt)},250)}
  const zeichne=t=>{const e=1-Math.pow(1-Math.min(1,t/5.6),2),C=[0,6+2.5*e,48-32*e],Y=.07*Math.sin(t*.55)-.04,P=.1-.035*e,
    cy=Math.cos(Y),sy=Math.sin(Y),cp=Math.cos(P),sp=Math.sin(P),f=[-sy*cp,sp,-cy*cp],r=[cy,0,-sy],u=[sy*sp,cp,cy*sp],foc=h/2/Math.tan(35*Math.PI/180);
   const pr=(x,y,z)=>{const dx=x-C[0],dy=y-C[1],dz=z-C[2],zz=dx*f[0]+dy*f[1]+dz*f[2],k=foc/zz;return{x:w/2+(dx*r[0]+dy*r[1]+dz*r[2])*k,y:h/2-(dx*u[0]+dy*u[1]+dz*u[2])*k,z:zz}};
