@@ -2,7 +2,7 @@
 <html lang="de"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>3Deep – Datenraum in 3D</title>
-<meta name="3deep-darstellung" content="85">
+<meta name="3deep-darstellung" content="86">
 <style>
 :root{--fg:#e6edf3;--panel:rgba(15,22,41,.86);--mut:#9fb0c4}
 html,body{margin:0;height:100%;background:linear-gradient(180deg,#d4ecff 0%,#93c3ea 55%,#5088c0 100%) fixed;color:var(--fg);font:13px/1.4 system-ui,sans-serif;overflow:hidden}
@@ -91,7 +91,7 @@ html{--lg:#0e2a4a;--lgh:rgba(255,255,255,.85)}html.space{--lg:#dbe7ff;--lgh:rgba
 <label class="s">Neuzeichnen<select id="es"><option value="max" selected>Maximal: im Stillstand kein Neuzeichnen</option><option value="auto">Automatisch: im Stillstand 15 Bilder/s</option><option value="aus">Aus: immer volle Bildrate</option></select></label>
 <label style="display:block;margin-top:8px"><input type="checkbox" id="introan" checked> Intro beim Start zeigen</label><label style="display:block;margin-top:4px"><input type="checkbox" id="intromu"> Musik im Intro (leise)</label>
 </details>
-<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 85</div>
+<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 86</div>
 </div>
 <div id="det" class="pn"></div></div>
 <div id="dcap"></div><div id="dfade" style="position:fixed;inset:0;background:#0b1424;opacity:0;pointer-events:none;transition:opacity .6s;z-index:14"></div><div id="cross"></div><div id="info"></div>
@@ -108,7 +108,7 @@ let s=7;const rnd=()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+M
 // ---------- Demo-Daten im Import-Format ----------
 function demoData(){s=7;
  const types={folder:{color:'#e6d2a6',size:6,shape:'folder',label:'Bookmark-Folder'},asm:{color:'#4f8cff',size:3.36,label:'Baugruppe'},part:{color:'#2fc4ad',size:1.96,label:'Einzelteil (CAD)'},pdf:{color:'#e5534b',size:1.3,shape:'book',label:'Spezifikation (PDF)'},ppt:{color:'#f08a3c',size:.9,label:'Attachment'},dwg:{color:'#9aa5b1',size:1.8,label:'Zeichnung'},mk:{color:'#d67bd9',size:.8,label:'Markup / Review'},issue:{color:'#ff4d6d',size:2.2,shape:'torus',label:'Issue'},person:{color:'#5fcf3f',size:2.2,shape:'bust',label:'Person'},task:{color:'#f2c400',size:1.4,shape:'dodecahedron',label:'Aufgabe'}};
- const relTypes={struktur:{label:'Baugruppenlink (enthält)',color:'#2f3f5c',directed:false},inhalt:{label:'Enthalten in Bookmark',color:'#b07a10',directed:true},spec:{label:'Spezifikationslink',color:'#b8403a',directed:true},praes:{label:'Attachment-Link',color:'#c76a1c',directed:true},zeichnung:{label:'Zeichnungslink',color:'#5d6975',directed:true},markup:{label:'Markup/Review',color:'#a24fa6',directed:true},betrifft:{label:'Issue betrifft',color:'#c2255c',directed:true},aufgabe:{label:'Aufgabe für',color:'#b59500',directed:true},zuweisung:{label:'Zugewiesen an',color:'#3a8f2f',directed:true}};
+ const relTypes={struktur:{label:'Baugruppenlink (enthält)',color:'#2f3f5c',directed:false},inhalt:{label:'Enthalten in Bookmark',color:'#b07a10',directed:true},spec:{label:'Spezifikationslink',color:'#b8403a',directed:true},praes:{label:'Attachment-Link',color:'#c76a1c',directed:true},zeichnung:{label:'Zeichnungslink',color:'#5d6975',directed:true},markup:{label:'Markup/Review',color:'#a24fa6',directed:true},betrifft:{label:'Issue betrifft (Affected Item)',color:'#c2255c',directed:true},kontext:{label:'Issue-Kontext (Context)',color:'#2e8fb8',directed:true},aufgabe:{label:'Aufgabe für',color:'#b59500',directed:true},zuweisung:{label:'Zugewiesen an',color:'#3a8f2f',directed:true}};
  const nodes=[],edges=[];const add=(type,name,meta)=>{const id='n'+nodes.length;nodes.push({id,type,name,meta});return id};const link=(from,to,type)=>edges.push({from,to,type});
  const st=['In Arbeit','Freigegeben','In Prüfung'],ps=['A. Bauer','B. Keller','C. Weber','D. Hoffmann','E. Schulz','F. Wagner','G. Neumann','H. Krause'];
  const F=add('folder','Bookmark: E-Fahrzeug-Review',{Owner:'Projektleitung',Erstellt:'2026-10-12'});
@@ -179,7 +179,8 @@ function kraftLayout(vonHier){const n_=N.length,big=n_>400,sz=Math.cbrt(n_/150)*
   if(!moved)break}
  const c=N.reduce((p,n)=>n.adj.length>p.adj.length?n:p,N[0]),cx=c.x,cy=c.y,cz=c.z;N.forEach(n=>{n.x-=cx;n.y-=cy;n.z-=cz}); // meistvernetztes Objekt in die Mitte
 }
-function ladeDaten(d){CUR=d;$('legend').style.display='';AX=null;AXO=null;ST_T=d.stateTitle||'Reifegrad';ST_N=d.stateNames||null;if(DM.on&&!DM.laden)demoStop();DMO=null;if(ani&&!ani.swap){ani=null;sperre(false)}
+function ladeDaten(d){CUR=d;if(!REL.erg)REL.t0=performance.now(); // Version 86: nach dem Laden erst die Objekte, Beziehungen in 2 s einblenden
+$('legend').style.display='';AX=null;AXO=null;ST_T=d.stateTitle||'Reifegrad';ST_N=d.stateNames||null;if(DM.on&&!DM.laden)demoStop();DMO=null;if(ani&&!ani.swap){ani=null;sperre(false)}
  T={};Object.keys(d.types||{}).forEach(k=>{const t=d.types[k]||{};T[k]={c:HEX.test(t.color)?t.color:'#9aa5b1',d:+t.size>0?+t.size:1,l:t.label||k,shape:t.shape,layer:t.layer,role:t.role,gem:t.gem,cut:t.cut}});
  RT=d.relTypes||{};const nn=[],ee=[],idx={};
  (d.nodes||[]).forEach(o=>{if(o.id==null)return;if(!T[o.type])T[o.type]={c:'#9aa5b1',d:1,l:String(o.type)};const t=T[o.type];
@@ -446,7 +447,7 @@ function satData(){s=31;
  const types={folder:{color:'#e6d2a6',size:6,shape:'folder',label:'Bookmark-Folder'},asm:{color:'#4f8cff',size:3.2,label:'System / Baugruppe'},part:{color:'#2fc4ad',size:1.7,label:'Gerät / Bauteil'},pdf:{color:'#e5534b',size:1.3,shape:'book',label:'Spezifikation / ICD (PDF)'},
   req:{color:'#8b6cf0',size:1.8,shape:'dodecahedron',label:'Anforderung'},test:{color:'#f08a3c',size:1.8,shape:'box',label:'Test / Verifikation'},issue:{color:'#ff4d6d',size:2.2,shape:'torus',label:'Issue'},task:{color:'#f2c400',size:1.3,label:'Aufgabe'},person:{color:'#5fcf3f',size:2.2,shape:'bust',label:'Person'}};
  const relTypes={struktur:{label:'Baugruppenlink (enthält)',color:'#2f3f5c',directed:false},inhalt:{label:'Enthalten in Bookmark',color:'#b07a10',directed:true},spec:{label:'Spezifiziert',color:'#b8403a',directed:true},gilt:{label:'Anforderung gilt für',color:'#6a52c9',directed:true},
-  verif:{label:'Verifiziert',color:'#c76a1c',directed:true},prueft:{label:'Prüft',color:'#9a5a20',directed:true},befund:{label:'Gefunden bei',color:'#d0436a',directed:true},betrifft:{label:'Issue betrifft',color:'#c2255c',directed:true},aufgabe:{label:'Aufgabe für',color:'#b59500',directed:true},zuweisung:{label:'Zugewiesen an',color:'#3a8f2f',directed:true},verantw:{label:'Verantwortlich für',color:'#2f7a6a',directed:true}};
+  verif:{label:'Verifiziert',color:'#c76a1c',directed:true},prueft:{label:'Prüft',color:'#9a5a20',directed:true},befund:{label:'Gefunden bei',color:'#d0436a',directed:true},betrifft:{label:'Issue betrifft (Affected Item)',color:'#c2255c',directed:true},kontext:{label:'Issue-Kontext (Context)',color:'#2e8fb8',directed:true},aufgabe:{label:'Aufgabe für',color:'#b59500',directed:true},zuweisung:{label:'Zugewiesen an',color:'#3a8f2f',directed:true},verantw:{label:'Verantwortlich für',color:'#2f7a6a',directed:true}};
  const nodes=[],edges=[],by={},add=(type,name,meta,x)=>{const n=Object.assign({id:'s'+nodes.length,type,name,meta:meta||{}},x||{});nodes.push(n);by[name]=n;return n},link=(a,b,type)=>edges.push({from:a.id,to:b.id,type});
  const P=['K. Albers','L. Brandt','M. Yilmaz','N. Okafor','P. Lindqvist','R. Hartwig','S. Moreau','T. Novak'],ROL=['Projektleitung','Systems Engineering','Lageregelung (AOCS)','Energieversorgung','Struktur und Thermal','Nutzlast','Integration und Test (AIT)','Produktsicherung'];
  const F=add('folder','Bookmark: EO-Sat 1 – Critical Design Review',{Owner:'Projektleitung',Meilenstein:'CDR',Termin:'2027-02-15'});
@@ -561,7 +562,7 @@ function skizze(name,asm){let h=2166136261;for(const ch of String(name))h=Math.i
  const m=3,w=B[2]-B[0]+2*m,hh=B[3]-B[1]+2*m,f=150/Math.max(w,hh);
  return'data:image/svg+xml,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${(B[0]-m).toFixed(1)} ${(B[1]-m).toFixed(1)} ${w.toFixed(1)} ${hh.toFixed(1)}" width="${Math.round(w*f)}" height="${Math.round(hh*f)}">${o}</svg>`)}
 // ---------- Linkchain-Analyse ----------
-let CUR=null,ani=null,EF=1,astro=false,kris=false,CEN=[0,0,0],catia=false,zoomMode=false,rotMoved=false,tr=null,CH=[],LAYERS=null,orient='h',orientAuto=true,ORI_INFO=null,obStil='web';
+const REL={t0:-1e9,erg:false,ms:2000};let CUR=null,ani=null,EF=1,astro=false,kris=false,CEN=[0,0,0],catia=false,zoomMode=false,rotMoved=false,tr=null,CH=[],LAYERS=null,orient='h',orientAuto=true,ORI_INFO=null,obStil='web';
 const GEN=[{name:'Alle direkten Nachbarn',chain:'?-'},{name:'Zwei Schritte (beliebig)',chain:'?- ?-'},{name:'Struktur abwärts (beliebig tief)',chain:'struktur<*'},{name:'Struktur aufwärts (beliebig tief)',chain:'struktur>*'}];
 function kette(txt){return txt.trim().split(/[\s,\u2192]+/).filter(Boolean).map(t=>{const m=/^([\w?]+?)([<>-]?)(\*?)$/.exec(t);if(!m)throw new Error('Ungültiger Schritt: '+t);return{link:m[1],dir:m[2]||'-',rep:!!m[3]}})}
 function fuelleChains(n){const ok=CH.map((c,i)=>[c,i]).filter(([c])=>!c.start||(n&&c.start===n.t));
@@ -972,7 +973,7 @@ function zeichneAstro(n,q,R,t){const x=q.x,y=q.y,i=n.i;
   ctx.restore();el(x-.35*R,y-.4*R,.28*R,.16*R,'rgba(255,255,255,.5)');
   const tw=Math.sin(t*2+i*3);if(tw>.85){ctx.strokeStyle='rgba(255,255,255,'+((tw-.85)*6).toFixed(2)+')';ctx.lineWidth=Math.max(.8,R*.04);ctx.beginPath();ctx.moveTo(x+.2*R,y-.5*R);ctx.lineTo(x+.2*R,y-.2*R);ctx.moveTo(x+.05*R,y-.35*R);ctx.lineTo(x+.35*R,y-.35*R);ctx.stroke()}break}
  default:sph(n.c0,n.c1,n.c2,R)}}
-function wechselTheme(a){const th=a===true?'astro':a===false?'std':a;astro=th==='astro';kris=th==='kristall';const lay=$('lay').value,o=orient;try{ladeDaten(CUR)}catch(x){$('err').textContent='Fehler: '+x.message;return}
+function wechselTheme(a){const th=a===true?'astro':a===false?'std':a;astro=th==='astro';kris=th==='kristall';const lay=$('lay').value,o=orient;try{REL.erg=true;ladeDaten(CUR);REL.erg=false}catch(x){REL.erg=false;$('err').textContent='Fehler: '+x.message;return}
  if(lay!==$('lay').value||o!==orient){orient=o;$('or').value=orientAuto?'auto':o;$('lay').value=lay;setLayout(lay,false,true)}}
 // Objektdarstellung (Version 74 ohne Auswahlfeld): Strg+Umschalt+E schaltet Standard <-> Sonnensystem (Urknall bzw. Schwarzes Loch)
 function themaUmschalten(){if(ani||!CUR)return;if(astro)startBH('std');else startBang()}
@@ -1121,7 +1122,7 @@ function ergaenzeDaten(d,fertig){
   const w=Math.random()*6.283,z=Math.random()*2-1,r=Math.sqrt(1-z*z);pos.set(k,[p[0]+Math.cos(w)*r*L,p[1]+z*L,p[2]+Math.sin(w)*r*L]);neu++});if(!neu)break}
  ok.forEach(o=>{const k=String(o.id);if(!pos.has(k))pos.set(k,[(Math.random()-.5)*RAD,(Math.random()-.5)*RAD,(Math.random()-.5)*RAD])});
  d._lc={[astro?'a':kris?'k':'s']:ok.map(o=>pos.get(String(o.id)))};
- ladeDaten(d);
+ REL.erg=true;try{ladeDaten(d)}finally{REL.erg=false}
  const neuI=new Set(N.filter(n=>!alt.has(n.key)).map(n=>n.i));AUF.neu+=neuI.size;
  // Nur Neues wird eingepasst; ohne neue Objekte (z. B. nur Attribute nachgeliefert) bleibt alles liegen. Das Durchrechnen am Schluss nur, solange der Benutzer nicht arbeitet.
  if(fertig&&passiv&&AUF.neu&&AUF.erst)kraftLayout(true);else if(neuI.size)nachjustieren(neuI);
@@ -1342,8 +1343,8 @@ function roehre(e,a,b,lw){if(lw<2.5)return false;const dx=b.x-a.x,dy=b.y-a.y,l=M
  ln(0,lw,e.c2,1);ln(lw*.07,lw*.66,space?e.cl:e.cm||(e.cm=mix(e.c,255,.18)),1);ln(lw*.2,lw*.28,space?'#fff':e.cl,.9);ctx.globalAlpha=ga;return true}
 function frame(now){requestAnimationFrame(frame);
  // Energiesparen: nur bei Bewegung, Eingabe oder Animation mit voller Bildrate zeichnen
- const busy=ES.bew||fly||ani||animL||DM.on||PK.on||now-ES.act<1500||Object.keys(keys).some(k=>keys[k]);
- if(!busy&&ES.mode!=='aus'&&now-ES.draw<(ES.mode==='max'?1e9:66))return;ES.draw=now;perfTick(now);const dt=Math.min(.1,(now-last)/1000);last=now;if(needHome&&W>50&&H>50){needHome=false;home(true)}if(ani)animStep(now);GK+=((GRUPPIERT.includes($('lay').value)?1:0)-GK)*Math.min(1,dt*3);smTick(dt,now);EF=ani?(ani.bang?Math.min(1,ani.u*1.5):ani.ph<2?Math.max(.15,1-ani.u*.5):1):1;if(animL){let mvg=false;const kk=Math.min(1,dt*5);N.forEach(n=>{n.x+=(n.tx-n.x)*kk;n.y+=(n.ty-n.y)*kk;n.z+=(n.tz-n.z)*kk;if(Math.abs(n.tx-n.x)+Math.abs(n.ty-n.y)+Math.abs(n.tz-n.z)>.02)mvg=true});animL=mvg}
+ const busy=ES.bew||fly||ani||animL||DM.on||PK.on||now-REL.t0<REL.ms+100||now-ES.act<1500||Object.keys(keys).some(k=>keys[k]);
+ if(!busy&&ES.mode!=='aus'&&now-ES.draw<(ES.mode==='max'?1e9:66))return;ES.draw=now;perfTick(now);const dt=Math.min(.1,(now-last)/1000);last=now;if(needHome&&W>50&&H>50){needHome=false;home(true)}if(ani)animStep(now);GK+=((GRUPPIERT.includes($('lay').value)?1:0)-GK)*Math.min(1,dt*3);smTick(dt,now);EF=ani?(ani.bang?Math.min(1,ani.u*1.5):ani.ph<2?Math.max(.15,1-ani.u*.5):1):1;{const ru=(now-REL.t0)/REL.ms;if(ru<1){const v=Math.max(0,ru);EF*=v*v*(3-2*v)}}if(animL){let mvg=false;const kk=Math.min(1,dt*5);N.forEach(n=>{n.x+=(n.tx-n.x)*kk;n.y+=(n.ty-n.y)*kk;n.z+=(n.tz-n.z)*kk;if(Math.abs(n.tx-n.x)+Math.abs(n.ty-n.y)+Math.abs(n.tz-n.z)>.02)mvg=true});animL=mvg}
  if(['KeyW','KeyA','KeyS','KeyD','Space','KeyE','KeyQ','KeyC'].some(k=>keys[k]))fly=null;
  if(fly&&fly.orb)orbStep(dt);else if(fly){if(!(DM.on&&DM.paused))fly.t=Math.min(1,fly.t+dt/(fly.dur||.9));const k=(1-Math.cos(Math.PI*fly.t))/2,l=(a,b)=>a+(b-a)*k;
   cam.x=l(fly.x0,fly.x1);cam.y=l(fly.y0,fly.y1);cam.z=l(fly.z0,fly.z1);yaw=l(fly.y_0,fly.y_1);pitch=l(fly.p0,fly.p1);if(fly.t>=1)fly=null}

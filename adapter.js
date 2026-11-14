@@ -1,11 +1,11 @@
-/* 3Deep-Widget, Adapter Version 35.
+/* 3Deep-Widget, Adapter Version 36.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
    im Format der echten Schnittstellen-Antworten. */
 (function () {
   'use strict';
-  var DARSTELLUNG = '85';   // Version von datenraum3d.html; muss zu <meta name="3deep-darstellung"> dort passen (tests/test-gleichstand.js)
+  var DARSTELLUNG = '86';   // Version von datenraum3d.html; muss zu <meta name="3deep-darstellung"> dort passen (tests/test-gleichstand.js)
   var BKS = '/resources/v1/modeler/dsbks/dsbks:Bookmark';
   var ENG = '/resources/v1/modeler/dseng/dseng:EngItem';
   var DOC = '/resources/v1/modeler/documents';
@@ -770,7 +770,8 @@
     var relTypes = {
       struktur: { label: 'Strukturlink (enthält)', color: '#2f3f5c', directed: false },
       inhalt: { label: 'Enthalten in Bookmark', color: '#b07a10', directed: true },
-      betrifft: { label: 'Issue betrifft', color: '#c2255c', directed: true },
+      betrifft: { label: 'Issue betrifft (Affected Item)', color: '#c2255c', directed: true },
+      kontext: { label: 'Issue-Kontext (Context)', color: '#2e8fb8', directed: true },   // Adapter 36
       aufgabe: { label: 'Aufgabe für', color: '#b59500', directed: true },
       zuweisung: { label: 'Zugewiesen an', color: '#3a8f2f', directed: true },
       spec: { label: 'Spezifikationslink', color: '#b8403a', directed: true },
@@ -1116,8 +1117,9 @@
           if (!d && eg) { d = { title: eg.titel || ('Issue ' + iid.slice(-6)), id: iid }; S.issueInfo.ohneDetail = (S.issueInfo.ohneDetail || 0) + 1; }   // Details nicht lesbar: Issue trotzdem zeigen (Angaben aus getecosystem)
           if (!d) return;
           S.issueInfo.gelesen++;
-          var roh = refIds(d.affectedItems).concat(refIds(d.contexts));
-          if (eg) eg.ids.concat(eg.kontext).forEach(function (x) { if (roh.indexOf(x) < 0) roh.push(x); });
+          var rKon = refIds(d.contexts), roh = refIds(d.affectedItems).concat(rKon);
+          if (eg) { eg.ids.forEach(function (x) { if (roh.indexOf(x) < 0) roh.push(x); }); eg.kontext.forEach(function (x) { if (roh.indexOf(x) < 0) { roh.push(x); rKon.push(x); } }); }
+          var nurKon = {}; rKon.forEach(function (x) { if (refIds(d.affectedItems).indexOf(x) < 0 && !(eg && eg.ids.indexOf(x) >= 0)) nurKon[x] = 1; });   // Adapter 36: Contexts getrennt von Affected Items
           S.issueInfo.alle.push({ t: d.title || d.name || iid, d: d['Creation Date'] || '' });
           if (roh.length) {
             S.issueInfo.mitBezug.push({ t: d.title || d.name || iid, d: d['Creation Date'] || '', ids: roh, treffer: roh.filter(function (x) { return ziel[x]; }).length });
@@ -1132,7 +1134,7 @@
           Object.keys(meta).forEach(function (k) { if (meta[k] === '') delete meta[k]; });
           var n = { id: 'i:' + iid, type: 'issue', name: d.title || d.name || ('Issue ' + iid.slice(-6)), meta: meta, imgText: d.title || d.name || '' }; if (d.state) n.state = zustand(d.state);   // Adapter 34: Titel statt Vorschaubild
           issues[iid] = n; exKnoten.push(n); ziel[iid] = n.id;
-          var doppelt = {}; bez.forEach(function (x) { if (!doppelt[x]) { doppelt[x] = 1; exKanten.push({ from: n.id, to: ziel[x], type: 'betrifft' }); } });
+          var doppelt = {}; bez.forEach(function (x) { if (!doppelt[x]) { doppelt[x] = 1; exKanten.push(nurKon[x] ? { from: n.id, to: ziel[x], type: 'kontext', meta: { Beziehung: 'Context' } } : { from: n.id, to: ziel[x], type: 'betrifft', meta: { Beziehung: 'Affected Item' } }); } });
           (m.assignees || []).forEach(function (a) { var p = person(a); if (p) exKanten.push({ from: n.id, to: p, type: 'zuweisung' }); });
           var ro = S.personRollen[iid] || [];
           if (pId && ro.length && ro.indexOf('Zugewiesen') < 0) exKanten.push({ from: n.id, to: pId, type: 'zuweisung', label: ro.join(', '), meta: { Rolle: ro.join(', ') } });
@@ -1156,7 +1158,10 @@
           pruef(); melde('Issues', true);
         }
       } catch (e) { if (S.abbruch) throw e; hinweise.push('Issues nicht lesbar (' + e.message + ').'); }
-      // Aufgaben: eigene Aufgaben des Benutzers und Aufgaben mit einem geladenen Objekt als Kontext
+      // Aufgaben: eigene Aufgaben des Benutzers und Aufgaben mit einem geladenen Objekt als Kontext.
+      // Adapter 36 (Wunsch des Nutzers): vorerst abgeschaltet (auf der Plattform keine Aufgaben mit Bezug zu Bauteilen/Personen);
+      // Code bleibt für das spätere Projektmanagement in 3Deep, einschaltbar mit S.mitAufgaben = true.
+      if (S.mitAufgaben) {
       var nimmTask = function (t) {
         if (!t) return;
         var tid = t.id || t.identifier, e = t.dataelements || {}, rd = t.relateddata || {}; if (!tid) return;
@@ -1188,6 +1193,7 @@
       });
       pruef();
       if (sFehler && !sOk) hinweise.push('Aufgaben je Objekt nicht lesbar.');
+      }
       if (exGrenze) hinweise.push('Höchstzahl von ' + S.max + ' Objekten erreicht, nicht alle Issues/Aufgaben gezeigt.');
       exKnoten.forEach(function (n) { delete n._k; });
       melde('Aufgaben', true);
@@ -1454,7 +1460,7 @@
     clearTimeout(S.neuUhr); laden({ drop: S.zuletzt, nach: true, frisch: true });
   }
   function diagnoseText() {
-    var z = ['3Deep-Widget Diagnose (Adapter 35, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
+    var z = ['3Deep-Widget Diagnose (Adapter 36, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
       '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-') + (S.ctxZahl ? ' (automatisch gewählt, ' + S.ctxZahl + ' verfügbar)' : ''), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), ''];
     z.push('Zuletzt geöffnet (gemerkt, wird beim Öffnen geladen): ' + (S.letztesGemerkt ? (S.letztesGemerkt.title || '-') + ' [' + S.letztesGemerkt.id + '], ' + (S.letztesGemerkt.art || 'bm') : '-'));
     if (S.stufen && S.stufen.length) {
@@ -1543,7 +1549,7 @@
       '<button class="td-nl" title="Neu lesen: Zwischenspeicher leeren und das geladene Objekt frisch von der Plattform holen (Daten bleiben sonst 30 Minuten gespeichert)" style="' + knopf + ';display:none">↻</button>' +
       '<label title="Spezifikationen und Attachments der Objekte mitlesen (im Hintergrund, nach dem ersten Bild)" style="display:flex;align-items:center;gap:4px"><input class="td-dk" type="checkbox" checked="checked" />Dokumente</label>' +
       '<label title="Zeichnungen (Drawings) der Strukturobjekte suchen und anzeigen (im Hintergrund, nach dem ersten Bild)" style="display:flex;align-items:center;gap:4px"><input class="td-zg" type="checkbox" checked="checked" />Zeichnungen</label>' +
-      '<label title="Issues, Aufgaben und Personen zu den Objekten mitlesen (im Hintergrund, nach dem ersten Bild)" style="display:flex;align-items:center;gap:4px"><input class="td-ia" type="checkbox" checked="checked" />Issues/Aufgaben</label>' +
+      '<label title="Issues und Personen zu den Objekten mitlesen (im Hintergrund, nach dem ersten Bild; Aufgaben vorerst nicht)" style="display:flex;align-items:center;gap:4px"><input class="td-ia" type="checkbox" checked="checked" />Issues</label>' +
       '<input class="td-ci" type="text" placeholder="Security Context: Rolle.Organisation.Collaborative Space" title="Security Context von Hand" style="' + feld + ';width:330px;display:none" />' +
       '<button class="td-db" style="' + knopf + '">Diagnose</button>' +
       '<span class="td-mo" style="padding:2px 8px;border-radius:10px;background:#fff3cd;color:#7a5c00;border:1px solid #e6cf7a;display:none">Testmodus: Beispieldaten</span>' +
@@ -1684,6 +1690,7 @@
     var xd = id(); T.xdrw[sattel] = [{ id: xd, type: 'dsxcad:Drawing', dataelements: { title: 'Bremssattel', name: 'Bremssattel.CATDrawing', revision: 'B', state: 'RELEASED', owner: 'A. Bauer', modified: '2026-10-21T15:40:00Z' } }];
     T.v5[xd] = { typ: 'dsxcad:Drawing', datei: 'Bremssattel.CATDrawing' }; T.xd = xd;
     var is1 = issue('Sensor liefert bei Kälte falsche Werte', 'In Work', [sensor, le], ['cmeier']);
+    T.iss[is1].contexts = [{ elements: [eref('VPMReference', fahrwerk)] }];   // Adapter 36: Context getrennt von Affected Items
     haenge(is1, 'Reference Document', dok('Foto Fehlerbild', 'Fehlerbild.png'));
     T.is1 = is1;
     issue('Issue ohne Bezug zum Bookmark', 'Create', ['FFFF0000FFFF0000FFFF0000FFFF0000'], ['cmeier']);
