@@ -2,7 +2,7 @@
 <html lang="de"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>3Deep – Datenraum in 3D</title>
-<meta name="3deep-darstellung" content="90">
+<meta name="3deep-darstellung" content="91">
 <style>
 :root{--fg:#e6edf3;--panel:rgba(15,22,41,.86);--mut:#9fb0c4}
 html,body{margin:0;height:100%;background:linear-gradient(180deg,#d4ecff 0%,#93c3ea 55%,#5088c0 100%) fixed;color:var(--fg);font:13px/1.4 system-ui,sans-serif;overflow:hidden}
@@ -91,7 +91,7 @@ html{--lg:#0e2a4a;--lgh:rgba(255,255,255,.85)}html.space{--lg:#dbe7ff;--lgh:rgba
 <label class="s">Neuzeichnen<select id="es"><option value="max" selected>Maximal: im Stillstand kein Neuzeichnen</option><option value="auto">Automatisch: im Stillstand 15 Bilder/s</option><option value="aus">Aus: immer volle Bildrate</option></select></label>
 <label style="display:block;margin-top:8px"><input type="checkbox" id="introan" checked> Intro beim Start zeigen</label><label style="display:block;margin-top:4px"><input type="checkbox" id="intromu"> Musik im Intro (leise)</label>
 </details>
-<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 90</div>
+<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 91</div>
 </div>
 <div id="det" class="pn"></div></div>
 <div id="dcap"></div><div id="dfade" style="position:fixed;inset:0;background:#0b1424;opacity:0;pointer-events:none;transition:opacity .6s;z-index:14"></div><div id="cross"></div><div id="info"></div>
@@ -1415,6 +1415,8 @@ function leererRaum(){if(DM.on&&!DM.laden)demoStop();ani=null;sperre(false);CUR=
 // blendet dann in den leeren Standardhintergrund über. Abschaltbar (Häkchen „Intro beim Start zeigen“, localStorage 'intro'). Unter Testautomatisierung
 // (navigator.webdriver) aus, damit die übrigen Tests unverändert laufen; tests/test-intro.js schaltet es gezielt ein.
 const INTRO={on:false,q:[],stop:null};
+// Version 91 (Wunsch des Nutzers): Intro 6 s statt 5 s (Grafik und Musik gemeinsam; Kamerafahrt entsprechend gestreckt, Melodie und Schriftzug unverändert).
+const INTRO_DAUER=6;
 function introAn(){try{return localStorage.getItem('intro')!=='aus'}catch(_){return true}}
 $('introan').checked=introAn();$('introan').onchange=e=>{try{localStorage.setItem('intro',e.target.checked?'an':'aus')}catch(_){}};
 // Version 85 (Wunsch des Nutzers): leise Musik im Intro, im Browser erzeugt (Web Audio, keine Datei, keine Rechte Dritter): Knistern wie eine alte Platte,
@@ -1426,20 +1428,31 @@ $('intromu').checked=musikAn();$('intromu').onchange=e=>{try{localStorage.setIte
 // Die alte Melodie (Pentatonik über A-Moll add9, bis Version 87) bleibt für alle Fälle erhalten: MUSIK.melodie='alt'.
 const MELODIEN={neu:{flaeche:[116.54,174.61,233.08,261.63,349.23],toene:[[1.3,587.33],[2.3,1174.66],[2.8,1174.66],[3.3,1318.51],[3.8,1318.51],[4.3,932.33]]},
  alt:{flaeche:[110,164.81,220,246.94,329.63],toene:[[.7,880],[1.5,1318.5],[2.3,1046.5],[3.0,1760],[3.6,1318.5],[4.3,2093]]}};
-const MUSIK={ctx:null,ende:null,start:0,melodie:'neu'};
-function introMusik(dauer){const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;let ac;try{ac=new AC()}catch(_){return null}
- MUSIK.ctx=ac;const MEL=MELODIEN[MUSIK.melodie]||MELODIEN.neu,T=ac.currentTime+.05,L=dauer+1.6,out=ac.createGain(),lp=ac.createBiquadFilter();lp.type='lowpass';lp.frequency.value=5200;out.connect(lp);lp.connect(ac.destination);
- out.gain.setValueAtTime(0,T);out.gain.linearRampToValueAtTime(.55,T+1.2);out.gain.setValueAtTime(.55,T+dauer-.2);out.gain.linearRampToValueAtTime(0,T+L);
- // Knistern: kurze Knackser zufälliger Stärke in Rauschpuffer, bandbegrenzt
+const MUSIK={ctx:null,ende:null,start:0,melodie:'neu',aus:3,off:null,geplant:[],plane:null};
+// Version 91 (Wunsch des Nutzers): Planung erst, wenn der Ton wirklich läuft (bei gesperrtem Autoplay steht currentTime still), mit Versatz = vergangene Intro-Zeit:
+// vergangene Glastöne entfallen, Klangfläche und Pegel setzen mit dem passenden Wert ein, Knistern ab passender Stelle. Ausblenden 3 s (MUSIK.aus), auch bei Esc/Klick.
+function introMusik(dauer,introZeit){const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;let ac;try{ac=new AC()}catch(_){return null}
+ MUSIK.ctx=ac;MUSIK.off=null;MUSIK.geplant=[];const MEL=MELODIEN[MUSIK.melodie]||MELODIEN.neu,F=MUSIK.aus,L=dauer+F,lp=ac.createBiquadFilter();lp.type='lowpass';lp.frequency.value=5200;lp.connect(ac.destination);
+ // Knistern: kurze Knackser zufälliger Stärke in Rauschpuffer, bandbegrenzt (einmal erzeugt)
  const sr=ac.sampleRate,buf=ac.createBuffer(1,Math.ceil(sr*L),sr),d=buf.getChannelData(0);let r=12345;const rn=()=>{r=(r*1103515245+12345)&0x7fffffff;return r/0x7fffffff};
  for(let i=0;i<d.length;i++)d[i]=(rn()-.5)*.012;for(let k=0;k<L*55;k++){const p=Math.floor(rn()*d.length),a=(rn()<.12?.5:.16)*(rn()*.8+.2),n=Math.floor(sr*(.0006+rn()*.0018));for(let j=0;j<n&&p+j<d.length;j++)d[p+j]+=a*(rn()-.5)*Math.exp(-j/(n*.35))}
- const kn=ac.createBufferSource();kn.buffer=buf;const bp=ac.createBiquadFilter();bp.type='bandpass';bp.frequency.value=2600;bp.Q.value=.5;const kg=ac.createGain();kg.gain.value=1.1;kn.connect(bp);bp.connect(kg);kg.connect(out);kn.start(T);
- // Klangfläche: leiser Akkord (neu B-Dur add9, alt A-Moll add9), leicht verstimmt, langsam ein- und ausgeblendet
- MEL.flaeche.forEach((f,i)=>[-3,3].forEach(c=>{const o=ac.createOscillator(),g=ac.createGain();o.type=i<2?'triangle':'sine';o.frequency.value=f;o.detune.value=c+i;g.gain.setValueAtTime(0,T);g.gain.linearRampToValueAtTime(.035/(1+i*.4),T+2.2);g.gain.linearRampToValueAtTime(0,T+L);o.connect(g);g.connect(out);o.start(T);o.stop(T+L+.1)}));
- // Glastöne, zeitlich passend zu den aufsteigenden Würfeln
- MEL.toene.forEach(([t,f])=>{if(t>dauer)return;[1,2.76].forEach((m,k)=>{const o=ac.createOscillator(),g=ac.createGain();o.type='sine';o.frequency.value=f*m;const t0=T+t;g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(k?.012:.05,t0+.008);g.gain.exponentialRampToValueAtTime(.0001,t0+(k?.6:2.2));o.connect(g);g.connect(out);o.start(t0);o.stop(t0+2.3)})});
- MUSIK.start=T;MUSIK.ende=()=>{try{const n=ac.currentTime;out.gain.cancelScheduledValues(n);out.gain.setValueAtTime(out.gain.value,n);out.gain.linearRampToValueAtTime(0,n+1.2);setTimeout(()=>{try{ac.close()}catch(_){}},1500)}catch(_){}};
- try{ac.resume()}catch(_){}return ac}
+ // Hüllkurve in Intro-Zeit (Punkte [t,v], linear) ab Versatz off auf den Parameter legen
+ const huelle=(pa,pts,T,n,off)=>{let v=pts[pts.length-1][1];for(let i=0;i<pts.length;i++){if(pts[i][0]>=off){v=i?pts[i-1][1]+(pts[i][1]-pts[i-1][1])*(off-pts[i-1][0])/(pts[i][0]-pts[i-1][0]):pts[0][1];break}}
+  pa.setValueAtTime(v,n);pts.forEach(([t,w])=>{if(t>off)pa.linearRampToValueAtTime(w,T+t)})};
+ let bus=null,quellen=[],w0=0,n0=0,zu=false;
+ const plane=()=>{if(zu||ac.state!=='running')return;const jetzt=performance.now();
+  if(bus&&Math.abs((jetzt-w0)/1000-(ac.currentTime-n0))<.15)return; // läuft synchron
+  if(bus){try{bus.disconnect()}catch(_){}quellen.forEach(q=>{try{q.stop()}catch(_){}})}
+  const n=ac.currentTime+.03,off=Math.max(0,Math.min(L,introZeit?introZeit():0)),T=n-off;w0=jetzt;n0=ac.currentTime;quellen=[];MUSIK.off=off;MUSIK.start=T;MUSIK.geplant=[];
+  bus=ac.createGain();bus.connect(lp);huelle(bus.gain,[[0,0],[1.2,.55],[dauer,.55],[L,0]],T,n,off);
+  const kn=ac.createBufferSource();kn.buffer=buf;const bp=ac.createBiquadFilter();bp.type='bandpass';bp.frequency.value=2600;bp.Q.value=.5;const kg=ac.createGain();kg.gain.value=1.1;kn.connect(bp);bp.connect(kg);kg.connect(bus);kn.start(n,off);quellen.push(kn);
+  // Klangfläche: leiser Akkord (neu B-Dur add9, alt A-Moll add9), leicht verstimmt, langsam ein- und ausgeblendet
+  MEL.flaeche.forEach((f,i)=>[-3,3].forEach(c=>{const o=ac.createOscillator(),g=ac.createGain();o.type=i<2?'triangle':'sine';o.frequency.value=f;o.detune.value=c+i;huelle(g.gain,[[0,0],[2.2,.035/(1+i*.4)],[L,0]],T,n,off);o.connect(g);g.connect(bus);o.start(n);o.stop(T+L+.1);quellen.push(o)}));
+  // Glastöne, zeitlich passend zu den aufsteigenden Würfeln; schon vergangene werden nicht nachgeholt
+  MEL.toene.forEach(([t,f])=>{if(t>dauer||t<off)return;MUSIK.geplant.push({t,at:T+t});[1,2.76].forEach((m,k)=>{const o=ac.createOscillator(),g=ac.createGain();o.type='sine';o.frequency.value=f*m;const t0=T+t;g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(k?.012:.05,t0+.008);g.gain.exponentialRampToValueAtTime(.0001,t0+(k?.6:2.2));o.connect(g);g.connect(bus);o.start(t0);o.stop(t0+2.3);quellen.push(o)})})};
+ MUSIK.plane=plane;ac.onstatechange=plane;
+ MUSIK.ende=()=>{if(zu)return;zu=true;try{if(!bus||ac.state!=='running'){ac.close();return}const n=ac.currentTime;bus.gain.cancelScheduledValues(n);bus.gain.setValueAtTime(bus.gain.value,n);bus.gain.linearRampToValueAtTime(0,n+F);setTimeout(()=>{try{ac.close()}catch(_){}},F*1000+300)}catch(_){}};
+ try{ac.resume().then(plane,()=>{})}catch(_){}plane();return ac}
 function introStart(){if(!introAn()||navigator.webdriver)return;
  const wrap=document.createElement('div'),cvI=document.createElement('canvas');wrap.id='intro';wrap.appendChild(cvI);
  wrap.insertAdjacentHTML('beforeend','<div class="it"><b>3Deep</b><span>Datenraum in 3D</span></div>');document.body.appendChild(wrap);
@@ -1464,9 +1477,10 @@ function introStart(){if(!introAn()||navigator.webdriver)return;
  let t0=null,ende=false;
  const fertig=()=>{if(ende)return;ende=true;wrap.classList.add('aus');if(MUSIK.ende){MUSIK.ende();MUSIK.ende=null}aktiv();setTimeout(()=>{wrap.remove();removeEventListener('resize',rs);INTRO.on=false;aktiv();const mq=INTRO.q;INTRO.q=[];mq.forEach(adapterNachricht)},1450)};
  INTRO.stop=fertig;wrap.addEventListener('click',fertig);
- if(musikAn()){const ac=introMusik(5);if(ac)setTimeout(()=>{if(ende||ac.state==='running')return;const bt=document.createElement('button');bt.className='ton';bt.textContent='♪ Ton an';bt.title='Musik einschalten (der Browser verlangt dafür einen Klick)';
-  bt.onclick=e=>{e.stopPropagation();ac.resume().then(()=>bt.remove(),()=>{})};wrap.appendChild(bt)},250)}
- const zeichne=t=>{const e=1-Math.pow(1-Math.min(1,t/5.6),2),C=[0,6+2.5*e,48-32*e],Y=.07*Math.sin(t*.55)-.04,P=.1-.035*e,
+ INTRO.zeit=()=>t0==null?0:(performance.now()-t0)/1000;
+ if(musikAn()){const ac=introMusik(INTRO_DAUER,INTRO.zeit);if(ac)setTimeout(()=>{if(ende||ac.state==='running')return;const bt=document.createElement('button');bt.className='ton';bt.textContent='♪ Ton an';bt.title='Musik einschalten (der Browser verlangt dafür einen Klick)';
+  bt.onclick=e=>{e.stopPropagation();ac.resume().then(()=>{bt.remove();if(MUSIK.plane)MUSIK.plane()},()=>{})};wrap.appendChild(bt)},250)}
+ const zeichne=t=>{const e=1-Math.pow(1-Math.min(1,t/(INTRO_DAUER+.6)),2),C=[0,6+2.5*e,48-32*e],Y=.07*Math.sin(t*.55)-.04,P=.1-.035*e,
    cy=Math.cos(Y),sy=Math.sin(Y),cp=Math.cos(P),sp=Math.sin(P),f=[-sy*cp,sp,-cy*cp],r=[cy,0,-sy],u=[sy*sp,cp,cy*sp],foc=h/2/Math.tan(35*Math.PI/180);
   const pr=(x,y,z)=>{const dx=x-C[0],dy=y-C[1],dz=z-C[2],zz=dx*f[0]+dy*f[1]+dz*f[2],k=foc/zz;return{x:w/2+(dx*r[0]+dy*r[1]+dz*r[2])*k,y:h/2-(dx*u[0]+dy*u[1]+dz*u[2])*k,z:zz}};
   const hy=Math.max(0,Math.min(h,h/2+foc*Math.tan(P)));
@@ -1497,7 +1511,7 @@ function introStart(){if(!introAn()||navigator.webdriver)return;
   g.restore();
   gr=g.createLinearGradient(0,hy-60,0,hy+40);gr.addColorStop(0,'rgba(225,236,250,0)');gr.addColorStop(.6,'rgba(232,241,252,.55)');gr.addColorStop(1,'rgba(225,236,250,0)');g.fillStyle=gr;g.fillRect(0,hy-60,w,100);
   list.forEach(o=>zb(o.b,o.d,false,1))};
- const lauf=now=>{if(!wrap.isConnected)return;requestAnimationFrame(lauf);if(t0==null)t0=now;const t=(now-t0)/1000;if(t>=5)fertig();zeichne(t)};requestAnimationFrame(lauf)}
+ const lauf=now=>{if(!wrap.isConnected)return;requestAnimationFrame(lauf);if(t0==null)t0=now;const t=(now-t0)/1000;if(t>=INTRO_DAUER)fertig();zeichne(t)};requestAnimationFrame(lauf)}
 addEventListener('keydown',e=>{if(e.key==='Escape'&&INTRO.on&&INTRO.stop)INTRO.stop()});
 leererRaum();requestAnimationFrame(frame);introStart();
 </script></body></html>
