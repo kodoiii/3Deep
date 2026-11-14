@@ -1,11 +1,11 @@
-/* 3Deep-Widget, Adapter Version 33.
+/* 3Deep-Widget, Adapter Version 34.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
    im Format der echten Schnittstellen-Antworten. */
 (function () {
   'use strict';
-  var DARSTELLUNG = '80';   // Version von datenraum3d.html; muss zu <meta name="3deep-darstellung"> dort passen (tests/test-gleichstand.js)
+  var DARSTELLUNG = '81';   // Version von datenraum3d.html; muss zu <meta name="3deep-darstellung"> dort passen (tests/test-gleichstand.js)
   var BKS = '/resources/v1/modeler/dsbks/dsbks:Bookmark';
   var ENG = '/resources/v1/modeler/dseng/dseng:EngItem';
   var DOC = '/resources/v1/modeler/documents';
@@ -36,7 +36,7 @@
     'ds6wg:EnterpriseExtension.V_PartNumber': 'Teilenummer', 'ds6w:responsible': 'Besitzer', 'ds6w:created': 'Erstellt', 'ds6w:modified': 'Geändert' };
   var zqVar = 0;
   var DOKREL = [{ rel: 'SpecificationDocument', art: 'spec' }, { rel: 'PLMDocConnection', art: 'praes' }, { rel: 'Reference Document', art: 'praes' }];
-  var S = { live: false, WAF: null, space: '', tenant: '', ctx: '', root: null, log: [], roh: {}, bereit: false, wartend: null,
+  var S = { foto: {}, fotoInfo: null, live: false, WAF: null, space: '', tenant: '', ctx: '', root: null, log: [], roh: {}, bereit: false, wartend: null,
     frame: null, viewerUrl: '', max: 1500, issCache: {}, issCacheZ: { treffer: 0, neu: 0 }, issCacheMs: 30 * 60 * 1000,
     cache: {}, cacheMs: 30 * 60 * 1000, cacheZ: { treffer: 0, neu: 0 }, stufen: [], lauf: 0, abbruch: false, vorn: '', zuletzt: null, nachladen: false, neuVerzug: 500, neuLaden: 0, laeuft: false, treffer: [], dateien: {}, csrf: '', cad: {}, cadTyp: {}, cadInfo: [], vorschau: {}, vorschauZahl: 0, vorschauInfo: null, vorschauTest: null };
 
@@ -105,7 +105,7 @@
   }
   function cacheLeeren() {
     var n = Object.keys(S.cache).length + Object.keys(S.issCache).length;
-    S.cache = {}; S.cacheZ = { treffer: 0, neu: 0 }; issueCacheLeeren(); return n;
+    S.cache = {}; S.foto = {}; S.cacheZ = { treffer: 0, neu: 0 }; issueCacheLeeren(); return n;
   }
   function cacheAufraeumen() {
     var jetzt = Date.now(), ks = Object.keys(S.cache);
@@ -154,6 +154,30 @@
       if (!e.ticketURL) throw new Error('keine Download-Adresse erhalten');
       return { url: e.ticketURL, name: e.fileName || (mehrere ? zipName : '') };
     }, function (e) { if (!zweiter) return ticket(docId, mehrere, zipName, true); throw e; });
+  }
+  // Adapter 34 (Wunsch des Nutzers): Attachments mit genau einer png/jpg-Datei als Foto in der Profilkarte (Darstellung: img + imgFoto, Rahmen 250–500 px).
+  // Die Bildadresse ist die Download-Adresse mit Ticket (gleicher Aufruf wie „Datei herunterladen“, auf der Plattform bestätigt; als Bildquelle vermutet).
+  // Geholt am Ende des Ladens für höchstens 40 Fotos, 4 gleichzeitig; die Darstellung lädt sie sofort vor, ein späterer Ablauf des Tickets stört dann nicht.
+  // Kein Laden beim Rechtsklick (wäre eine neue Ausnahme der Grundregel). Gemerkt je Dokument 10 min (S.foto).
+  var FOTO_MAX = 40, FOTO_MS = 10 * 60000;
+  function istFoto(n) {
+    var id = String(n.id || '').replace(/^[oz]:/, ''), inf = S.dateien[id];
+    return !!(n.dl && inf && inf.n === 1 && /\.(png|jpe?g)\s*$/i.test(String((n.meta || {}).Dateien || n.name || '')));
+  }
+  function fotosAnwenden(nodes) {
+    nodes.forEach(function (n) { var f = S.foto[String(n.id).replace(/^[oz]:/, '')]; if (f && f.u && istFoto(n)) { n.img = f.u; n.imgFoto = true; } });
+  }
+  async function fotosHolen(daten) {
+    var jetzt = Date.now(), alle = daten.nodes.filter(istFoto), offen = alle.filter(function (n) { var f = S.foto[String(n.id).replace(/^[oz]:/, '')]; return !f || jetzt - f.t >= Math.min(FOTO_MS, S.cacheMs); })   // S.cacheMs=0 (Test) = immer neu.slice(0, FOTO_MAX);
+    S.fotoInfo = { gesamt: alle.length, geholt: 0, fehler: 0, letzterFehler: '', bsp: '' };
+    if (!alle.length) return;
+    if (offen.length) fortschritt('Fotos (' + offen.length + ') …');
+    await pool(offen, 4, async function (n) {
+      if (S.abbruch) return; var id = String(n.id).replace(/^[oz]:/, '');
+      try { var t = await ticket(id, false, ''); S.foto[id] = { u: t.url, t: Date.now() }; S.fotoInfo.geholt++; if (!S.fotoInfo.bsp) S.fotoInfo.bsp = adrKurz(t.url); }
+      catch (e) { S.foto[id] = { u: '', t: Date.now() }; S.fotoInfo.fehler++; S.fotoInfo.letzterFehler = e.message; }
+    });
+    fotosAnwenden(daten.nodes);
   }
   // Ein abgelöstes Laden läuft noch kurz aus (S.abbruch): Downloads und Suchen warten so lange, sonst würden ihre Abfragen mit abgebrochen.
   function ruheWarten() { return S.abbruch && S.laufP ? S.laufP.then(function () { }, function () { }) : Promise.resolve(); }
@@ -1106,7 +1130,7 @@
           var m = d.members || {}, meta = { Titel: d.title || '', Name: d.name || '', Status: d.state || '', 'Priorität': d.Priority || d.priority || '', Beschreibung: d.description || '', Besitzer: d.owner || '',
             Zugewiesen: (m.assignees || []).join(', '), 'Geplantes Ende': datum(d['Estimated End Date']), 'Tatsächliches Ende': datum(d['Actual End Date']), 'Collaborative Space': d.collabSpace || d.collabspace || '', Typ: d.type || 'Issue', ID: iid };
           Object.keys(meta).forEach(function (k) { if (meta[k] === '') delete meta[k]; });
-          var n = { id: 'i:' + iid, type: 'issue', name: d.title || d.name || ('Issue ' + iid.slice(-6)), meta: meta }; if (d.state) n.state = zustand(d.state);
+          var n = { id: 'i:' + iid, type: 'issue', name: d.title || d.name || ('Issue ' + iid.slice(-6)), meta: meta, imgText: d.title || d.name || '' }; if (d.state) n.state = zustand(d.state);   // Adapter 34: Titel statt Vorschaubild
           issues[iid] = n; exKnoten.push(n); ziel[iid] = n.id;
           var doppelt = {}; bez.forEach(function (x) { if (!doppelt[x]) { doppelt[x] = 1; exKanten.push({ from: n.id, to: ziel[x], type: 'betrifft' }); } });
           (m.assignees || []).forEach(function (a) { var p = person(a); if (p) exKanten.push({ from: n.id, to: p, type: 'zuweisung' }); });
@@ -1228,6 +1252,7 @@
       });
       (exKnoten || []).forEach(function (n) { nodes.push(n); });
       var vk = {}, vz = 0; nodes.forEach(function (n) { var v = S.vorschau[String(n.id).replace(/^(o|z|i|t|p|bm):/, '')]; if (v) { n.img = v.u; vz++; vk[n.type] = (vk[n.type] || 0) + 1; } else delete n.img; });
+      fotosAnwenden(nodes);
       S.vorschauKnoten = vz + ' von ' + nodes.length + ' Objekten mit Bild' + (vz ? ' (' + Object.keys(vk).map(function (k) { return ((types[k] || {}).label || k) + ' ' + vk[k]; }).join(', ') + ')' : '');
       var vorhanden = {}; nodes.forEach(function (n) { vorhanden[n.id] = 1; });
       (exKanten || []).forEach(function (k) { if (vorhanden[k.from] && vorhanden[k.to]) edges.push(k); });
@@ -1376,6 +1401,8 @@
       else if (b.art === 'person') erg = await leseBookmark(null, null, { person: { id: b.id, name: b.title }, struktur: false });
       else erg = await leseBookmark(b.id, b.title || b.name || '');
       if (S.abbruch) throw new Error('abgebrochen');
+      await fotosHolen(erg.daten);
+      if (S.abbruch) throw new Error('abgebrochen');
       sende({ quelle: '3deep-adapter', daten: erg.daten, name: b.title || 'Daten', lauf: S.lauf, start: !S.zwischen, ergaenzen: S.zwischen, fertig: true });
       S.zwischen = true; S.gezeigt = S.lauf; S.letzte = erg.daten; S.vorn = '';
       letztesMerken(b);
@@ -1427,7 +1454,7 @@
     clearTimeout(S.neuUhr); laden({ drop: S.zuletzt, nach: true, frisch: true });
   }
   function diagnoseText() {
-    var z = ['3Deep-Widget Diagnose (Adapter 33, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
+    var z = ['3Deep-Widget Diagnose (Adapter 34, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
       '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-') + (S.ctxZahl ? ' (automatisch gewählt, ' + S.ctxZahl + ' verfügbar)' : ''), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), ''];
     z.push('Zuletzt geöffnet (gemerkt, wird beim Öffnen geladen): ' + (S.letztesGemerkt ? (S.letztesGemerkt.title || '-') + ' [' + S.letztesGemerkt.id + '], ' + (S.letztesGemerkt.art || 'bm') : '-'));
     if (S.stufen && S.stufen.length) {
@@ -1461,6 +1488,7 @@
     if (S.bmInfo && S.bmInfo.length) { z.push('', 'Bookmark-Ordner:'); S.bmInfo.forEach(function (c) { z.push('  ' + c); }); }
     if (S.zgInfo && S.zgInfo.length) { z.push('', 'Zeichnungen:'); S.zgInfo.forEach(function (c) { z.push('  ' + c); }); }
     if (S.dokInfo && S.dokInfo.length) { z.push('', 'Dokumente:'); S.dokInfo.forEach(function (c) { z.push('  ' + c); }); }
+    if (S.fotoInfo && S.fotoInfo.gesamt) { var fi = S.fotoInfo; z.push('', 'Fotos (Attachments png/jpg, Adapter 34):', '  ' + fi.gesamt + ' Fotos, ' + fi.geholt + ' Download-Tickets neu geholt' + (fi.gesamt > FOTO_MAX ? ', höchstens ' + FOTO_MAX : '') + (fi.fehler ? ', ' + fi.fehler + ' Fehler (zuletzt: ' + fi.letzterFehler + ')' : '')); if (fi.bsp) z.push('  Beispieladresse (Werte ausgeblendet): ' + fi.bsp); }
     if (S.vorschauInfo || S.vorschauTest) {
       var vi = S.vorschauInfo || { gesehen: {}, mit: 0, felder: {}, roh: {} }, vf = Object.keys(vi.felder);
       z.push('', 'Vorschaubilder (Feld aus getecosystem, keine eigene Abfrage):', '  getecosystem-Objekte: ' + Object.keys(vi.gesehen).length + ' gesehen, ' + vi.mit + ' mit Bildfeld' + (vf.length ? ' (' + vf.map(function (k) { return k + ': ' + vi.felder[k]; }).join(', ') + ')' : ''));
@@ -1675,6 +1703,10 @@
   function eref2(typ, i) { return { source: '$3DSpace', type: typ, identifier: i, relativePath: '/…/' + i }; }
   // Testmodus (Adapter 30): getecosystem-Antworten bekommen ein Bildfeld preview_url wie (laut Nutzer) auf der Plattform.
   // S.testVorschau: 'frei' (Voreinstellung, transparent), 'weiss' (fester weißer Hintergrund), 'kaputt' (Adresse lädt nicht), 'aus' (kein Feld)
+  function testFoto(fn) {
+    return 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="640" height="420" viewBox="0 0 640 420"><rect width="640" height="420" fill="#8a96a3"/><rect y="300" width="640" height="120" fill="#4a525b"/>' +
+      '<circle cx="300" cy="200" r="110" fill="#c9d0d6"/><circle cx="300" cy="200" r="36" fill="#3a4048"/><text x="14" y="405" font-family="sans-serif" font-size="18" fill="#fff">' + String(fn).replace(/[<&>]/g, '') + '</text></svg>');
+  }
   function testBild(id, weiss) {
     var h = 0; for (var i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
     var c = function (l) { return 'hsl(' + [210, 28, 192, 220][h % 4] + ',16%,' + l + '%)'; }, b = 20 + (h % 3) * 8;
@@ -1844,6 +1876,7 @@
         if ((m = pfad.match(/documents\/([^\/]+)\/files\/DownloadTicket$/))) {
           if (methode !== 'PUT') return nein(new Error('405'));
           var dd = TEST.doc[m[1]], fn = (((dd || {}).relateddata || {}).files || [{}])[0].dataelements; fn = (fn && fn.title) || 'Beispiel.txt';
+          if (/\.(png|jpe?g)$/i.test(fn)) { S.testFotoTickets = (S.testFotoTickets || 0) + 1; if (S.testFotoFehler) return nein(new Error('500')); return ja({ success: true, data: [{ id: m[1], dataelements: { ticketURL: testFoto(fn), fileName: fn } }] }); }   // Adapter 34
           return ja({ success: true, data: [{ id: m[1], dataelements: { ticketURL: 'data:text/plain;charset=utf-8,' + encodeURIComponent('Beispieldatei aus dem 3Deep-Testmodus: ' + fn), fileName: fn + '.txt' } }] });
         }
         if (pfad === ISS + '/search') { var st = String(p.$searchStr || '*').toLowerCase().replace(/\*/g, ''); var ii = Object.keys(TEST.iss).filter(function (k) { return !st || (TEST.iss[k].title + ' ' + TEST.iss[k].name).toLowerCase().indexOf(st) >= 0; }).map(function (k) { return eref2('Issue', k); }); return ja({ issue: seite(ii) }); }

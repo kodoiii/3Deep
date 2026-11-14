@@ -2,7 +2,7 @@
 <html lang="de"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>3Deep – Datenraum in 3D</title>
-<meta name="3deep-darstellung" content="80">
+<meta name="3deep-darstellung" content="81">
 <style>
 :root{--fg:#e6edf3;--panel:rgba(15,22,41,.86);--mut:#9fb0c4}
 html,body{margin:0;height:100%;background:linear-gradient(180deg,#d4ecff 0%,#93c3ea 55%,#5088c0 100%) fixed;color:var(--fg);font:13px/1.4 system-ui,sans-serif;overflow:hidden}
@@ -13,6 +13,7 @@ canvas{position:fixed;inset:0;display:block;width:100%;height:100%}
 #rc.zu{pointer-events:none}#rc.zu>*{pointer-events:auto}#rc.zu #ui{display:none}#rc.zu #rco{display:block}
 #prof{position:fixed;display:none;z-index:20;width:340px;max-height:calc(100% - 16px);overflow:auto;background:var(--panel);border-radius:10px;padding:10px 14px;box-shadow:0 6px 24px rgba(0,0,0,.45);font-size:12px}#prof h1{font-size:15px;margin:0 0 2px}
 #profb{position:fixed;display:none;z-index:21;pointer-events:none;filter:drop-shadow(0 6px 9px rgba(0,0,0,.55));opacity:0;transform:scale(.9);transform-origin:100% 100%;transition:opacity .35s,transform .35s}#profb.da{opacity:1;transform:none}
+#proft{position:fixed;display:none;z-index:21;pointer-events:none;box-sizing:border-box;width:max-content;max-width:280px;padding:10px 14px;background:#fff8e6;color:#1a2433;border-radius:8px;font:600 15px/1.35 system-ui,sans-serif;white-space:pre-wrap;overflow-wrap:anywhere;box-shadow:0 6px 18px rgba(0,0,0,.45);opacity:0;transform:scale(.9);transform-origin:100% 100%;transition:opacity .35s,transform .35s}#proft.da{opacity:1;transform:none}
 .pn h1{font-size:14px;margin:0 0 6px}
 #ui label.s{display:block;margin-top:8px;color:var(--mut)}
 #ui input[type=range]{width:100%}
@@ -89,13 +90,13 @@ html{--lg:#0e2a4a;--lgh:rgba(255,255,255,.85)}html.space{--lg:#dbe7ff;--lgh:rgba
 <label class="s">Neuzeichnen<select id="es"><option value="max" selected>Maximal: im Stillstand kein Neuzeichnen</option><option value="auto">Automatisch: im Stillstand 15 Bilder/s</option><option value="aus">Aus: immer volle Bildrate</option></select></label>
 <label style="display:block;margin-top:8px"><input type="checkbox" id="introan" checked> Intro beim Start zeigen</label>
 </details>
-<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 80</div>
+<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 81</div>
 </div>
 <div id="det" class="pn"></div></div>
 <div id="dcap"></div><div id="dfade" style="position:fixed;inset:0;background:#0b1424;opacity:0;pointer-events:none;transition:opacity .6s;z-index:14"></div><div id="cross"></div><div id="info"></div>
 <div id="legend" class="tr"><div class="m">Typen ein-/ausblenden:</div><div id="leg"></div><div class="m" style="margin-top:8px" id="lgst">Reifegrad:</div><div id="lgz"><div class="lg" style="cursor:default">◌ In Work: pulsierende Ringe</div><div class="lg" style="cursor:default">❄ Frozen: Eis und Reif</div><div class="lg" style="cursor:default">✦ Released: Funkeln</div><div class="lg" style="cursor:default"><span id="lgob">✚ Obsolete: Spinnweben, Staub</span></div><div class="lg" style="cursor:default">☐ To do: kreisender Rahmen</div></div></div>
 <div id="hint" class="tr">Klick ins Leere = Maussteuerung (Esc beendet) · Klick auf Kugel = Auswahl<br>WASD bewegen · Leertaste/E hoch · Q/C runter · Shift schnell · H = Startansicht · M = Bedienfeld ein-/ausklappen<br>Alternativ: Maus ziehen zum Umsehen</div>
-<div id="prof"></div><img id="profb" alt="">
+<div id="prof"></div><img id="profb" alt=""><div id="proft"></div>
 <script>
 onerror=m=>{document.body.insertAdjacentHTML('beforeend','<pre style="position:fixed;top:0;left:270px;background:#fff;color:#b00;padding:6px;z-index:9">'+m+'</pre>')};
 const HEX=/^#[0-9a-f]{6}$/i,$=id=>document.getElementById(id);
@@ -134,6 +135,9 @@ function demoData(){s=7;
  {const p=nodes.find(n=>n.name==='Temperatursensor P-1041'),b=nodes.find(n=>n.name==='Bremsanlage vorn');link(p.id,b.id,'struktur');p.meta.Verwendung='Gleichteil: Leistungselektronik und Bremsanlage vorn'} // Gleichteil in zwei Baugruppen (Demo: Struktur aufwärts)
  // Attachments auch an Baugruppen (hängen wie Spezifikationen am Produkt); ohne rnd(), damit die übrige Zufallsfolge gleich bleibt
  [['Fahrwerk','Design Review Fahrwerk'],['Elektroantrieb','Projektstatus Elektroantrieb'],['Hochvoltbatterie','Sicherheitskonzept Hochvoltbatterie'],['Interieur','Design Review Interieur'],['Leistungselektronik','Kostenanalyse Leistungselektronik'],['Zellmodule','Lieferantenvergleich Zellmodule']].forEach(([b,t])=>{const a=nodes.find(n=>n.type==='asm'&&n.name===b);link(add('ppt',t+'.pptx',{Dateityp:'PowerPoint'}),a.id,'praes')});
+ // Version 81: Foto-Attachments (png/jpg) mit Bild im Rahmen 250–500 px; Issues zeigen ihren Titel statt eines Vorschaubilds (ohne rnd())
+ [['Bremsanlage vorn','Foto Prüfstand Bremsscheibe.jpg',640,420],['Zellmodule','Foto Kühlplatte Anschluss.png',200,160],['Zentraldisplay','Foto Kältetest Display.jpg',900,600]].forEach(([b,t,w,h])=>{const a=nodes.find(n=>n.type==='asm'&&n.name===b),id=add('ppt',t,{Dateityp:/png$/.test(t)?'PNG-Bild':'JPEG-Bild'}),o=nodes.find(n=>n.id===id);o.img=foto(t,w,h);o.imgFoto=true;link(id,a.id,'praes')});
+ nodes.forEach(n=>{if(n.type==='issue')n.imgText=n.meta.Beschreibung});
  let ti=0;nodes.forEach(n=>{delete n.meta.Status;if(n.type==='person')return;const x=rnd();n.state=(n.type==='task'||n.type==='issue')?['To do','In Work','To do','Released','To do','In Work'][ti++%6]:(x<.3?'In Work':x<.55?'Frozen':x<.93?'Released':'Obsolete')});
  {const ob=nodes.filter(n=>n.state==='Obsolete');ob.forEach((n,i)=>{if(i>0&&i<ob.length-1)n.state='Released'})}
  anreichern(nodes);return{types,relTypes,nodes,edges,spacing:9.408,maxObjects:nodes.length}}
@@ -178,7 +182,7 @@ function ladeDaten(d){CUR=d;$('legend').style.display='';AX=null;AXO=null;ST_T=d
  T={};Object.keys(d.types||{}).forEach(k=>{const t=d.types[k]||{};T[k]={c:HEX.test(t.color)?t.color:'#9aa5b1',d:+t.size>0?+t.size:1,l:t.label||k,shape:t.shape,layer:t.layer,role:t.role,gem:t.gem,cut:t.cut}});
  RT=d.relTypes||{};const nn=[],ee=[],idx={};
  (d.nodes||[]).forEach(o=>{if(o.id==null)return;if(!T[o.type])T[o.type]={c:'#9aa5b1',d:1,l:String(o.type)};const t=T[o.type];
-  idx[o.id]=nn.length;nn.push({i:nn.length,key:String(o.id),n:String(o.name!=null?o.name:o.id),t:o.type,meta:o.meta||{},dl:!!o.dl,img:bildAdr(o.img),r:(+o.size>0?+o.size:t.d)/2,sf:+o.size>0?Math.max(.35,Math.min(3,+o.size/t.d)):1,adj:[],shape:t.shape,sh:SHAPES[t.shape]||null,state:zust(o.state||o.maturity),stateL:String(o.state||o.maturity||''),empty:Array.isArray(o.empty)?o.empty:[],rgb:hx(t.c),c0:mix(t.c,255,.55),c1:t.c,c2:mix(t.c,0,.45)})});
+  idx[o.id]=nn.length;nn.push({i:nn.length,key:String(o.id),n:String(o.name!=null?o.name:o.id),t:o.type,meta:o.meta||{},dl:!!o.dl,img:vorlade(bildAdr(o.img),o.imgFoto),imgFoto:!!o.imgFoto,imgText:typeof o.imgText==='string'?o.imgText.trim().slice(0,500):'',r:(+o.size>0?+o.size:t.d)/2,sf:+o.size>0?Math.max(.35,Math.min(3,+o.size/t.d)):1,adj:[],shape:t.shape,sh:SHAPES[t.shape]||null,state:zust(o.state||o.maturity),stateL:String(o.state||o.maturity||''),empty:Array.isArray(o.empty)?o.empty:[],rgb:hx(t.c),c0:mix(t.c,255,.55),c1:t.c,c2:mix(t.c,0,.45)})});
  if(!nn.length)throw new Error('Keine Knoten (nodes) gefunden');if(astro)themeAstro(nn);else if(kris)themeKristall(nn);
  (d.edges||[]).forEach(o=>{const a=idx[o.from],b=idx[o.to];if(a==null||b==null||a===b)return;const rt=RT[o.type]||{},c=HEX.test(rt.color)?rt.color:'#2f3f5c';
   const e={a,b,dir:o.directed!=null?!!o.directed:!!rt.directed,type:o.type||'',lbl:String(o.label||rt.label||o.type||'Link'),meta:o.meta||{},c,c2:mix(c,0,.4),cl:mix(c,255,.55)};ee.push(e);nn[a].adj.push({e,o:b});nn[b].adj.push({e,o:a})});
@@ -189,7 +193,7 @@ function ladeDaten(d){CUR=d;$('legend').style.display='';AX=null;AXO=null;ST_T=d
  RAD=Math.max(20,...N.map(n=>Math.hypot(n.x,n.y,n.z)));N.forEach(n=>{n.kx=n.x;n.ky=n.y;n.kz=n.z;n.tx=n.x;n.ty=n.y;n.tz=n.z});$('lay').value='kraft';animL=false;space=astro;LBL=[];document.documentElement.classList.toggle('space',space);
  hidden.clear();hiddenR.clear();waehle(null);fuelleAttr();fuelleAchsen(d);zustLeg();$('lgst').style.display=$('lgz').style.display=''; // Kristall: eigene Reifegrad-Texte (Version 78)
  fuelleRel();$('q').value='';$('res').innerHTML='';
- $('rm').max=Math.max(200,n_);$('rm').value=Math.min(d.maxObjects||200,n_);needHome=true;CH=(d.chains||[]).concat(GEN);LAYERS=d.layers||null;tr=null;$('kres').innerHTML='';$('klt').textContent=[...new Set(E.map(e=>e.type))].filter(Boolean).join(', ');fuelleChains(null);orient=d.orient||orient;$('or').value=orient;if(d.layout){const dl=d.layout==='sonne'?'baum':d.layout;$('lay').value=dl;setLayout(dl,false)}
+ $('rm').max=Math.max(200,n_);$('rm').value=Math.min(d.maxObjects||200,n_);needHome=true;CH=(d.chains||[]).concat(GEN);LAYERS=d.layers||null;tr=null;$('kres').innerHTML='';$('klt').textContent=[...new Set(E.map(e=>e.type))].filter(Boolean).join(', ');fuelleChains(null);orient=d.orient||(d.layout==='baum'||d.layout==='sonne'?'v':orient);$('or').value=orient;if(d.layout){const dl=d.layout==='sonne'?'baum':d.layout;$('lay').value=dl;setLayout(dl,false)}
  const cnt={};N.forEach(n=>cnt[n.t]=(cnt[n.t]||0)+1);
  $('leg').innerHTML=Object.keys(cnt).map(k=>`<label class="lg"><input type="checkbox" checked data-k="${esc(k)}"><span class="dot" style="background:${T[k].c}${T[k].shape==='dodecahedron'?';border-radius:0;clip-path:polygon(50% 0,100% 38%,82% 100%,18% 100%,0 38%)':''}${T[k].shape==='box'||T[k].shape==='book'?';border-radius:2px':''}${T[k].shape==='folder'?';border-radius:1px 4px 2px 2px':''}${T[k].shape==='torus'?';background:radial-gradient(circle,transparent 28%,'+T[k].c+' 32%)':''}"></span>${esc(T[k].l)} (${cnt[k]})</label>`).join('')}
 // ---------- Dodekaeder + Layout-Varianten ----------
@@ -393,7 +397,7 @@ function baum(){const n_=N.length,par=new Array(n_).fill(-2),roots=wurzeln(par,n
 function setLayout(m,anim){LBL=[];if(m!=='achsen'){AX=null;AXO=null}$('axui').style.display=m==='achsen'?'block':'none';if(!N.length)return; // leerer Raum (Version 75)
  let P=m==='achsen'?achsenLayout():m==='schicht'?schichten():m==='reife'?reife():m==='rflp'?rflp():m==='baum'?baum():m==='attr'?attrLayout():N.map(n=>[n.kx,n.ky,n.kz]);if(orient==='h'&&m==='baum')P=P.map(p=>[-p[1],p[0],p[2]]);space=astro;document.documentElement.classList.toggle('space',space);
  N.forEach((n,i)=>{n.tx=P[i][0];n.ty=P[i][1];n.tz=P[i][2];if(!anim){n.x=n.tx;n.y=n.ty;n.z=n.tz;n.va=(!AXO||AXO.has(n.i))&&(!DMO||DMO.has(n.i))?1:0}});animL=!!anim;if(anim)home(false)}
-$('lay').onchange=e=>setLayout(e.target.value,true);
+$('lay').onchange=e=>{if(e.target.value==='baum'){orient='v';$('or').value='v'}setLayout(e.target.value,true)}; // Version 81: Baum immer vertikal (Wunsch des Nutzers), Ausrichtung danach frei änderbar
 $('at').onchange=()=>{$('lay').value='attr';setLayout('attr',true)};
 $('or').onchange=e=>{orient=e.target.value;setLayout($('lay').value,true)};
 // ---------- CSV-Import (Bookmark-Editor-Export aus der 3DEXPERIENCE) ----------
@@ -510,8 +514,19 @@ function anreichern(nodes){ // fiktive Stammdaten für die Demo-Datenräume (Pro
   else if(n.type==='pdf'||n.type==='ppt'||n.type==='dwg'){R(990);R(60); /* früher Dateigröße und Seiten (weggelassen, Zufallsfolge bleibt) */put('Format',n.type==='dwg'?'A'+(R(4)):n.type==='ppt'?'16:9':'A4');put('Check-in',dt())}
   else{put('Aufwand',(1+R(40))+' h');put('Kategorie',pk(['Technik','Qualität','Einkauf','Dokumentation']));put('Priorität',pk(['Hoch','Mittel','Niedrig']))}});s=sv}
 // Vorschaubilder (Version 72): Knotenfeld img = Bildadresse (https:, data:image/, blob: oder relativ). Die Profilkarte zeigt es freigestellt daneben.
+// Fotos (imgFoto, Version 81) gleich beim Eintreffen der Daten laden: Adressen mit Download-Ticket können später ablaufen, das Bild bleibt im Browser.
+const VORL=new Map(),vorlade=(u,foto)=>{if(u&&foto&&!VORL.has(u)){const i=new Image();i.src=u;VORL.set(u,i)}return u};
 const bildAdr=u=>{if(typeof u!=='string')return'';u=u.trim();return u&&(/^(https?:|data:image\/|blob:)/i.test(u)||!/^[a-z][a-z0-9+.-]*:/i.test(u))?u:''};
 // Demo-Datenräume: erzeugte Skizzen (isometrisch, SVG, transparenter Hintergrund), fest je Name; nutzt nicht rnd(), die Demos bleiben unverändert
+// Demo-Foto (SVG, fest je Name): Werkstatt-Szene mit Bauteil, Maßstab und Bildunterschrift
+function foto(name,w,h){let x=2166136261;for(const ch of String(name))x=Math.imul(x^ch.charCodeAt(0),16777619)>>>0;const r=k=>((x>>>k)&255)/255,hu=Math.round(190+40*r(3)),cx=w*(.4+.2*r(5)),cy=h*.55,rr=Math.min(w,h)*(.24+.08*r(9));
+ const t=String(name).replace(/^Foto /,'').replace(/\.(png|jpe?g)$/i,'').replace(/[<&>]/g,'');
+ const svg=`<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}' viewBox='0 0 ${w} ${h}'><defs><linearGradient id='b' x2='0' y2='1'><stop offset='0' stop-color='hsl(${hu},18%,78%)'/><stop offset='1' stop-color='hsl(${hu},12%,42%)'/></linearGradient><radialGradient id='m' cx='.35' cy='.3'><stop offset='0' stop-color='#f4f6f8'/><stop offset='.6' stop-color='#9aa3ad'/><stop offset='1' stop-color='#4b535c'/></radialGradient></defs>`+
+  `<rect width='${w}' height='${h}' fill='url(#b)'/><rect y='${h*.72}' width='${w}' height='${h*.28}' fill='hsl(${hu},8%,30%)'/><ellipse cx='${cx}' cy='${cy+rr*.95}' rx='${rr*1.2}' ry='${rr*.22}' fill='rgba(0,0,0,.35)'/>`+
+  `<circle cx='${cx}' cy='${cy}' r='${rr}' fill='url(#m)'/><circle cx='${cx}' cy='${cy}' r='${rr*.32}' fill='#3a4048'/>`+[0,1,2,3,4].map(k=>{const a=k*1.2566;return`<circle cx='${cx+Math.cos(a)*rr*.62}' cy='${cy+Math.sin(a)*rr*.62}' r='${rr*.07}' fill='#2a2f35'/>`}).join('')+
+  `<rect x='${w*.72}' y='${h*.2}' width='${w*.05}' height='${h*.5}' fill='#e8d34a'/>`+[0,1,2,3,4].map(k=>`<rect x='${w*.72}' y='${h*.2+k*h*.1}' width='${w*.05}' height='${h*.05}' fill='#222'/>`).join('')+
+  `<rect x='0' y='${h-30}' width='${w}' height='30' fill='rgba(0,0,0,.55)'/><text x='12' y='${h-10}' font-family='sans-serif' font-size='15' fill='#fff'>${t}</text></svg>`;
+ return 'data:image/svg+xml,'+encodeURIComponent(svg)}
 function skizze(name,asm){let h=2166136261;for(const ch of String(name))h=Math.imul(h^ch.charCodeAt(0),16777619)>>>0;
  const r=()=>{h^=h<<13;h>>>=0;h^=h>>>17;h^=h<<5;h>>>=0;return h/4294967296};r();r();
  const hue=[212,200,26,218,188,38][Math.floor(r()*6)],sat=Math.round(asm?10+r()*10:8+r()*20),C=l=>`hsl(${hue},${sat}%,${Math.round(l)}%)`;
@@ -827,13 +842,15 @@ function zeigeProfil(n,x,y){profN=n;const el=$('prof'),A=profilAttr(n);
 // Vorschaubild (Version 72, seit 73 doppelte Fläche: Seiten × √2, höchstens 45 % der Fensterhöhe/-breite): lädt nebenher, die Karte wartet nicht; schwebt freigestellt links oben an der Karte (zu wenig Platz: rechts). Fehler = kein Bild.
 let profImg=null;
 const istBaugruppe=n=>/assembly|baugruppe|\basm\b/i.test(n.t+' '+((T[n.t]||{}).l||'')); // Baugruppen: Vorschaubild genau doppelte Originalgröße, also √2 × Einzelteilbild (80)
-function profBild(n){const b=$('profb');b.classList.remove('da');b.style.display='none';b.dataset.u='';profImg=null;const u=n&&n.img;if(!u||n.imgFehl)return;
- const im=new Image();profImg=im;im.onload=()=>{if(profImg!==im||profN!==n||!im.naturalWidth)return;const f0=Math.min(1,170/im.naturalWidth,150/im.naturalHeight)*(istBaugruppe(n)?2:Math.SQRT2),f=f0*Math.min(1,.45*innerHeight/(im.naturalHeight*f0),.45*innerWidth/(im.naturalWidth*f0)),bw=Math.round(im.naturalWidth*f),bh=Math.round(im.naturalHeight*f);
+function profBild(n){const b=$('profb'),tx=$('proft');b.classList.remove('da');b.style.display='none';b.dataset.u='';tx.classList.remove('da');tx.style.display='none';tx.dataset.u='';profImg=null;
+ if(n&&n.imgText){tx.textContent=n.imgText;tx.dataset.u='t:'+n.imgText;tx.style.display='block';profBildLage();requestAnimationFrame(()=>requestAnimationFrame(()=>{if(tx.dataset.u==='t:'+n.imgText)tx.classList.add('da')}));return} // Version 81: Text (z. B. Issue-Titel) statt Bild
+ const u=n&&n.img;if(!u||n.imgFehl)return;
+ const im=new Image();profImg=im;im.onload=()=>{if(profImg!==im||profN!==n||!im.naturalWidth)return;const L=Math.max(im.naturalWidth,im.naturalHeight),f0=n.imgFoto?(L>500?500/L:L<250?250/L:1):Math.min(1,170/im.naturalWidth,150/im.naturalHeight)*(istBaugruppe(n)?2:Math.SQRT2),gw=n.imgFoto?.8:.45,f=f0*Math.min(1,gw*innerHeight/(im.naturalHeight*f0),gw*innerWidth/(im.naturalWidth*f0)),bw=Math.round(im.naturalWidth*f),bh=Math.round(im.naturalHeight*f);
   b.style.width=bw+'px';b.style.height=bh+'px';b.src=u;b.dataset.u=u;profBildLage();b.style.display='block';requestAnimationFrame(()=>requestAnimationFrame(()=>{if(profImg===im)b.classList.add('da')}))};
  im.onerror=()=>{if(n)n.imgFehl=1};im.src=u}
-function profBildLage(){const b=$('profb'),k=$('prof').getBoundingClientRect(),bw=parseFloat(b.style.width)||0,bh=parseFloat(b.style.height)||0;
+function profBildLage(){const t=$('proft'),b=t.style.display==='block'?t:$('profb'),k=$('prof').getBoundingClientRect(),bw=b===t?t.offsetWidth:parseFloat(b.style.width)||0,bh=b===t?t.offsetHeight:parseFloat(b.style.height)||0;
  let x=k.left+18-bw,ri=x<4;if(ri)x=Math.min(innerWidth-bw-4,k.right-18);b.style.transformOrigin=ri?'0 100%':'100% 100%';b.style.left=x+'px';b.style.top=Math.max(4,k.top+34-bh)+'px'}
-function schliesseProfil(){profN=null;profImg=null;$('prof').style.display='none';const b=$('profb');b.classList.remove('da');b.style.display='none'}
+function schliesseProfil(){profN=null;profImg=null;$('prof').style.display='none';const b=$('profb');b.classList.remove('da');b.style.display='none';const t=$('proft');t.classList.remove('da');t.style.display='none';t.dataset.u=''}
 function waehleE(e){sel=null;selE=e;tr=null;$('kres').innerHTML='';const A=N[e.a],B=N[e.b],rows=Object.keys(e.meta).map(k=>`<tr><td class="m">${esc(k)}</td><td>${esc(e.meta[k])}</td></tr>`).join('');
  $('det').innerHTML=`<button id="x" style="float:right">✕</button><h1>${esc(e.lbl)}</h1><div class="m">Link-Typ${e.type?' · '+esc(e.type):''}</div><div style="margin:8px 0"><div class="item" data-i="${A.i}">${esc(A.n)} <span class="m">${esc(T[A.t].l)}</span></div><div class="m" style="padding-left:5px">${e.dir?'↓':'–'}</div><div class="item" data-i="${B.i}">${esc(B.n)} <span class="m">${esc(T[B.t].l)}</span></div></div><table>${rows}</table>`;$('det').style.display='block'}
 function home(sofort,menge){if(AX&&AXO&&!menge&&$('lay').value==='achsen'){if(W<50||H<50)return;return homeAchsen(sofort)}const vs=N.filter(n=>!hidden.has(n.t)&&(!menge||menge.has(n.i)));if(!vs.length||W<50||H<50)return;let cx=0,cy=0,cz=0;vs.forEach(n=>{cx+=n.tx;cy+=n.ty;cz+=n.tz});cx/=vs.length;cy/=vs.length;cz/=vs.length;CEN=[cx,cy,cz];
@@ -1108,7 +1125,7 @@ function ergaenzeDaten(d,fertig){
  needHome=false;if(AUF.eigen||selK){cam.x=c0.x;cam.y=c0.y;cam.z=c0.z;yaw=c0.yaw;pitch=c0.pitch}else home(false);
  if(selK){const n=N.find(x=>x.key===selK);if(n){waehle(n,false);if(hatTr){if([...$('kpre').options].some(o=>o.value===kpT))$('kpre').value=kpT;$('kin').value=kinT;analysiere()}}}
  if(qT){$('q').value=qT;suche()}
- if(profN){const p=N.find(x=>x.key===profN.key);if(!p)schliesseProfil();else{profN=p;if(p.img&&$('profb').dataset.u!==p.img)profBild(p)}}}
+ if(profN){const p=N.find(x=>x.key===profN.key);if(!p)schliesseProfil();else{profN=p;if(p.imgText?$('proft').dataset.u!=='t:'+p.imgText:(p.img&&$('profb').dataset.u!==p.img))profBild(p)}}}
 // ---------- Einbettung (Version 65): Daten vom 3Deep-Widget-Adapter per postMessage ----------
 function setzeSteuerung(v){v=v==='game'||v==='wasd'?'game':'catia';$('ctl').value=v;$('ctl').onchange({target:{value:v}})}
 addEventListener('message',e=>{const m=e.data;if(!m||m.quelle!=='3deep-adapter'||e.source!==parent)return;if(INTRO.on)INTRO.q.push(m);else adapterNachricht(m)});
