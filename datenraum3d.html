@@ -2,7 +2,7 @@
 <html lang="de"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>3Deep – Datenraum in 3D</title>
-<meta name="3deep-darstellung" content="82">
+<meta name="3deep-darstellung" content="83">
 <style>
 :root{--fg:#e6edf3;--panel:rgba(15,22,41,.86);--mut:#9fb0c4}
 html,body{margin:0;height:100%;background:linear-gradient(180deg,#d4ecff 0%,#93c3ea 55%,#5088c0 100%) fixed;color:var(--fg);font:13px/1.4 system-ui,sans-serif;overflow:hidden}
@@ -90,7 +90,7 @@ html{--lg:#0e2a4a;--lgh:rgba(255,255,255,.85)}html.space{--lg:#dbe7ff;--lgh:rgba
 <label class="s">Neuzeichnen<select id="es"><option value="max" selected>Maximal: im Stillstand kein Neuzeichnen</option><option value="auto">Automatisch: im Stillstand 15 Bilder/s</option><option value="aus">Aus: immer volle Bildrate</option></select></label>
 <label style="display:block;margin-top:8px"><input type="checkbox" id="introan" checked> Intro beim Start zeigen</label>
 </details>
-<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 82</div>
+<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 83</div>
 </div>
 <div id="det" class="pn"></div></div>
 <div id="dcap"></div><div id="dfade" style="position:fixed;inset:0;background:#0b1424;opacity:0;pointer-events:none;transition:opacity .6s;z-index:14"></div><div id="cross"></div><div id="info"></div>
@@ -395,10 +395,12 @@ function baum(){const n_=N.length,par=new Array(n_).fill(-2),roots=wurzeln(par,n
  const place=(i,x,z,d)=>{if(i<n_){P[i]=[x,-d*dy,z];dm=Math.max(dm,d)}ch[i].forEach((c,j)=>place(c,x+off[i][j][0],z+off[i][j][1],i<n_?d+1:0))};
  place(V,0,0,0);P.forEach(p=>p[1]+=dm*dy/2);return sep(P)}
 // Version 82: Ausrichtung „Automatisch“ (Wunsch des Nutzers): bei Layoutwahl, Wechsel der Ausrichtung und neuen Daten beide Ausrichtungen rechnen und die nehmen,
-// bei der die Objekte im sichtbaren Bereich (Fenster/iFrame ohne Bedienfeld) größer erscheinen. Beim Ändern der Fenstergröße und beim schrittweisen Ergänzen nicht neu (fest).
+// bei der die Objekte in der Startansicht größer erscheinen (Version 83: gleiche Rechnung wie home(), inkl. Tiefe). Beim Ändern der Fenstergröße und beim schrittweisen Ergänzen nicht neu (fest).
 const ORI_LAY=['schicht','reife','rflp','baum'];
-function oriMass(P){let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;P.forEach(p=>{if(!isFinite(p[0])||!isFinite(p[1]))return;x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1])});
- const w=Math.max(100,(W||innerWidth)-($('rc').classList.contains('zu')?0:316)),h=Math.max(100,H||innerHeight);return Math.min(w/(x1-x0+2*MAXD),h/(y1-y0+2*MAXD))}
+function oriMass(P){ // wie home(): Kameradistanz der Startansicht für diese Lage; kleinere Distanz = Objekte erscheinen größer (Version 83)
+ const vs=N.filter(n=>!hidden.has(n.t)&&P[n.i]&&isFinite(P[n.i][0]));if(!vs.length)return 0;const w=Math.max(100,W||innerWidth),h=Math.max(100,H||innerHeight);let cx=0,cy=0,cz=0;vs.forEach(n=>{const p=P[n.i];cx+=p[0];cy+=p[1];cz+=p[2]});cx/=vs.length;cy/=vs.length;cz/=vs.length;
+ let Rb=0,ex=0,ey=0,ez=0;vs.forEach(n=>{const p=P[n.i],dx=p[0]-cx,dy=p[1]-cy,dz=p[2]-cz;Rb=Math.max(Rb,Math.hypot(dx,dy,dz)+n.r);ex=Math.max(ex,Math.abs(dx)+n.r);ey=Math.max(ey,Math.abs(dy)+n.r);ez=Math.max(ez,Math.abs(dz)+n.r)});
+ const tv=Math.tan(35*Math.PI/180),hf=Math.min(35*Math.PI/180,Math.atan(tv*w/h)),d=Math.min(Rb/Math.sin(hf)*1.08+2,Math.max(ex/(tv*w/h),ey*1.1/tv)*1.04+ez+2);return 1/d}
 function setLayout(m,anim,fest){LBL=[];if(m!=='achsen'){AX=null;AXO=null}$('axui').style.display=m==='achsen'?'block':'none';if(!N.length)return; // leerer Raum (Version 75)
  const rech=()=>{const Q=m==='achsen'?achsenLayout():m==='schicht'?schichten():m==='reife'?reife():m==='rflp'?rflp():m==='baum'?baum():m==='attr'?attrLayout():N.map(n=>[n.kx,n.ky,n.kz]);return orient==='h'&&m==='baum'?Q.map(p=>[-p[1],p[0],p[2]]):Q};let P;
  if(orientAuto&&!fest&&ORI_LAY.includes(m)){orient='h';LBL=[];const Ph=rech(),Lh=LBL;orient='v';LBL=[];const Pv=rech(),Lv=LBL,mh=oriMass(Ph),mv=oriMass(Pv);ORI_INFO={h:mh,v:mv};if(mh>mv){orient='h';P=Ph;LBL=Lh}else{P=Pv;LBL=Lv}}
