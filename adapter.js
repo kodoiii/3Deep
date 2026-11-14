@@ -1,4 +1,4 @@
-/* 3Deep-Widget, Adapter Version 38.
+/* 3Deep-Widget, Adapter Version 39.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
@@ -836,29 +836,83 @@
     knoten({ id: pid, type: 'projekt', name: pe.title || pe.name || b.name || 'Projekt', start: isoTag(pe.estimatedStartDate || pe.actualStartDate), end: isoTag(pe.estimatedFinishDate || pe.dueDate || pe.actualFinishDate),
       progress: prozent(pe.percentComplete), state: pe.state || pe.status || '',
       meta: ohneLeere({ Name: pe.name, Beschreibung: pe.description, Status: pe.state, 'Ist-Start': isoTag(pe.actualStartDate), 'Ist-Ende': isoTag(pe.actualFinishDate), Typ: pe.nlsType || p.type || 'Project Space', 'Collaborative Space': pe.project, 'Geändert': datum(pe.modified), ID: pid }) });
-    var tl = liste(prd.tasks), weg = 'projects/{id}';
+    // Adapter 39 (Rückmeldung des Nutzers: projects/{id} liefert auf der Plattform nur die oberste Ebene, also Phasen und Gates, nicht die Tasks darin).
+    // Tasks werden deshalb aus mehreren Quellen gesammelt: (a) projects/{id}, auch verschachtelt unter den Tasks; (b) fehlen Kinder: tasks/{id} je Phase/Sammel-Task
+    // (erst eine Probe, nur wenn sie Kinder bringt, die übrigen); (c) sonst EINE Sammelabfrage tasks?showProjectTasks=true, nach Projekt gefiltert,
+    // Zuordnung zur Phase über taskWBS, sonst über den Zeitraum (vermutet). Nur-ID-Einträge werden mit einem Aufruf tasks/ids ergänzt.
+    var tl = liste(prd.tasks), T = [], byId = {}, wbs = {}, quellen = {}, kSchl = {};
     info.push('projects/{id}: ' + tl.length + ' Tasks, ' + liste(prd.members).length + ' Mitglieder, ' + liste(prd.risks).length + ' Risiken, ' + liste(prd.issues).length + ' Issues, ' + liste(prd.folders).length + ' Ordner; Schlüssel relateddata: ' + (Object.keys(prd).join(', ') || '-'));
-    if (tl.length && !tl.some(function (t) { return t && t.dataelements && (t.dataelements.title || t.dataelements.estimatedStartDate); })) {   // nur IDs geliefert: Details in einem Aufruf nachholen
-      var tids = refIds(tl);
-      try { var l2 = mitglieder(await postMitCsrf(TSK + '/ids', tids.join(','))); if (l2.length) { tl = l2; weg = 'tasks/ids'; } info.push('tasks/ids (' + tids.length + ' IDs): ' + l2.length + ' Tasks'); }
+    function istTask(o) { return !!o && !!(o.id || o.identifier) && /Task|Phase|Gate|Milestone/i.test(String(o.type || '') + ' ' + String((o.dataelements || {}).nlsType || '')); }
+    function kinderIn(t) {
+      var rd = (t && t.relateddata) || {}, aus = [];
+      Object.keys(rd).forEach(function (k) {
+        if (/^(predecessors|successors|DPMProject|assignees|ownerInfo|originatorInfo|deliverables|scopes|references|contents|calendar|route)$/i.test(k)) return;
+        liste(rd[k]).forEach(function (o) { if (istTask(o)) { aus.push(o); kSchl[k] = (kSchl[k] || 0) + 1; } });
+      });
+      return aus;
+    }
+    function nimm(t, eltern, quelle) {
+      var id = t && (t.id || t.identifier); if (!id) return null; id = String(id);
+      var x = byId[id], e = t.dataelements || {}, re = t.relelements || {};
+      if (!x) { x = byId[id] = { id: id, t: t, e: e, rd: t.relateddata || {}, wbs: String(re.taskWBS || e.taskWBS || ''), seq: parseFloat(re.sequenceOrder) || 0, kinder: 0, el0: eltern || null, q: quelle }; T.push(x); quellen[quelle] = (quellen[quelle] || 0) + 1; }
+      else {
+        if (!x.e.title && e.title) { x.t = t; x.e = e; x.rd = t.relateddata || x.rd; }   // vorher nur ID bekannt
+        if (!x.wbs) x.wbs = String(re.taskWBS || e.taskWBS || ''); if (!x.el0 && eltern) x.el0 = eltern;
+      }
+      kinderIn(t).forEach(function (k) { nimm(k, x, quelle + ' (verschachtelt)'); });
+      return x;
+    }
+    tl.forEach(function (t) { nimm(t, null, 'projects/{id}'); });
+    async function details() {   // Einträge ohne Felder (nur ID): ein Aufruf tasks/ids
+      var ohne = T.filter(function (x) { return !x.e.title && !x.e.estimatedStartDate && !x.e.dueDate && !x.geholt; }); if (!ohne.length) return;
+      ohne.forEach(function (x) { x.geholt = 1; });
+      try { var l2 = mitglieder(await postMitCsrf(TSK + '/ids', ohne.map(function (x) { return x.id; }).join(','))); l2.forEach(function (t) { nimm(t, null, 'tasks/ids'); }); info.push('tasks/ids (' + ohne.length + ' IDs): ' + l2.length + ' Tasks'); }
       catch (e) { if (S.abbruch) throw e; info.push('tasks/ids: FEHLER ' + e.message); }
     }
-    if (!tl.length) {   // Rückfall: alle sichtbaren Projekt-Tasks in einem Aufruf, hier nach Projekt gefiltert
-      try {
-        var alle = await taskAufruf(TSK, { showProjectTasks: 'true' });
-        tl = alle.filter(function (t) { var e = (t && t.dataelements) || {}, dp = liste(((t || {}).relateddata || {}).DPMProject); return String(e.taskProjectId || '') === pid || dp.some(function (x) { return x && String(x.id || x.identifier || (x.dataelements || {}).objectId) === pid; }); });
-        weg = 'tasks?showProjectTasks'; info.push('tasks?showProjectTasks=true: ' + alle.length + ' Tasks, davon ' + tl.length + ' in diesem Projekt');
-        if (!tl.length) hinweise.push('Keine Tasks zum Projekt gefunden.');
-      } catch (e) { if (S.abbruch) throw e; info.push('tasks?showProjectTasks: FEHLER ' + e.message); hinweise.push('Tasks nicht lesbar (' + e.message + ').'); }
+    await details();
+    function istSammel(x) { return /Phase/i.test(String(x.t.type || '') + ' ' + String(x.e.nlsType || '')) || wahr(x.e.isSummaryTask); }
+    function leere() { var hat = {}; T.forEach(function (x) { var pw = x.wbs.indexOf('.') > 0 ? x.wbs.replace(/\.[^.]*$/, '') : ''; if (pw) hat['w' + pw] = 1; if (x.el0) hat['i' + x.el0.id] = 1; }); return T.filter(function (x) { return istSammel(x) && !hat['i' + x.id] && !(x.wbs && hat['w' + x.wbs]) && !x.gefragt; }); }
+    // (b) Kinder je Phase/Sammel-Task über tasks/{id}: eine Probe, dann die übrigen (höchstens 60 Aufrufe, zwei Ebenen)
+    var lr = leere(), bGefunden = 0, bAufrufe = 0;
+    if (lr.length && !S.ohneTaskDetail) {
+      var frag = async function (x) { x.gefragt = 1; bAufrufe++; try { var d = (await taskAufruf(TSK + '/' + encodeURIComponent(x.id), {}))[0]; if (!d) return 0; var ks = kinderIn(d); ks.forEach(function (k) { nimm(k, x, 'tasks/{id}'); }); return ks.length; } catch (e) { if (S.abbruch) throw e; if (!x.fehlerB) info.push('tasks/{id}: FEHLER ' + e.message); return 0; } };
+      status('Suche Tasks der Phasen …');
+      var probe = await frag(lr[0]); bGefunden += probe;
+      if (probe) for (var runde = 0; runde < 2 && bAufrufe < 60; runde++) { var rest = leere().slice(0, 60 - bAufrufe); if (!rest.length) break; (await pool(rest, PARALLEL, frag)).forEach(function (n) { bGefunden += (+n || 0); }); await details(); }
+      info.push('tasks/{id} je Phase/Sammel-Task: ' + bAufrufe + ' Aufruf(e), ' + bGefunden + ' Kinder gefunden' + (probe ? '' : ' (Probe ohne Kinder, nicht weiter versucht; Schlüssel der Antwort siehe unten)'));
+      await details();
     }
-    var T = [], wbs = {};
-    tl.forEach(function (t) {
-      var id = t && (t.id || t.identifier); if (!id) return; var e = t.dataelements || {}, re = t.relelements || {};
-      T.push({ id: String(id), t: t, e: e, rd: t.relateddata || {}, wbs: String(re.taskWBS || e.taskWBS || ''), seq: parseFloat(re.sequenceOrder) || 0, kinder: 0 });
-    });
+    // (c) Sammelabfrage aller sichtbaren Projekt-Tasks, wenn weiter Phasen leer sind oder gar keine Tasks kamen
+    if (!T.length || T.some(function (x) { return istSammel(x) && !T.some(function (y) { return y.el0 === x || (x.wbs && y.wbs.indexOf(x.wbs + '.') === 0); }); })) {
+      try {
+        status('Lese Tasks des Projekts …');
+        var alle = await taskAufruf(TSK, { showProjectTasks: 'true' }), ptitel = String(pe.title || pe.name || '').toLowerCase(), neuC = 0;
+        var meine = alle.filter(function (t) { var e = (t && t.dataelements) || {}, dp = liste(((t || {}).relateddata || {}).DPMProject);
+          return String(e.taskProjectId || '') === pid || dp.some(function (x) { var dx = (x && x.dataelements) || {}; return x && (String(x.id || x.identifier || dx.objectId) === pid || (ptitel && String(dx.title || dx.name || '').toLowerCase() === ptitel)); }); });
+        meine.forEach(function (t) { var id = String(t.id || t.identifier || ''); if (id && !byId[id]) neuC++; nimm(t, null, 'tasks?showProjectTasks'); });
+        info.push('tasks?showProjectTasks=true: ' + alle.length + ' Tasks, davon ' + meine.length + ' in diesem Projekt, ' + neuC + ' neu');
+        if (!T.length) hinweise.push('Keine Tasks zum Projekt gefunden.');
+      } catch (e) { if (S.abbruch) throw e; info.push('tasks?showProjectTasks: FEHLER ' + e.message); if (!T.length) hinweise.push('Tasks nicht lesbar (' + e.message + ').'); }
+    }
+    var weg = Object.keys(quellen).map(function (k) { return quellen[k] + ' × ' + k; }).join(', ') || '-';
+    if (Object.keys(kSchl).length) info.push('Kinder gefunden unter relateddata: ' + Object.keys(kSchl).map(function (k) { return k + ' ' + kSchl[k]; }).join(', '));
     T.sort(function (x, y) { return x.seq - y.seq; });
     T.forEach(function (x) { if (x.wbs) wbs[x.wbs] = x; });
-    T.forEach(function (x) { x.el = x.wbs.indexOf('.') > 0 ? wbs[x.wbs.replace(/\.[^.]*$/, '')] || null : null; if (x.el) x.el.kinder++; });
+    T.forEach(function (x) { x.dA = isoTag(x.e.estimatedStartDate || x.e.actualStartDate || x.e.forecastStartDate); x.dB = isoTag(x.e.dueDate || x.e.estimatedFinishDate || x.e.actualFinishDate || x.e.forecastFinishDate) || x.dA; if (!x.dA) x.dA = x.dB; });
+    var perZeit = 0;
+    T.forEach(function (x) {
+      x.el = (x.wbs.indexOf('.') > 0 ? wbs[x.wbs.replace(/\.[^.]*$/, '')] : null) || x.el0 || null;
+      if (!x.el && !x.wbs && x.q === 'tasks?showProjectTasks' && x.dA && !/Phase/i.test(String(x.t.type || '') + ' ' + String(x.e.nlsType || ''))) {   // vermutet: über den Zeitraum (kleinste Phase/Sammel-Task, die den Task ganz enthält und länger ist)
+        var spanne = function (p) { return Date.parse(p.dB) - Date.parse(p.dA); }, best = null;
+        T.forEach(function (p) { if (p === x || !istSammel(p) || !p.dA || p.dA > x.dA || p.dB < x.dB || !(spanne(p) > spanne(x))) return; if (!best || spanne(p) < spanne(best)) best = p; });
+        if (best) { x.el = best; x.zeitEl = 1; perZeit++; }
+      }
+      if (x.el === x) x.el = null; if (x.el) x.el.kinder++;
+    });
+    if (perZeit) { info.push(perZeit + ' Tasks ohne taskWBS über den Zeitraum einer Phase zugeordnet (vermutet)'); hinweise.push(perZeit + ' Tasks über den Zeitraum einer Phase zugeordnet (vermutet).'); }
+    var leerP = T.filter(function (x) { return istSammel(x) && !x.kinder; }).length; if (leerP) info.push(leerP + ' Phasen/Sammel-Tasks ohne Kinder');
+    info.push('Erste Tasks (Titel | Typ | PSP | geplant Start – fällig | Ist Start – Ende | Dauer | Sammel-Task | Quelle):');
+    T.slice(0, 14).forEach(function (x) { var e = x.e; info.push('  ' + [String(e.title || '?').slice(0, 40), x.t.type || e.nlsType || '?', x.wbs || '-', (e.estimatedStartDate || '-') + ' – ' + (e.dueDate || e.estimatedFinishDate || '-'), (e.actualStartDate || '-') + ' – ' + (e.actualFinishDate || '-'), e.estimatedDuration != null ? e.estimatedDuration : '-', e.isSummaryTask != null ? e.isSummaryTask : '-', x.q].join(' | ')); });
     T.forEach(function (x) {
       var s = String(x.t.type || '') + ' ' + String(x.e.nlsType || '');
       x.start = isoTag(x.e.estimatedStartDate || x.e.actualStartDate || x.e.forecastStartDate); x.ende = isoTag(x.e.dueDate || x.e.estimatedFinishDate || x.e.actualFinishDate || x.e.forecastFinishDate);
@@ -868,7 +922,7 @@
     var hatKrit = T.some(function (x) { return (x.e.criticalTask != null && x.e.criticalTask !== '') || (x.e.isOverallCritical != null && x.e.isOverallCritical !== ''); }), zahl = {};
     T.forEach(function (x) {
       var e = x.e, n = { id: 't:' + x.id, type: x.art, name: e.title || e.name || ('Task ' + x.id.slice(-6)), start: x.start, end: x.ende, progress: prozent(e.percentComplete), state: e.state || e.status || '',
-        meta: ohneLeere({ Typ: e.nlsType || x.t.type || 'Task', PSP: x.wbs, Status: e.state, Beschreibung: e.description, 'Ist-Start': isoTag(e.actualStartDate), 'Ist-Ende': isoTag(e.actualFinishDate),
+        meta: ohneLeere({ Typ: e.nlsType || x.t.type || 'Task', PSP: x.wbs, Phase: x.zeitEl ? (x.el.e.title || '') + ' (vermutet über den Zeitraum)' : '', Status: e.state, Beschreibung: e.description, 'Ist-Start': isoTag(e.actualStartDate), 'Ist-Ende': isoTag(e.actualFinishDate),
           'Puffer gesamt': e.totalFloat, 'Abweichung': e.Deviation, Einschränkung: e.constraintType, 'Geändert': datum(e.modified), ID: x.id }) };
       if (hatKrit) n.critical = wahr(e.criticalTask) || wahr(e.isOverallCritical);
       knoten(n); zahl[x.art] = (zahl[x.art] || 0) + 1;
@@ -1681,7 +1735,7 @@
     clearTimeout(S.neuUhr); laden({ drop: S.zuletzt, nach: true, frisch: true });
   }
   function diagnoseText() {
-    var z = ['3Deep-Widget Diagnose (Adapter 38, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
+    var z = ['3Deep-Widget Diagnose (Adapter 39, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
       '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-') + (S.ctxZahl ? ' (automatisch gewählt, ' + S.ctxZahl + ' verfügbar)' : ''), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), ''];
     z.push('Zuletzt geöffnet (gemerkt, wird beim Öffnen geladen): ' + (S.letztesGemerkt ? (S.letztesGemerkt.title || '-') + ' [' + S.letztesGemerkt.id + '], ' + (S.letztesGemerkt.art || 'bm') : '-'));
     if (S.stufen && S.stufen.length) {
@@ -1951,7 +2005,7 @@
       var b = pt('Task', '1.2', 'Fahrzeugkonzept', '2026-10-01', '2026-10-15', 100, 'Complete', [[a, 'FS', 0]], { krit: true, wer: [CM], lief: [fahrwerk] });
       var g1 = pt('Gate', '2', 'Gate 1: Konzeptfreigabe', '2026-10-15', '2026-10-15', 100, 'Complete', [[b, 'FS', 0]], { krit: true });
       pt('Phase', '3', 'Entwicklung', '2026-10-16', '2026-12-20', 40, 'Active', [], { sum: true });
-      var c = pt('Task', '3.1', 'Konstruktion Fahrwerk', '2026-10-16', '2026-12-05', 55, 'Active', [[g1, 'FS', 0]], { krit: true, wer: [AB], lief: [fahrwerk, bremse] });
+      var c = pt('Task', '3.1', 'Konstruktion Fahrwerk', '2026-10-16', '2026-12-05', 55, 'Active', [[g1, 'FS', 0]], { krit: true, sum: true, wer: [AB], lief: [fahrwerk, bremse] });
       pt('Task', '3.1.1', 'Bremsanlage auslegen', '2026-10-16', '2026-11-10', 100, 'Complete', [], { lief: [bremse], wer: [CM] });
       var d = pt('Task', '3.2', 'Konstruktion Antrieb', '2026-10-20', '2026-11-28', 50, 'Active', [[g1, 'FS', 2]], { wer: [CM], lief: [antrieb] });
       var e = pt('Task', '3.3', 'Design-Review', '2026-12-06', '2026-12-20', 0, 'Create', [[c, 'FS', 0], [d, 'FF', 0]], { krit: true });
@@ -2170,13 +2224,23 @@
           var pq = TEST.prj[m[1]]; if (!pq) return nein(new Error('404 Projekt nicht gefunden'));
           var kp = {}, kr = {}; Object.keys(pq).forEach(function (k) { kp[k] = pq[k]; }); Object.keys(pq.relateddata).forEach(function (k) { kr[k] = pq.relateddata[k]; }); kp.relateddata = kr;
           if (S.testProjOhneTasks) kr.tasks = [];
+          // Adapter 39: wie auf der Plattform nur die oberste Ebene. 'oben' = ohne Kinder; 'nest' = Kinder verschachtelt unter relateddata.subTasks (ohne taskWBS)
+          if (S.testProjEbene) { var obenT = kr.tasks.filter(function (x) { return x.relelements.taskWBS.indexOf('.') < 0; });
+            var kopieT = function (x, mitWbs) { var c = {}; Object.keys(x).forEach(function (k) { c[k] = x[k]; }); c.relelements = mitWbs ? x.relelements : { sequenceOrder: x.relelements.sequenceOrder }; c.relateddata = {}; Object.keys(x.relateddata).forEach(function (k) { c.relateddata[k] = x.relateddata[k]; }); return c; };
+            var nest = function (x) { var c = kopieT(x, x.relelements.taskWBS.indexOf('.') < 0), w = x.relelements.taskWBS; c.relateddata.subTasks = pq.relateddata.tasks.filter(function (y) { var yw = y.relelements.taskWBS; return yw.indexOf(w + '.') === 0 && yw.slice(w.length + 1).indexOf('.') < 0; }).map(nest); return c; };
+            kr.tasks = S.testProjEbene === 'nest' ? obenT.map(nest) : obenT; }
           if (S.testProjNurIds) kr.tasks = kr.tasks.map(function (x) { return { id: x.id, identifier: x.id, type: x.type }; });
           if (S.testProjOhneRisiken) { delete kr.risks; delete kr.issues; }
           return ja({ success: true, data: [kp] });
         }
+        if ((m = pfad.match(/\/modeler\/tasks\/([0-9A-F]{20,})$/)) && TEST.ptsk[m[1]]) {   // Adapter 39: Task-Details; S.testTaskKinder = Kinder unter relateddata.subtasks
+          var tq = TEST.ptsk[m[1]], tc = {}; Object.keys(tq).forEach(function (k) { tc[k] = tq[k]; }); tc.relateddata = {}; Object.keys(tq.relateddata).forEach(function (k) { tc.relateddata[k] = tq.relateddata[k]; });
+          if (S.testTaskKinder) { var tw = tq.relelements.taskWBS; tc.relateddata.subtasks = Object.keys(TEST.ptsk).map(function (k) { return TEST.ptsk[k]; }).filter(function (y) { var yw = y.relelements.taskWBS; return yw.indexOf(tw + '.') === 0 && yw.slice(tw.length + 1).indexOf('.') < 0; }).map(function (y) { return { id: y.id, type: y.type, identifier: y.id, dataelements: y.dataelements, relateddata: y.relateddata }; }); }
+          return ja({ success: true, data: [tc] });
+        }
         if (pfad === TSK + '/ids') { var bi = String(typeof body === 'string' ? body : JSON.stringify(body || '')).split(/[^0-9A-Fa-f]+/).filter(function (x) { return TEST.ptsk[x]; }); return ja({ success: true, data: bi.map(function (x) { return TEST.ptsk[x]; }) }); }
         if (pfad === RSK) return ja({ success: true, data: Object.keys(TEST.risk).map(function (k) { return TEST.risk[k]; }) });
-        if (pfad === TSK && (S.testProjOhneTasks || S.testProjTasksInListe)) { return ja({ success: true, data: Object.keys(TEST.tsk).filter(function (k) { return !(TEST.tsk[k].relateddata.scopes || []).length; }).map(function (k) { return TEST.tsk[k]; }).concat(Object.keys(TEST.ptsk).map(function (k) { return TEST.ptsk[k]; })) }); }
+        if (pfad === TSK && (S.testProjOhneTasks || S.testProjTasksInListe || S.testProjEbene)) { return ja({ success: true, data: Object.keys(TEST.tsk).filter(function (k) { return !(TEST.tsk[k].relateddata.scopes || []).length; }).map(function (k) { return TEST.tsk[k]; }).concat(Object.keys(TEST.ptsk).map(function (k) { var y = TEST.ptsk[k]; if (!S.testProjOhneWbs) return y; var c = {}; Object.keys(y).forEach(function (kk) { c[kk] = y[kk]; }); c.relelements = {}; return c; })) }); }   // S.testProjOhneWbs: Liste ohne taskWBS (Zuordnung über den Zeitraum)
         if (pfad === TSK) { return ja({ success: true, data: Object.keys(TEST.tsk).filter(function (k) { return !(TEST.tsk[k].relateddata.scopes || []).length; }).map(function (k) { return TEST.tsk[k]; }) }); }
         if ((m = pfad.match(/tasks\/scopeId\/([^\/]+)$/))) { return ja({ success: true, data: (TEST.scope[m[1]] || []).map(function (k) { return TEST.tsk[k]; }) }); }
         if ((m = pfad.match(/documents\/parentId\/([^\/]+)$/))) {
