@@ -1,4 +1,4 @@
-/* 3Deep-Widget, Adapter Version 37.
+/* 3Deep-Widget, Adapter Version 38.
    Liest einen Bookmark-Ordner samt Produktstruktur über die 3DEXPERIENCE-REST-Schnittstellen (3DSpace)
    und übergibt das Ergebnis im 3Deep-JSON-Format an die Darstellung datenraum3d.html (eingebettet als iframe).
    Im 3DDashboard: Anmeldung des Benutzers über DS/WAFData. Direkt im Browser geöffnet: Testmodus mit Beispieldaten
@@ -761,7 +761,26 @@
       if (S.abbruch) throw e;
       return hole(PRJ, {}).then(mitglieder).then(function (l) { return l.filter(function (p) { var d = (p && p.dataelements) || {}; return !s || String(d.title || d.name || '').toLowerCase().indexOf(s) >= 0; }); });
     }).then(function (l) {
-      return l.filter(function (p) { return p && (p.id || p.identifier); }).map(function (p) { var d = p.dataelements || {}; return { id: p.id || p.identifier, title: 'Projekt: ' + (d.title || d.name || p.id), name: d.title || d.name || '', art: 'projekt' }; });
+      // Adapter 38 (Rückmeldung des Nutzers): die Suche liefert auch Objekte rund um das Projekt. Gezeigt wird nur das Projekt selbst:
+      // nur Typ „Project Space“ (Treffer ohne Typangabe bleiben), keine Baselines, Experimente und Vorlagen, jede ID nur einmal; genauer Namenstreffer zuerst.
+      var typen = {}, weg = {}, ids = {}, roh = l.filter(function (p) { return p && (p.id || p.identifier); });
+      var alle = roh.map(function (p) {
+        var d = p.dataelements || {}, typ = String(p.type || d.nlsType || d.typeNLS || ''), id = p.id || p.identifier, grund = '';
+        typen[typ || '(ohne Typ)'] = (typen[typ || '(ohne Typ)'] || 0) + 1;
+        if (ids[id]) grund = 'doppelt';
+        else if (typ && !/^Project ?Space$/i.test(typ.trim())) grund = 'Typ ' + typ;   // laut Nutzer (14.11.2026): das eigentliche Projekt hat den Typ „Project Space“
+        else if (wahr(d.kindofBaseline)) grund = 'Baseline'; else if (wahr(d.kindofExperiment)) grund = 'Experiment'; else if (wahr(d.kindofTemplate) || /Template/i.test(typ)) grund = 'Vorlage';
+        ids[id] = 1; if (grund) weg[grund] = (weg[grund] || 0) + 1;
+        return { id: id, title: 'Projekt: ' + (d.title || d.name || id), name: d.title || d.name || '', art: 'projekt', _weg: grund };
+      });
+      var gut = alle.filter(function (x) { return !x._weg; }), notfall = !gut.length && alle.length > 0;
+      if (notfall) gut = alle.filter(function (x) { return x._weg !== 'doppelt'; });   // nichts als Projekt erkannt: lieber alles zeigen als nichts
+      var rang = function (x) { var n = x.name.toLowerCase(); return !s ? 2 : n === s ? 0 : n.indexOf(s) === 0 ? 1 : 2; };
+      gut.sort(function (x, y) { return rang(x) - rang(y) || x.name.localeCompare(y.name); });
+      var zeile = function (o) { return Object.keys(o).map(function (k) { return o[k] + ' × ' + k; }).join(', ') || '-'; };
+      S.projSucheInfo = ['„' + (text || '*') + '“: ' + roh.length + ' Treffer von der Plattform, ' + gut.length + ' gezeigt' + (notfall ? ' (kein Treffer als Projekt erkannt, deshalb alle gezeigt)' : ''), 'Typen: ' + zeile(typen), 'ausgeblendet: ' + zeile(weg)];
+      gut.forEach(function (x) { delete x._weg; });
+      return gut;
     });
   }
   var PTYPEN = {
@@ -1555,7 +1574,7 @@
     var text = q('.td-su').value.trim(), sel = q('.td-tr');
     try {
       S.sucht = true; await ruheWarten(); status('Suche Bookmarks …');
-      S.projSuche = '';
+      S.projSuche = ''; S.projSucheInfo = null;
       if (/^[0-9A-Fa-f]{20,}$/.test(text)) S.treffer = [{ id: text, title: 'ID ' + text, art: 'bm' }, { id: text, title: 'Projekt-ID ' + text, art: 'projekt' }];
       else { var beide = await Promise.all([sucheBookmarks(text), sucheProjekte(text).catch(function (e) { S.projSuche = e.message; return []; })]); S.treffer = beide[0].concat(beide[1]); }   // Adapter 37: auch Projekte
       var nProj = S.treffer.filter(function (b) { return b.art === 'projekt'; }).length, nBm = S.treffer.length - nProj;
@@ -1662,7 +1681,7 @@
     clearTimeout(S.neuUhr); laden({ drop: S.zuletzt, nach: true, frisch: true });
   }
   function diagnoseText() {
-    var z = ['3Deep-Widget Diagnose (Adapter 37, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
+    var z = ['3Deep-Widget Diagnose (Adapter 38, Darstellung ' + DARSTELLUNG + '), ' + new Date().toLocaleString('de-DE'), 'Modus: ' + (S.live ? 'live im 3DDashboard' : 'Testmodus (Beispieldaten)'),
       '3DSpace: ' + (S.space || '-') + (S.spaceQuelle ? ' (' + S.spaceQuelle + ')' : ''), 'Rahmen: ' + window.location.href.replace(/token=[^&]*/, 'token=…').slice(0, 300), 'Tenant: ' + (S.tenant || '-'), 'Security Context: ' + (S.ctx || '-') + (S.ctxZahl ? ' (automatisch gewählt, ' + S.ctxZahl + ' verfügbar)' : ''), 'Darstellung: ' + S.viewerUrl + (S.bereit ? ' (bereit)' : ' (noch nicht gemeldet)'), ''];
     z.push('Zuletzt geöffnet (gemerkt, wird beim Öffnen geladen): ' + (S.letztesGemerkt ? (S.letztesGemerkt.title || '-') + ' [' + S.letztesGemerkt.id + '], ' + (S.letztesGemerkt.art || 'bm') : '-'));
     if (S.stufen && S.stufen.length) {
@@ -1727,6 +1746,7 @@
     }
     if (S.projInfo && S.projInfo.length) { z.push('', 'Projekt (Projektmanagement, dieses Laden):'); S.projInfo.forEach(function (c) { z.push('  ' + c); }); }
     if (S.projSuche) z.push('', 'Projektsuche: FEHLER ' + S.projSuche);
+    if (S.projSucheInfo) { z.push('', 'Projektsuche (nur das Projekt selbst wird gezeigt):'); S.projSucheInfo.forEach(function (c) { z.push('  ' + c); }); }
     if (S.projTest && S.projTest.length) { z.push('', 'Projekt-Aufrufe (Knopf „Projekt-Aufrufe prüfen“):'); S.projTest.forEach(function (c) { z.push('  ' + c); }); }
     if (S.zqInfo && S.zqInfo.length) { z.push('', 'Zone Query (Attribute):'); S.zqInfo.forEach(function (c) { z.push('  ' + c); }); }
     if (S.expandInfo && S.expandInfo.length) { z.push('', 'Produktstruktur:'); S.expandInfo.forEach(function (c) { z.push('  ' + c); }); }
@@ -2137,7 +2157,13 @@
         if (pfad === PRJ + '/search' || pfad === PRJ) {
           if (S.testProjSucheFehler && pfad !== PRJ) return nein(new Error('500 Internal Server Error'));
           var ps = pfad === PRJ ? '' : String(p.searchStr || '').toLowerCase().replace(/\*/g, '');
-          return ja({ success: true, data: Object.keys(TEST.prj).map(function (k) { var x = TEST.prj[k]; return { id: x.id, type: x.type, identifier: x.id, dataelements: x.dataelements }; }).filter(function (x) { return !ps || x.dataelements.title.toLowerCase().indexOf(ps) >= 0; }) });
+          var pl = Object.keys(TEST.prj).map(function (k) { var x = TEST.prj[k]; return { id: x.id, type: x.type, identifier: x.id, dataelements: x.dataelements }; });
+          if (pfad !== PRJ && !S.testProjSucheNurProjekt) {   // wie auf der Plattform (Adapter 38): die Suche liefert auch Objekte rund um das Projekt
+            var tk = Object.keys(TEST.ptsk)[1], p0 = pl[0];
+            pl = [{ id: tk, type: 'Task', identifier: tk, dataelements: { title: p0.dataelements.title + ' – ' + TEST.ptsk[tk].dataelements.title } },
+              { id: 'BASE' + p0.id, type: 'Project Space', identifier: 'BASE' + p0.id, dataelements: { title: p0.dataelements.title + ' (Baseline)', kindofBaseline: 'TRUE' } }].concat(pl).concat([p0]);
+          }
+          return ja({ success: true, data: pl.filter(function (x) { return !ps || x.dataelements.title.toLowerCase().indexOf(ps) >= 0; }) });
         }
         if ((m = pfad.match(/\/projects\/([^\/]+)\/(risks|issues)$/))) { var pp = TEST.prj[m[1]]; return pp ? ja({ success: true, data: pp.relateddata[m[2]] }) : nein(new Error('404')); }
         if ((m = pfad.match(/\/projects\/([^\/]+)$/))) {
