@@ -2,7 +2,7 @@
 <html lang="de"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>3Deep – Datenraum in 3D</title>
-<meta name="3deep-darstellung" content="86">
+<meta name="3deep-darstellung" content="87">
 <style>
 :root{--fg:#e6edf3;--panel:rgba(15,22,41,.86);--mut:#9fb0c4}
 html,body{margin:0;height:100%;background:linear-gradient(180deg,#d4ecff 0%,#93c3ea 55%,#5088c0 100%) fixed;color:var(--fg);font:13px/1.4 system-ui,sans-serif;overflow:hidden}
@@ -91,7 +91,7 @@ html{--lg:#0e2a4a;--lgh:rgba(255,255,255,.85)}html.space{--lg:#dbe7ff;--lgh:rgba
 <label class="s">Neuzeichnen<select id="es"><option value="max" selected>Maximal: im Stillstand kein Neuzeichnen</option><option value="auto">Automatisch: im Stillstand 15 Bilder/s</option><option value="aus">Aus: immer volle Bildrate</option></select></label>
 <label style="display:block;margin-top:8px"><input type="checkbox" id="introan" checked> Intro beim Start zeigen</label><label style="display:block;margin-top:4px"><input type="checkbox" id="intromu"> Musik im Intro (leise)</label>
 </details>
-<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 86</div>
+<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 87</div>
 </div>
 <div id="det" class="pn"></div></div>
 <div id="dcap"></div><div id="dfade" style="position:fixed;inset:0;background:#0b1424;opacity:0;pointer-events:none;transition:opacity .6s;z-index:14"></div><div id="cross"></div><div id="info"></div>
@@ -179,7 +179,7 @@ function kraftLayout(vonHier){const n_=N.length,big=n_>400,sz=Math.cbrt(n_/150)*
   if(!moved)break}
  const c=N.reduce((p,n)=>n.adj.length>p.adj.length?n:p,N[0]),cx=c.x,cy=c.y,cz=c.z;N.forEach(n=>{n.x-=cx;n.y-=cy;n.z-=cz}); // meistvernetztes Objekt in die Mitte
 }
-function ladeDaten(d){CUR=d;if(!REL.erg)REL.t0=performance.now(); // Version 86: nach dem Laden erst die Objekte, Beziehungen in 2 s einblenden
+function ladeDaten(d){CUR=d;if(!REL.erg)REL.t0=performance.now(); // Version 86: nach dem Laden erst die Objekte, Beziehungen in 3 s einblenden (Version 87)
 $('legend').style.display='';AX=null;AXO=null;ST_T=d.stateTitle||'Reifegrad';ST_N=d.stateNames||null;if(DM.on&&!DM.laden)demoStop();DMO=null;if(ani&&!ani.swap){ani=null;sperre(false)}
  T={};Object.keys(d.types||{}).forEach(k=>{const t=d.types[k]||{};T[k]={c:HEX.test(t.color)?t.color:'#9aa5b1',d:+t.size>0?+t.size:1,l:t.label||k,shape:t.shape,layer:t.layer,role:t.role,gem:t.gem,cut:t.cut}});
  RT=d.relTypes||{};const nn=[],ee=[],idx={};
@@ -562,7 +562,7 @@ function skizze(name,asm){let h=2166136261;for(const ch of String(name))h=Math.i
  const m=3,w=B[2]-B[0]+2*m,hh=B[3]-B[1]+2*m,f=150/Math.max(w,hh);
  return'data:image/svg+xml,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${(B[0]-m).toFixed(1)} ${(B[1]-m).toFixed(1)} ${w.toFixed(1)} ${hh.toFixed(1)}" width="${Math.round(w*f)}" height="${Math.round(hh*f)}">${o}</svg>`)}
 // ---------- Linkchain-Analyse ----------
-const REL={t0:-1e9,erg:false,ms:2000};let CUR=null,ani=null,EF=1,astro=false,kris=false,CEN=[0,0,0],catia=false,zoomMode=false,rotMoved=false,tr=null,CH=[],LAYERS=null,orient='h',orientAuto=true,ORI_INFO=null,obStil='web';
+const REL={t0:-1e9,erg:false,ms:3000};let CUR=null,ani=null,EF=1,astro=false,kris=false,CEN=[0,0,0],catia=false,zoomMode=false,rotMoved=false,tr=null,CH=[],LAYERS=null,orient='h',orientAuto=true,ORI_INFO=null,obStil='web';
 const GEN=[{name:'Alle direkten Nachbarn',chain:'?-'},{name:'Zwei Schritte (beliebig)',chain:'?- ?-'},{name:'Struktur abwärts (beliebig tief)',chain:'struktur<*'},{name:'Struktur aufwärts (beliebig tief)',chain:'struktur>*'}];
 function kette(txt){return txt.trim().split(/[\s,\u2192]+/).filter(Boolean).map(t=>{const m=/^([\w?]+?)([<>-]?)(\*?)$/.exec(t);if(!m)throw new Error('Ungültiger Schritt: '+t);return{link:m[1],dir:m[2]||'-',rep:!!m[3]}})}
 function fuelleChains(n){const ok=CH.map((c,i)=>[c,i]).filter(([c])=>!c.start||(n&&c.start===n.t));
