@@ -2,7 +2,7 @@
 <html lang="de"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>3Deep – Datenraum in 3D</title>
-<meta name="3deep-darstellung" content="79">
+<meta name="3deep-darstellung" content="80">
 <style>
 :root{--fg:#e6edf3;--panel:rgba(15,22,41,.86);--mut:#9fb0c4}
 html,body{margin:0;height:100%;background:linear-gradient(180deg,#d4ecff 0%,#93c3ea 55%,#5088c0 100%) fixed;color:var(--fg);font:13px/1.4 system-ui,sans-serif;overflow:hidden}
@@ -89,7 +89,7 @@ html{--lg:#0e2a4a;--lgh:rgba(255,255,255,.85)}html.space{--lg:#dbe7ff;--lgh:rgba
 <label class="s">Neuzeichnen<select id="es"><option value="max" selected>Maximal: im Stillstand kein Neuzeichnen</option><option value="auto">Automatisch: im Stillstand 15 Bilder/s</option><option value="aus">Aus: immer volle Bildrate</option></select></label>
 <label style="display:block;margin-top:8px"><input type="checkbox" id="introan" checked> Intro beim Start zeigen</label>
 </details>
-<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 79</div>
+<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 80</div>
 </div>
 <div id="det" class="pn"></div></div>
 <div id="dcap"></div><div id="dfade" style="position:fixed;inset:0;background:#0b1424;opacity:0;pointer-events:none;transition:opacity .6s;z-index:14"></div><div id="cross"></div><div id="info"></div>
@@ -826,9 +826,9 @@ function zeigeProfil(n,x,y){profN=n;const el=$('prof'),A=profilAttr(n);
  el.style.display='block';const w=el.offsetWidth||340,h=el.offsetHeight||400;el.style.left=Math.max(8,Math.min(innerWidth-w-8,x+14))+'px';el.style.top=Math.max(8,Math.min(innerHeight-h-8,y-20))+'px';profBild(n)}
 // Vorschaubild (Version 72, seit 73 doppelte Fläche: Seiten × √2, höchstens 45 % der Fensterhöhe/-breite): lädt nebenher, die Karte wartet nicht; schwebt freigestellt links oben an der Karte (zu wenig Platz: rechts). Fehler = kein Bild.
 let profImg=null;
-const istBaugruppe=n=>/assembly|baugruppe|\basm\b/i.test(n.t+' '+((T[n.t]||{}).l||'')); // Baugruppen: Vorschaubild doppelt so breit und hoch (79)
+const istBaugruppe=n=>/assembly|baugruppe|\basm\b/i.test(n.t+' '+((T[n.t]||{}).l||'')); // Baugruppen: Vorschaubild genau doppelte Originalgröße, also √2 × Einzelteilbild (80)
 function profBild(n){const b=$('profb');b.classList.remove('da');b.style.display='none';b.dataset.u='';profImg=null;const u=n&&n.img;if(!u||n.imgFehl)return;
- const im=new Image();profImg=im;im.onload=()=>{if(profImg!==im||profN!==n||!im.naturalWidth)return;const f0=Math.min(1,170/im.naturalWidth,150/im.naturalHeight)*Math.SQRT2*(istBaugruppe(n)?2:1),f=f0*Math.min(1,.45*innerHeight/(im.naturalHeight*f0),.45*innerWidth/(im.naturalWidth*f0)),bw=Math.round(im.naturalWidth*f),bh=Math.round(im.naturalHeight*f);
+ const im=new Image();profImg=im;im.onload=()=>{if(profImg!==im||profN!==n||!im.naturalWidth)return;const f0=Math.min(1,170/im.naturalWidth,150/im.naturalHeight)*(istBaugruppe(n)?2:Math.SQRT2),f=f0*Math.min(1,.45*innerHeight/(im.naturalHeight*f0),.45*innerWidth/(im.naturalWidth*f0)),bw=Math.round(im.naturalWidth*f),bh=Math.round(im.naturalHeight*f);
   b.style.width=bw+'px';b.style.height=bh+'px';b.src=u;b.dataset.u=u;profBildLage();b.style.display='block';requestAnimationFrame(()=>requestAnimationFrame(()=>{if(profImg===im)b.classList.add('da')}))};
  im.onerror=()=>{if(n)n.imgFehl=1};im.src=u}
 function profBildLage(){const b=$('profb'),k=$('prof').getBoundingClientRect(),bw=parseFloat(b.style.width)||0,bh=parseFloat(b.style.height)||0;
