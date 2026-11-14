@@ -2,7 +2,7 @@
 <html lang="de"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>3Deep – Datenraum in 3D</title>
-<meta name="3deep-darstellung" content="87">
+<meta name="3deep-darstellung" content="88">
 <style>
 :root{--fg:#e6edf3;--panel:rgba(15,22,41,.86);--mut:#9fb0c4}
 html,body{margin:0;height:100%;background:linear-gradient(180deg,#d4ecff 0%,#93c3ea 55%,#5088c0 100%) fixed;color:var(--fg);font:13px/1.4 system-ui,sans-serif;overflow:hidden}
@@ -91,7 +91,7 @@ html{--lg:#0e2a4a;--lgh:rgba(255,255,255,.85)}html.space{--lg:#dbe7ff;--lgh:rgba
 <label class="s">Neuzeichnen<select id="es"><option value="max" selected>Maximal: im Stillstand kein Neuzeichnen</option><option value="auto">Automatisch: im Stillstand 15 Bilder/s</option><option value="aus">Aus: immer volle Bildrate</option></select></label>
 <label style="display:block;margin-top:8px"><input type="checkbox" id="introan" checked> Intro beim Start zeigen</label><label style="display:block;margin-top:4px"><input type="checkbox" id="intromu"> Musik im Intro (leise)</label>
 </details>
-<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 87</div>
+<div id="ver" class="m" style="margin-top:10px;font-size:11px;opacity:.7">Darstellung Version 88</div>
 </div>
 <div id="det" class="pn"></div></div>
 <div id="dcap"></div><div id="dfade" style="position:fixed;inset:0;background:#0b1424;opacity:0;pointer-events:none;transition:opacity .6s;z-index:14"></div><div id="cross"></div><div id="info"></div>
@@ -1422,18 +1422,22 @@ $('introan').checked=introAn();$('introan').onchange=e=>{try{localStorage.setIte
 // Browser spielen Ton oft erst nach einer Nutzeraktion: dann erscheint „♪ Ton an“ (beendet das Intro nicht). Ende des Intros = Ton blendet aus.
 function musikAn(){try{return localStorage.getItem('introMusik')==='an'}catch(_){return false}}
 $('intromu').checked=musikAn();$('intromu').onchange=e=>{try{localStorage.setItem('introMusik',e.target.checked?'an':'aus')}catch(_){}};
-const MUSIK={ctx:null,ende:null,start:0};
+// Version 88 (Wunsch des Nutzers): Melodie „3Deeb“ (drei D, zwei E, ein B): d2 ½ · d3 d3 ¼ · e3 e3 ¼ · b2 ½, Viertel 0,5 s, Beginn 1,3 s, Klangfläche B-Dur add9.
+// Die alte Melodie (Pentatonik über A-Moll add9, bis Version 87) bleibt für alle Fälle erhalten: MUSIK.melodie='alt'.
+const MELODIEN={neu:{flaeche:[116.54,174.61,233.08,261.63,349.23],toene:[[1.3,587.33],[2.3,1174.66],[2.8,1174.66],[3.3,1318.51],[3.8,1318.51],[4.3,932.33]]},
+ alt:{flaeche:[110,164.81,220,246.94,329.63],toene:[[.7,880],[1.5,1318.5],[2.3,1046.5],[3.0,1760],[3.6,1318.5],[4.3,2093]]}};
+const MUSIK={ctx:null,ende:null,start:0,melodie:'neu'};
 function introMusik(dauer){const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;let ac;try{ac=new AC()}catch(_){return null}
- MUSIK.ctx=ac;const T=ac.currentTime+.05,L=dauer+1.6,out=ac.createGain(),lp=ac.createBiquadFilter();lp.type='lowpass';lp.frequency.value=5200;out.connect(lp);lp.connect(ac.destination);
+ MUSIK.ctx=ac;const MEL=MELODIEN[MUSIK.melodie]||MELODIEN.neu,T=ac.currentTime+.05,L=dauer+1.6,out=ac.createGain(),lp=ac.createBiquadFilter();lp.type='lowpass';lp.frequency.value=5200;out.connect(lp);lp.connect(ac.destination);
  out.gain.setValueAtTime(0,T);out.gain.linearRampToValueAtTime(.55,T+1.2);out.gain.setValueAtTime(.55,T+dauer-.2);out.gain.linearRampToValueAtTime(0,T+L);
  // Knistern: kurze Knackser zufälliger Stärke in Rauschpuffer, bandbegrenzt
  const sr=ac.sampleRate,buf=ac.createBuffer(1,Math.ceil(sr*L),sr),d=buf.getChannelData(0);let r=12345;const rn=()=>{r=(r*1103515245+12345)&0x7fffffff;return r/0x7fffffff};
  for(let i=0;i<d.length;i++)d[i]=(rn()-.5)*.012;for(let k=0;k<L*55;k++){const p=Math.floor(rn()*d.length),a=(rn()<.12?.5:.16)*(rn()*.8+.2),n=Math.floor(sr*(.0006+rn()*.0018));for(let j=0;j<n&&p+j<d.length;j++)d[p+j]+=a*(rn()-.5)*Math.exp(-j/(n*.35))}
  const kn=ac.createBufferSource();kn.buffer=buf;const bp=ac.createBiquadFilter();bp.type='bandpass';bp.frequency.value=2600;bp.Q.value=.5;const kg=ac.createGain();kg.gain.value=1.1;kn.connect(bp);bp.connect(kg);kg.connect(out);kn.start(T);
- // Klangfläche: leiser Akkord (A-Moll add9), leicht verstimmt, langsam ein- und ausgeblendet
- [110,164.81,220,246.94,329.63].forEach((f,i)=>[-3,3].forEach(c=>{const o=ac.createOscillator(),g=ac.createGain();o.type=i<2?'triangle':'sine';o.frequency.value=f;o.detune.value=c+i;g.gain.setValueAtTime(0,T);g.gain.linearRampToValueAtTime(.035/(1+i*.4),T+2.2);g.gain.linearRampToValueAtTime(0,T+L);o.connect(g);g.connect(out);o.start(T);o.stop(T+L+.1)}));
- // Glastöne (Pentatonik), zeitlich passend zu den aufsteigenden Würfeln
- [[.7,880],[1.5,1318.5],[2.3,1046.5],[3.0,1760],[3.6,1318.5],[4.3,2093]].forEach(([t,f])=>{if(t>dauer)return;[1,2.76].forEach((m,k)=>{const o=ac.createOscillator(),g=ac.createGain();o.type='sine';o.frequency.value=f*m;const t0=T+t;g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(k?.012:.05,t0+.008);g.gain.exponentialRampToValueAtTime(.0001,t0+(k?.6:2.2));o.connect(g);g.connect(out);o.start(t0);o.stop(t0+2.3)})});
+ // Klangfläche: leiser Akkord (neu B-Dur add9, alt A-Moll add9), leicht verstimmt, langsam ein- und ausgeblendet
+ MEL.flaeche.forEach((f,i)=>[-3,3].forEach(c=>{const o=ac.createOscillator(),g=ac.createGain();o.type=i<2?'triangle':'sine';o.frequency.value=f;o.detune.value=c+i;g.gain.setValueAtTime(0,T);g.gain.linearRampToValueAtTime(.035/(1+i*.4),T+2.2);g.gain.linearRampToValueAtTime(0,T+L);o.connect(g);g.connect(out);o.start(T);o.stop(T+L+.1)}));
+ // Glastöne, zeitlich passend zu den aufsteigenden Würfeln
+ MEL.toene.forEach(([t,f])=>{if(t>dauer)return;[1,2.76].forEach((m,k)=>{const o=ac.createOscillator(),g=ac.createGain();o.type='sine';o.frequency.value=f*m;const t0=T+t;g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(k?.012:.05,t0+.008);g.gain.exponentialRampToValueAtTime(.0001,t0+(k?.6:2.2));o.connect(g);g.connect(out);o.start(t0);o.stop(t0+2.3)})});
  MUSIK.start=T;MUSIK.ende=()=>{try{const n=ac.currentTime;out.gain.cancelScheduledValues(n);out.gain.setValueAtTime(out.gain.value,n);out.gain.linearRampToValueAtTime(0,n+1.2);setTimeout(()=>{try{ac.close()}catch(_){}},1500)}catch(_){}};
  try{ac.resume()}catch(_){}return ac}
 function introStart(){if(!introAn()||navigator.webdriver)return;
