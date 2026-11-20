@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:widget="http://www.netvibes.com/ns/">
+    <head>
+        <title>3Deep</title>
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <meta name="apiVersion" content="1.0" />
+        <meta name="debugMode" content="false" />
+        <meta name="strictMode" content="false" />
+        <meta name="author" content="3Deep" />
+        <meta name="description" content="Bookmark und Produktstruktur als 3D-Datenraum" />
+        <widget:preferences>
+            <widget:preference type="text" name="SecurityContext" label="Security Context" defaultValue="" />
+        </widget:preferences>
+        <script type="text/javascript">
+//<![CDATA[
+    var DreiDeepLader = {
+      base: 'https://kodoiii.github.io/3Deep/',
+      version: '3',
+      fertig: false,
+      onLoad: function () {
+        if (DreiDeepLader.fertig) { return; }
+        DreiDeepLader.fertig = true;
+        widget.body.innerHTML = '<p>3Deep wird geladen ...</p>';
+        var script = document.createElement('script');
+        script.charset = 'utf-8';
+        script.src = DreiDeepLader.base + 'adapter.js?v=' + DreiDeepLader.version;
+        script.onload = function () { window.__3deep.start(true, DreiDeepLader.base); };
+        script.onerror = function () {
+          widget.body.innerHTML = '<p>adapter.js konnte nicht geladen werden von ' + DreiDeepLader.base + '</p>';
+        };
+        document.getElementsByTagName('head')[0].appendChild(script);
+      }
+    };
+    (function warte() {
+      if (typeof widget === 'undefined' || !widget.addEvent) { window.setTimeout(warte, 100); return; }
+      widget.addEvent('onLoad', DreiDeepLader.onLoad);
+    })();
+//]]>
+        </script>
+    </head>
+    <body>
+        <p>3Deep</p>
+    </body>
+</html>
