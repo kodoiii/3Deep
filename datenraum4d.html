@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="4deep-darstellung" content="1">
+<title>4Deep Machbarkeitsstudie</title>
+<!-- 4Deep, Stufe 1 (Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
+     Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
+     daher ohne Änderung am Adapter nutzbar: im Widget unter „Adresse von datenraum3d.html“ die Adresse dieser Datei eintragen.
+     Vierte Dimension: Zeitregler (start/end der Objekte und Beziehungen, sonst Attribut „Erstellt“/„Geändert“). -->
+<style>
+:root{--bg:#0b1220;--pn:rgba(15,23,40,.92);--tx:#e6edf7;--mu:#93a3bd;--ak:#ff9f1c;--rand:#243049}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font:13px system-ui,Segoe UI,sans-serif;overflow:hidden}
+#cv{position:fixed;inset:0;display:block;width:100%;height:100%}
+.pn{position:fixed;background:var(--pn);border:1px solid var(--rand);border-radius:10px;padding:10px 12px;backdrop-filter:blur(6px)}
+#pn{left:10px;top:10px;width:250px;max-height:calc(100% - 110px);overflow:auto}
+#pn h1{font-size:16px;margin:0 0 2px}#pn .u{color:var(--mu);font-size:11px;margin-bottom:8px}
+#pn label{display:block;margin:7px 0 2px;color:var(--mu);font-size:11px}
+#pn select,#pn button{width:100%;padding:5px;background:#16213a;color:var(--tx);border:1px solid var(--rand);border-radius:6px;font:inherit}
+#pn button{cursor:pointer;margin-top:4px}#pn button:hover{border-color:var(--ak)}
+#pn .cb{display:flex;align-items:center;gap:6px;margin:5px 0;color:var(--tx);font-size:12px}
+#lg{margin-top:6px}#lg div{display:flex;align-items:center;gap:6px;font-size:12px;margin:2px 0;cursor:pointer}#lg i{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none}
+#lg div.aus{opacity:.35}
+#ver{color:var(--mu);font-size:10px;margin-top:8px}
+#zt{left:50%;transform:translateX(-50%);bottom:10px;width:min(760px,calc(100% - 300px));display:none;align-items:center;gap:10px}
+#zt input{flex:1}#zt button{background:#16213a;color:var(--tx);border:1px solid var(--rand);border-radius:6px;padding:4px 10px;cursor:pointer;font:inherit}
+#zjahr{min-width:120px;text-align:right;font-weight:600;color:var(--ak)}
+#dt{right:10px;top:10px;width:300px;max-height:calc(100% - 20px);overflow:auto;display:none}
+#dt h2{font-size:15px;margin:0 0 2px}#dt .ty{color:var(--mu);margin-bottom:8px}
+#dt table{border-collapse:collapse;width:100%}#dt td{padding:2px 4px;vertical-align:top;border-top:1px solid #1c2740;font-size:12px;overflow-wrap:anywhere}#dt td:first-child{color:var(--mu);width:42%}
+#dt .x{position:absolute;right:8px;top:6px;cursor:pointer;color:var(--mu);font-size:16px}
+#dt button{margin-top:8px;padding:5px 8px;background:#16213a;color:var(--tx);border:1px solid var(--rand);border-radius:6px;cursor:pointer}
+#tip{position:fixed;pointer-events:none;background:rgba(0,0,0,.75);padding:3px 7px;border-radius:5px;font-size:12px;display:none;white-space:nowrap}
+#st{position:fixed;right:10px;bottom:10px;color:var(--mu);font-size:11px;text-align:right}
+#hint{color:var(--mu);font-size:10.5px;line-height:1.4;margin-top:8px;border-top:1px solid var(--rand);padding-top:6px}
+#leer{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;color:var(--mu);font-size:15px}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div id="leer">Datenraum wählen oder JSON-Datei hierher ziehen …</div>
+<div class="pn" id="pn">
+ <h1>4Deep</h1><div class="u">Machbarkeitsstudie WebGL · Raum + Zeit</div>
+ <label>Datenraum</label>
+ <select id="ds"><option value="">Datenraum wählen …</option><option value="demo">Produktentwicklung (fiktiv, 18 Monate)</option>
+  <option value="thema:koenige">Könige Frankreichs und Englands</option><option value="stress:2000">Leistungstest 2 000 Objekte</option>
+  <option value="stress:10000">Leistungstest 10 000 Objekte</option><option value="stress:30000">Leistungstest 30 000 Objekte</option></select>
+ <button id="jl">JSON-Datei laden …</button><input type="file" id="jf" accept=".json,application/json" hidden>
+ <label>Layout</label>
+ <select id="ly"><option value="netz">Netz</option><option value="schichten">Schichten nach Objekttyp</option><option value="baum">Baum</option>
+  <option value="zeit">Zeitachse (Zeit als Raumrichtung)</option><option value="fest">Feste Positionen (aus Daten)</option></select>
+ <div class="cb"><input type="checkbox" id="schatten" checked><span>Schatten</span></div>
+ <div class="cb"><input type="checkbox" id="kanten" checked><span>Beziehungen</span></div>
+ <div class="cb"><input type="checkbox" id="vergangen" checked><span>Vergangenes blass zeigen</span></div>
+ <button id="lt">Leistung messen (5 s Drehung)</button>
+ <div id="lg"></div>
+ <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profil · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen</div>
+ <div id="ver">Darstellung 4D Version 1 · three.js r149</div>
+</div>
+<div class="pn" id="zt"><button id="zp" title="Abspielen">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><button id="za" title="Alles zeigen">Alles</button></div>
+<div class="pn" id="dt"><span class="x" id="dtx">✕</span><div id="dti"></div></div>
+<div id="tip"></div>
+<div id="st"></div>
+
+<script src="three.min.js"></script>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const VERSION='1';
+if(!window.THREE){$('leer').textContent='three.min.js fehlt (muss neben datenraum4d.html liegen).';throw new Error('three.min.js fehlt')}
+const T=THREE;
+
+// ---------- Grundgerüst ----------
+const cv=$('cv');
+const renderer=new T.WebGLRenderer({canvas:cv,antialias:true,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.outputEncoding=T.sRGBEncoding;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;
+const scene=new T.Scene();scene.background=new T.Color(0x0b1220);scene.fog=new T.Fog(0x0b1220,200,900);
+const cam=new T.PerspectiveCamera(45,1,0.5,5000);
+scene.add(new T.HemisphereLight(0xcfe0ff,0x1a2236,0.75));
+const sonne=new T.DirectionalLight(0xffffff,1.1);sonne.castShadow=true;sonne.shadow.mapSize.set(2048,2048);sonne.shadow.bias=-0.0005;scene.add(sonne,sonne.target);
+const boden=new T.Mesh(new T.CircleGeometry(1,64),new T.ShadowMaterial({opacity:.35}));boden.rotation.x=-Math.PI/2;boden.receiveShadow=true;scene.add(boden);
+const gitter=new T.GridHelper(2,40,0x2a3a5c,0x18233a);gitter.material.transparent=true;gitter.material.opacity=.5;scene.add(gitter);
+const zeitEbene=new T.Mesh(new T.PlaneGeometry(1,1),new T.MeshBasicMaterial({color:0xff9f1c,transparent:true,opacity:.07,side:T.DoubleSide,depthWrite:false}));zeitEbene.visible=false;scene.add(zeitEbene);
+let dirty=true;const neu=()=>{dirty=true};
+
+// ---------- Formen ----------
+const GEO={};
+function geo(form,grob){
+ const key=form+(grob?'~':'');if(GEO[key])return GEO[key];let g;
+ switch(form){
+  case'box':g=new T.BoxGeometry(1.5,1.5,1.5);break;
+  case'dodecahedron':g=new T.DodecahedronGeometry(1.05);break;
+  case'torus':g=new T.TorusGeometry(.8,.32,12,28);break;
+  case'bar':g=new T.BoxGeometry(2.4,.75,.75);break;
+  case'diamond':g=new T.OctahedronGeometry(1.15);break;
+  case'octagon':g=new T.CylinderGeometry(1,1,.5,8);g.rotateX(Math.PI/2);break;
+  case'triangle':g=new T.ConeGeometry(1.05,1.7,3);break;
+  case'book':g=new T.BoxGeometry(1.3,1.7,.45);break;
+  case'folder':g=new T.BoxGeometry(1.9,1.3,.35);break;
+  case'bust':g=new T.CapsuleGeometry(.6,.8,6,14);break;
+  case'linie':g=new T.BoxGeometry(2.4,.25,.25);break;
+  default:g=grob?new T.IcosahedronGeometry(1,1):new T.SphereGeometry(1,24,16);
+ }
+ return GEO[key]=g;
+}
+const ROHR=new T.CylinderGeometry(1,1,1,8,1,true);ROHR.translate(0,.5,0);
+const BALKEN=new T.BoxGeometry(1,1,1);BALKEN.translate(.5,0,0);
+
+// ---------- Zustand ----------
+let D=null;           // aktuelle Daten (Format wie datenraum3d.html)
+let N=[],E=[],TY={},byId={};
+let gruppen=[];       // je Form ein InstancedMesh
+let kantenMesh=null,balkenMesh=null;
+let sel=-1,hov=-1,layout='netz',lauf=null;
+let tMin=0,tMax=0,tCur=Infinity,hatZeit=false,spiel=false;
+const typAus={};
+const HELL=new T.Color(),TMP=new T.Color(),M4=new T.Matrix4(),Q=new T.Quaternion(),V=new T.Vector3(),V2=new T.Vector3(),SK=new T.Vector3(),OBEN=new T.Vector3(0,1,0);
+
+// ---------- Zeit ----------
+function zeit(v){
+ if(v==null||v==='')return NaN;
+ if(typeof v==='number'){if(Math.abs(v)<1e5){const d=new Date(0);d.setUTCFullYear(Math.round(v),0,1);return d.getTime()}return v}
+ const s=String(v).trim();let m;
+ if((m=s.match(/^(-?\d{1,4})$/))){const d=new Date(0);d.setUTCFullYear(+m[1],0,1);return d.getTime()}
+ if((m=s.match(/^(-?\d{1,6})-(\d\d)-(\d\d)/))){const d=new Date(0);d.setUTCFullYear(+m[1],+m[2]-1,+m[3]);return d.getTime()}
+ if((m=s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:,?\s*(\d{1,2}):(\d\d))?/)))return Date.UTC(+m[3],+m[2]-1,+m[1],+(m[4]||0),+(m[5]||0));
+ if((m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/)))return Date.UTC(+m[3],+m[1]-1,+m[2]);
+ const t=Date.parse(s);return isNaN(t)?NaN:t;
+}
+const JAHR=365.25*864e5;
+function zeitText(t){if(!isFinite(t))return'';const d=new Date(t),y=d.getUTCFullYear();if(tMax-tMin>80*JAHR)return String(y);
+ const p=n=>String(n).padStart(2,'0');return p(d.getUTCDate())+'.'+p(d.getUTCMonth()+1)+'.'+y}
+
+// ---------- Laden ----------
+function farbe(c,ers){try{return new T.Color(c||ers||'#8aa0c0')}catch(e){return new T.Color('#8aa0c0')}}
+function laden(daten,opt){
+ opt=opt||{};
+ if(!daten||!Array.isArray(daten.nodes)){meld('Keine Objekte in den Daten.');return}
+ const alt={};if(opt.behalten)N.forEach(n=>alt[n.id]=n);
+ D=daten;TY=daten.types||{};const RT=daten.relTypes||{};
+ // Größen auf den Median der Typgrößen normieren (Typgrößen sind je Datenquelle verschieden)
+ const gr=Object.values(TY).map(t=>+t.size||0).filter(x=>x>0).sort((a,b)=>a-b);const med=gr.length?gr[gr.length>>1]:1;
+ N=[];byId={};
+ daten.nodes.forEach(o=>{
+  if(!o||o.id==null||byId[o.id])return;const ty=TY[o.type]||{};
+  if(ty.hidden&&typAus[o.type]===undefined)typAus[o.type]=true;
+  const meta=o.meta||{};
+  let t0=zeit(o.start);if(!isFinite(t0))t0=zeit(meta.Erstellt);if(!isFinite(t0))t0=zeit(meta['Geändert']);
+  const t1=zeit(o.end);
+  const sz=(+o.size||+ty.size||med)/med;
+  const n={id:o.id,o,ty:o.type,name:o.name||String(o.id),form:ty.shape||'sphere',col:farbe(o.color||ty.color),r:1.3*Math.max(.35,Math.min(3.2,Math.sqrt(sz))),
+   t0,t1,pos:new T.Vector3(),ziel:new T.Vector3(),s:0,sZiel:1,i:N.length,nb:[],fest:o.pos};
+  const a=alt[o.id];if(a){n.pos.copy(a.pos);n.s=a.s;n.alt=true}
+  byId[o.id]=n;N.push(n);
+ });
+ E=[];(daten.edges||[]).forEach(e=>{const a=byId[e.from],b=byId[e.to];if(!a||!b||a===b)return;const rt=RT[e.type]||{};if(rt.hidden)return;
+  const k={a,b,e,col:farbe(e.color||rt.color,'#6f86ab'),t0:zeit(e.start),t1:zeit(e.end),hier:!!rt.hierarchy||/^(struktur|inhalt|teil|hierarchy)$/i.test(e.type||'')};E.push(k);a.nb.push(b);b.nb.push(a)});
+ // Zeitspanne
+ let lo=Infinity,hi=-Infinity;N.forEach(n=>{[n.t0,n.t1].forEach(t=>{if(isFinite(t)){lo=Math.min(lo,t);hi=Math.max(hi,t)}})});
+ hatZeit=hi>lo;tMin=lo;tMax=hi;if(!opt.behalten)tCur=Infinity;
+ $('zt').style.display=hatZeit?'flex':'none';$('leer').style.display=N.length?'none':'';
+ // neue Objekte neben bekannten Nachbarn beginnen lassen (schrittweiser Aufbau ohne Sprung)
+ N.forEach(n=>{if(n.alt)return;const k=n.nb.find(m=>m.alt);if(k)n.pos.copy(k.pos).add(V.set(rnd()-.5,rnd()-.5,rnd()-.5).multiplyScalar(4));else n.pos.set((rnd()-.5)*20,(rnd()-.5)*20,(rnd()-.5)*20)});
+ baueMeshes();legende();
+ const hatPos=N.some(n=>n.fest);
+ let ly=opt.behalten?layout:(daten.layout==='plan'||daten.zeitArt?'zeit':hatPos?'fest':'netz');
+ if(!$('ly').querySelector('option[value="'+ly+'"]'))ly='netz';
+ $('ly').value=ly;setzeLayout(ly,!opt.behalten);
+ sel=-1;$('dt').style.display='none';zeitAnwenden();neu();
+}
+let s=1;function rnd(){s=(s*16807)%2147483647;return(s-1)/2147483646}
+
+function baueMeshes(){
+ gruppen.forEach(g=>{scene.remove(g.mesh);g.mesh.dispose()});gruppen=[];
+ if(kantenMesh){scene.remove(kantenMesh);kantenMesh.dispose();kantenMesh=null}
+ if(balkenMesh){scene.remove(balkenMesh);balkenMesh.dispose();balkenMesh=null}
+ const nachForm={};N.forEach(n=>{(nachForm[n.form]=nachForm[n.form]||[]).push(n)});
+ const schatten=$('schatten').checked&&N.length<=12000;
+ Object.keys(nachForm).forEach(f=>{const liste=nachForm[f];
+  const mat=new T.MeshStandardMaterial({color:0xffffff,metalness:.15,roughness:.38});
+  const mesh=new T.InstancedMesh(geo(f,N.length>5000),mat,liste.length);mesh.castShadow=schatten;mesh.receiveShadow=false;
+  mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);mesh.frustumCulled=false;   // r149: Hüllkugel nur der Grundform, daher nicht wegschneiden
+  liste.forEach((n,k)=>{n.g=gruppen.length;n.k=k;mesh.setColorAt(k,n.col)});
+  mesh.userData.liste=liste;scene.add(mesh);gruppen.push({mesh,liste});
+ });
+ if(E.length){const mat=new T.MeshStandardMaterial({color:0xffffff,metalness:0,roughness:.6,transparent:true,opacity:.75});
+  kantenMesh=new T.InstancedMesh(ROHR,mat,E.length);kantenMesh.instanceMatrix.setUsage(T.DynamicDrawUsage);kantenMesh.frustumCulled=false;E.forEach((k,i)=>kantenMesh.setColorAt(i,k.col));scene.add(kantenMesh)}
+ const mitDauer=N.filter(n=>isFinite(n.t0)&&isFinite(n.t1)&&n.t1>n.t0);
+ if(mitDauer.length){const mat=new T.MeshStandardMaterial({color:0xffffff,transparent:true,opacity:.45,roughness:.5});
+  balkenMesh=new T.InstancedMesh(BALKEN,mat,mitDauer.length);balkenMesh.userData.liste=mitDauer;balkenMesh.frustumCulled=false;mitDauer.forEach((n,i)=>balkenMesh.setColorAt(i,n.col));balkenMesh.visible=false;scene.add(balkenMesh)}
+ sonne.castShadow=schatten;
+}
+
+// ---------- Layouts ----------
+let sim=null;   // laufende Kräfteberechnung {iter,max,yFest}
+function abstand(){return D&&+D.spacing>0?Math.max(4,Math.min(14,+D.spacing*1.2)):6}
+function typReihe(){const k=Object.keys(TY).filter(t=>N.some(n=>n.ty===t));N.forEach(n=>{if(!k.includes(n.ty))k.push(n.ty)});return k}
+function setzeLayout(ly,kamera){
+ layout=ly;sim=null;zeitEbene.visible=false;if(balkenMesh)balkenMesh.visible=false;const L=abstand();
+ if(ly==='netz'||ly==='schichten'){
+  const reihe=typReihe();
+  N.forEach(n=>{n.ziel.copy(n.pos);n.yFest=ly==='schichten'?(reihe.length-1-reihe.indexOf(n.ty))*L*2.2:null;if(n.yFest!=null)n.ziel.y=n.yFest});
+  sim={iter:0,max:N.length>8000?90:N.length>2000?160:260,L};
+ }else if(ly==='baum'){baum(L)}
+ else if(ly==='zeit'){zeitachse(L)}
+ else if(ly==='fest'){N.forEach((n,i)=>{const p=n.fest;if(Array.isArray(p))n.ziel.set(+p[0]||0,+p[1]||0,+p[2]||0);else if(p)n.ziel.set(+p.x||0,+p.y||0,+p.z||0);else n.ziel.set(0,-L*3,i*.5)});
+  // auf übliche Größe bringen
+  const b=new T.Box3();N.forEach(n=>b.expandByPoint(n.ziel));const g=b.getSize(V).length()||1,f=Math.max(1,Math.sqrt(N.length)*L/g);N.forEach(n=>n.ziel.multiplyScalar(f))}
+ bodenSetzen();beschriften();if(kamera)heimSpaeter=true;neu();
+}
+function simSchritt(){
+ if(!sim)return;const L=sim.L,n=N.length,zelle=L*2.5,gitterK={};const temp=L*0.6*Math.max(.05,1-sim.iter/sim.max);
+ for(const a of N){a.fx=0;a.fy=0;a.fz=0;const key=Math.floor(a.ziel.x/zelle)+','+Math.floor(a.ziel.y/zelle)+','+Math.floor(a.ziel.z/zelle);(gitterK[key]=gitterK[key]||[]).push(a)}
+ // Abstoßung nur in Nachbarzellen (sonst n²)
+ for(const a of N){const cx=Math.floor(a.ziel.x/zelle),cy=Math.floor(a.ziel.y/zelle),cz=Math.floor(a.ziel.z/zelle);
+  for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)for(let dz=-1;dz<=1;dz++){const z=gitterK[(cx+dx)+','+(cy+dy)+','+(cz+dz)];if(!z)continue;
+   for(const b of z){if(b===a)continue;let x=a.ziel.x-b.ziel.x,y=a.ziel.y-b.ziel.y,w=a.ziel.z-b.ziel.z;let d2=x*x+y*y+w*w;if(d2<1e-4){x=rnd()-.5;y=rnd()-.5;w=rnd()-.5;d2=.1}
+    const f=L*L/d2;a.fx+=x*f;a.fy+=y*f;a.fz+=w*f}}}
+ // Anziehung entlang der Beziehungen
+ for(const k of E){const a=k.a,b=k.b;const x=b.ziel.x-a.ziel.x,y=b.ziel.y-a.ziel.y,w=b.ziel.z-a.ziel.z;const d=Math.sqrt(x*x+y*y+w*w)||.01;const f=(d-L)/d*.5/Math.max(1,Math.sqrt(Math.min(a.nb.length,b.nb.length)));
+  a.fx+=x*f;a.fy+=y*f;a.fz+=w*f;b.fx-=x*f;b.fy-=y*f;b.fz-=w*f}
+ // schwacher Zug zur Mitte, damit Teilnetze nicht wegdriften
+ for(const a of N){a.fx-=a.ziel.x*.01;a.fy-=a.ziel.y*.01;a.fz-=a.ziel.z*.01;
+  const m=Math.sqrt(a.fx*a.fx+a.fy*a.fy+a.fz*a.fz)||1,s=Math.min(m,temp)/m;a.ziel.x+=a.fx*s;a.ziel.z+=a.fz*s;if(a.yFest==null)a.ziel.y+=a.fy*s;else a.ziel.y=a.yFest}
+ sim.iter++;if(sim.iter>=sim.max){sim=null;bodenSetzen();beschriften();if(heimNachSim){heimNachSim=false;heim()}}
+ neu();
+}
+function baum(L){
+ // Wurzeln: Objekte ohne Eltern über Strukturlinks (from = Kind, to = Eltern); sonst je Teilnetz das Objekt mit den meisten Beziehungen
+ const kinder=new Map(),hatEltern=new Set();E.forEach(k=>{if(!k.hier)return;(kinder.get(k.b)||kinder.set(k.b,[]).get(k.b)).push(k.a);hatEltern.add(k.a)});
+ const besucht=new Set(),wurzeln=[],tiefe=new Map(),kind=new Map();N.forEach(n=>kind.set(n,[]));
+ const bfs=(w,nur)=>{const q=[w];while(q.length){const n=q.shift();for(const m of(nur?(kinder.get(n)||[]):n.nb))if(!besucht.has(m)){besucht.add(m);tiefe.set(m,tiefe.get(n)+1);kind.get(n).push(m);q.push(m)}}};
+ // 1. Wurzeln der Produktstruktur (Eltern ohne eigene Eltern), größte zuerst
+ [...kinder.keys()].filter(n=>!hatEltern.has(n)).sort((a,b)=>b.nb.length-a.nb.length).forEach(w=>{if(besucht.has(w))return;besucht.add(w);tiefe.set(w,0);wurzeln.push(w);bfs(w,true)});
+ // 2. übrige Objekte (Dokumente, Issues, Personen) an ein schon platziertes Nachbarobjekt hängen
+ let rest=N.filter(n=>!besucht.has(n)),weiter=true;
+ while(rest.length&&weiter){weiter=false;rest.forEach(n=>{if(besucht.has(n))return;const m=n.nb.filter(x=>besucht.has(x)).sort((a,b)=>tiefe.get(b)-tiefe.get(a))[0];if(m){besucht.add(n);tiefe.set(n,tiefe.get(m)+1);kind.get(m).push(n);weiter=true}});rest=rest.filter(n=>!besucht.has(n))}
+ // 3. Teilnetze ohne Struktur: Objekt mit den meisten Beziehungen als Wurzel
+ rest.sort((a,b)=>b.nb.length-a.nb.length).forEach(w=>{if(besucht.has(w))return;besucht.add(w);tiefe.set(w,0);wurzeln.push(w);bfs(w,false)});
+ // Blätterzahl je Teilbaum → Winkelbereich (Kegelbaum)
+ const blatt=new Map();const zaehl=n=>{const ks=kind.get(n)||[];let s=ks.length?0:1;ks.forEach(k=>s+=zaehl(k));blatt.set(n,s);return s};
+ const setze=(n,a0,a1,mx,mz)=>{const d=tiefe.get(n),r=d*L*1.6,w=(a0+a1)/2;n.ziel.set(mx+Math.cos(w)*r,-d*L*1.4,mz+Math.sin(w)*r);let a=a0;(kind.get(n)||[]).forEach(k=>{const b=a+(a1-a0)*blatt.get(k)/Math.max(1,blatt.get(n));setze(k,a,b,mx,mz);a=b})};
+ let x=0;wurzeln.forEach(w=>{zaehl(w);const breite=Math.sqrt(blatt.get(w))*L*2.2;x+=breite/2;setze(w,0,Math.PI*2,x,0);x+=breite/2+L*2});
+ const mx=x/2;N.forEach(n=>{n.ziel.x-=mx;n.ziel.y+=L*4});
+}
+function zeitachse(L){
+ const reihe=typReihe();const spanne=tMax-tMin||1,breite=Math.max(80,Math.sqrt(N.length)*L*3);
+ const X=t=>(t-tMin)/spanne*breite-breite/2;
+ const belegt={};
+ N.forEach(n=>{let t=n.t0;if(!isFinite(t)){const m=n.nb.find(m=>isFinite(m.t0));t=m?m.t0:tMin}
+  const zeile=reihe.indexOf(n.ty);const key=zeile+':'+Math.round(X(t)/(L*.8));const k=belegt[key]=(belegt[key]||0)+1;
+  n.ziel.set(X(t),(reihe.length-1-zeile)*L*1.6+L,((k-1)%2?1:-1)*Math.ceil((k-1)/2)*L*.9)});
+ if(balkenMesh)balkenMesh.visible=true;
+ zeitEbene.visible=true;zeitEbene.scale.set(1,reihe.length*L*1.6+L*2,Math.max(30,N.length*.2));zeitEbene.rotation.y=Math.PI/2;
+ zeitX=X;
+}
+let zeitX=null;
+const schrift=new T.Group();scene.add(schrift);
+function marke(text,x,y,z,h,farbe){const c=document.createElement('canvas'),g=c.getContext('2d');g.font='600 44px system-ui,sans-serif';const w=Math.ceil(g.measureText(text).width)+16;c.width=w;c.height=60;
+ g.font='600 44px system-ui,sans-serif';g.fillStyle=farbe||'#c9d6ea';g.textBaseline='middle';g.fillText(text,8,31);const t=new T.CanvasTexture(c);t.encoding=T.sRGBEncoding;
+ const sp=new T.Sprite(new T.SpriteMaterial({map:t,transparent:true,depthWrite:false,fog:false}));sp.scale.set(h*w/60,h,1);sp.position.set(x,y,z);sp.center.set(0,.5);schrift.add(sp);return sp}
+function beschriften(){schrift.children.slice().forEach(c=>{schrift.remove(c);c.material.map.dispose();c.material.dispose()});const L=abstand();
+ if(layout!=='zeit'&&layout!=='schichten')return;const reihe=typReihe();const b=new T.Box3();N.forEach(n=>b.expandByPoint(n.ziel));if(b.isEmpty())return;
+ const h=Math.max(L*.5,b.getSize(V).length()*.018);
+ reihe.forEach((t,k)=>{const y=layout==='zeit'?(reihe.length-1-k)*L*1.6+L:(reihe.length-1-k)*L*2.2;const sp=marke((TY[t]||{}).label||t,b.min.x-L*1.5,y,0,h,(TY[t]||{}).color);sp.center.set(1,.5)});
+ if(layout==='zeit'&&zeitX){const sp=tMax-tMin,jahre=sp/JAHR;const schritte=[1/12,1/4,1/2,1,2,5,10,25,50,100,250,500];const st=schritte.find(x=>jahre/x<=14)||1000;
+  const d0=new Date(tMin);let y=d0.getUTCFullYear(),m=st<1?d0.getUTCMonth():0;
+  for(let i=0;i<60;i++){const d=new Date(0);if(st<1){d.setUTCFullYear(y,m,1);m+=Math.round(st*12);}else{const yy=Math.ceil(y/st)*st+i*st;d.setUTCFullYear(yy,0,1)}const t=d.getTime();if(t>tMax)break;if(t<tMin)continue;
+   const p=n=>String(n).padStart(2,'0');marke(st<1?p(d.getUTCMonth()+1)+'/'+d.getUTCFullYear():String(d.getUTCFullYear()),zeitX(t),b.min.y-L*.8,b.max.z+L,h*1.2,'#ff9f1c').center.set(.5,.5)}}}
+
+// ---------- Zeit anwenden ----------
+function sichtbar(n){return !typAus[n.ty]&&!(isFinite(n.t0)&&n.t0>tCur)}
+function vergangen(n){return isFinite(n.t1)&&n.t1<tCur}
+function zeitAnwenden(){
+ const blass=$('vergangen').checked;
+ N.forEach(n=>{n.sZiel=sichtbar(n)?(vergangen(n)?(blass?.55:0):1):0;n.blass=vergangen(n)});
+ if(hatZeit){const f=isFinite(tCur)?(tCur-tMin)/(tMax-tMin):1;$('zr').value=Math.round(Math.max(0,Math.min(1,f))*1000);$('zjahr').textContent=isFinite(tCur)?'Stand '+zeitText(tCur):'alle Zeiten'}
+ if(zeitX&&layout==='zeit'){zeitEbene.position.x=isFinite(tCur)?zeitX(Math.min(tCur,tMax)):zeitX(tMax);}
+ faerben();neu();
+}
+function faerben(){
+ const nah=new Set();if(sel>=0){nah.add(N[sel]);N[sel].nb.forEach(m=>nah.add(m))}
+ gruppen.forEach(g=>{g.liste.forEach((n,k)=>{TMP.copy(n.col);if(n.blass)TMP.lerp(HELL.set(0x55607a),.65);if(sel>=0&&!nah.has(n))TMP.multiplyScalar(.28);if(N[sel]===n)TMP.lerp(HELL.set(0xff9f1c),.35);if(hov===n.i)TMP.lerp(HELL.set(0xffffff),.25);g.mesh.setColorAt(k,TMP)});g.mesh.instanceColor.needsUpdate=true});
+ if(kantenMesh){E.forEach((k,i)=>{TMP.copy(k.col);if(sel>=0)TMP.multiplyScalar(k.a.i===sel||k.b.i===sel?1.6:.2);kantenMesh.setColorAt(i,TMP)});kantenMesh.instanceColor.needsUpdate=true}
+}
+
+// ---------- Bild je Frame ----------
+function bewegen(dt){
+ let bewegt=false;const a=1-Math.pow(.0015,dt);   // gleitend zum Ziel
+ for(const n of N){const d=n.pos.distanceToSquared(n.ziel);if(d>1e-4){n.pos.lerp(n.ziel,a);bewegt=true}const ds=n.sZiel-n.s;if(Math.abs(ds)>1e-3){n.s+=ds*Math.min(1,dt*6);bewegt=true}else n.s=n.sZiel}
+ if(!bewegt&&!dirty)return false;
+ for(const g of gruppen){const m=g.mesh;for(let k=0;k<g.liste.length;k++){const n=g.liste[k];SK.setScalar(n.r*n.s);Q.identity();M4.compose(n.pos,Q,SK);m.setMatrixAt(k,M4)}m.instanceMatrix.needsUpdate=true}
+ if(kantenMesh){const zeig=$('kanten').checked;kantenMesh.visible=zeig;if(zeig){for(let i=0;i<E.length;i++){const k=E[i];const vis=k.a.s>.05&&k.b.s>.05&&!(isFinite(k.t0)&&k.t0>tCur);
+   V.subVectors(k.b.pos,k.a.pos);const len=V.length();if(!vis||len<1e-3){SK.set(0,0,0);M4.compose(k.a.pos,Q.identity(),SK)}else{Q.setFromUnitVectors(OBEN,V2.copy(V).divideScalar(len));const r=.09*Math.min(k.a.s,k.b.s)*(k.hier?1.6:1);SK.set(r,len,r);M4.compose(k.a.pos,Q,SK)}
+   kantenMesh.setMatrixAt(i,M4)}kantenMesh.instanceMatrix.needsUpdate=true}}
+ if(balkenMesh&&balkenMesh.visible&&zeitX){const li=balkenMesh.userData.liste;for(let i=0;i<li.length;i++){const n=li[i];const x0=zeitX(n.t0),x1=zeitX(Math.min(n.t1,isFinite(tCur)?Math.max(tCur,n.t0):n.t1));
+   const w=Math.max(0,x1-x0)*(n.s>.05?1:0);V.set(x0,n.pos.y,n.pos.z);SK.set(w,n.r*.5,n.r*.5);M4.compose(V,Q.identity(),SK);balkenMesh.setMatrixAt(i,M4)}balkenMesh.instanceMatrix.needsUpdate=true}
+ return true;
+}
+function bodenSetzen(){
+ const b=new T.Box3();N.forEach(n=>b.expandByPoint(n.ziel));if(b.isEmpty())b.set(V.set(-10,-10,-10),V2.set(10,10,10));
+ const c=b.getCenter(new T.Vector3()),r=Math.max(20,b.getSize(new T.Vector3()).length()/2);
+ const y=b.min.y-4;boden.position.set(c.x,y,c.z);boden.scale.setScalar(r*1.6);gitter.position.set(c.x,y+.01,c.z);gitter.scale.setScalar(r*1.6);
+ sonne.position.set(c.x+r*.6,c.y+r*1.6,c.z+r*.8);sonne.target.position.copy(c);const sc=sonne.shadow.camera;sc.left=sc.bottom=-r*1.3;sc.right=sc.top=r*1.3;sc.near=.5;sc.far=r*4;sc.updateProjectionMatrix();
+ scene.fog.near=r*3;scene.fog.far=r*9;zeitEbene.position.y=c.y;zeitEbene.position.z=c.z;welt={c,r};
+}
+let welt={c:new T.Vector3(),r:30};
+
+// ---------- Kamera (Steuerung wie CATIA in datenraum3d.html) ----------
+const K={ziel:new T.Vector3(),gier:-.6,nick:.45,dist:80,zZiel:new T.Vector3(),zDist:80,flug:false};
+let heimSpaeter=false,heimNachSim=false;
+function heim(){if(sim){heimNachSim=true}const b=new T.Box3();N.forEach(n=>{if(n.sZiel>0)b.expandByPoint(n.ziel)});if(b.isEmpty())return;
+ const c=b.getCenter(new T.Vector3()),r=Math.max(8,b.getSize(V).length()/2);K.zZiel.copy(c);K.zDist=r/Math.sin(cam.fov*Math.PI/360)*.95;K.flug=true;neu()}
+function kameraSetzen(){
+ if(K.flug){K.ziel.lerp(K.zZiel,.12);K.dist+=(K.zDist-K.dist)*.12;if(K.ziel.distanceTo(K.zZiel)<.01&&Math.abs(K.zDist-K.dist)<.01)K.flug=false;dirty=true}
+ const cp=Math.cos(K.nick);cam.position.set(K.ziel.x+K.dist*cp*Math.sin(K.gier),K.ziel.y+K.dist*Math.sin(K.nick),K.ziel.z+K.dist*cp*Math.cos(K.gier));
+ cam.lookAt(K.ziel);cam.near=Math.max(.1,K.dist/200);cam.far=K.dist+welt.r*12;cam.updateProjectionMatrix();
+}
+function drehen(dx,dy){K.flug=false;K.gier-=dx*.006;K.nick=Math.max(-1.45,Math.min(1.45,K.nick+dy*.006));neu()}
+function schieben(dx,dy){K.flug=false;const f=K.dist*Math.tan(cam.fov*Math.PI/360)*2/cv.clientHeight;V.setFromMatrixColumn(cam.matrix,0).multiplyScalar(-dx*f);V2.setFromMatrixColumn(cam.matrix,1).multiplyScalar(dy*f);K.ziel.add(V).add(V2);K.zZiel.copy(K.ziel);neu()}
+function zoomen(f){K.flug=false;K.dist=Math.max(2,Math.min(8000,K.dist*f));K.zDist=K.dist;neu()}
+const tasten={};let zug=null,zoomModus=false,bewegtMaus=0;
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+cv.addEventListener('pointerdown',e=>{tasten[e.button]=true;bewegtMaus=0;cv.setPointerCapture(e.pointerId);
+ if(e.button===2&&tasten[1])zoomModus='bereit';zug={x:e.clientX,y:e.clientY}});
+cv.addEventListener('pointermove',e=>{
+ if(!zug){hover(e);return}
+ const dx=e.clientX-zug.x,dy=e.clientY-zug.y;zug={x:e.clientX,y:e.clientY};bewegtMaus+=Math.abs(dx)+Math.abs(dy);
+ if(tasten[1]&&zoomModus===true)zoomen(Math.exp(dy*.01));
+ else if(tasten[1]&&tasten[2])drehen(dx,dy);
+ else if(tasten[1])schieben(dx,dy);
+ else if(tasten[0]&&e.altKey)zoomen(Math.exp(dy*.01));
+ else if(tasten[0]&&e.ctrlKey)schieben(dx,dy);
+ else if(tasten[0])drehen(dx,dy);
+});
+cv.addEventListener('pointerup',e=>{tasten[e.button]=false;
+ if(e.button===2&&zoomModus==='bereit'&&bewegtMaus<4){zoomModus=true;return}
+ if(e.button===1)zoomModus=false;
+ if(!tasten[0]&&!tasten[1]&&!tasten[2])zug=null;
+ if(bewegtMaus<4&&e.button===0)waehle(treffer(e));
+ if(bewegtMaus<4&&e.button===2&&!tasten[1]){const n=treffer(e);if(n>=0){waehle(n)}}
+});
+cv.addEventListener('dblclick',e=>{const n=treffer(e);if(n<0){heim();return}K.zZiel.copy(N[n].pos);K.zDist=Math.max(12,N[n].r*14);K.flug=true;neu()});
+cv.addEventListener('wheel',e=>{e.preventDefault();zoomen(Math.exp(e.deltaY*.0012))},{passive:false});
+const ray=new T.Raycaster(),mausV=new T.Vector2();
+function treffer(e){const r=cv.getBoundingClientRect();mausV.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(mausV,cam);
+ const hits=ray.intersectObjects(gruppen.map(g=>g.mesh),false);for(const h of hits){const n=h.object.userData.liste[h.instanceId];if(n&&n.s>.1)return n.i}return -1}
+let hoverZeit=0;
+function hover(e){const jetzt=performance.now();if(jetzt-hoverZeit<40)return;hoverZeit=jetzt;const n=treffer(e);if(n!==hov){hov=n;faerben();neu()}
+ const tip=$('tip');if(n>=0){const o=N[n];tip.textContent=o.name+' · '+((TY[o.ty]||{}).label||o.ty)+(isFinite(o.t0)?' · '+zeitText(o.t0)+(isFinite(o.t1)?' – '+zeitText(o.t1):''):'');tip.style.display='block';tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY+12)+'px'}else tip.style.display='none'}
+
+// ---------- Auswahl und Profil ----------
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function waehle(i){sel=i;faerben();neu();const p=$('dt');if(i<0){p.style.display='none';return}const n=N[i],o=n.o;
+ let h='<h2>'+esc(n.name)+'</h2><div class="ty">'+esc((TY[n.ty]||{}).label||n.ty)+(o.state?' · '+esc(o.state):'')+'</div><table>';
+ if(isFinite(n.t0))h+='<tr><td>Beginn</td><td>'+zeitText(n.t0)+'</td></tr>';if(isFinite(n.t1))h+='<tr><td>Ende</td><td>'+zeitText(n.t1)+'</td></tr>';
+ Object.entries(o.meta||{}).forEach(([k,v])=>{if(v!==''&&v!=null)h+='<tr><td>'+esc(k)+'</td><td>'+esc(v)+'</td></tr>'});
+ h+='<tr><td>Beziehungen</td><td>'+n.nb.length+'</td></tr></table>';
+ if(o.dl&&window.parent!==window)h+='<button id="dlk">⬇ Datei herunterladen</button>';   // Ausnahme (1) der Grundregel, wie in datenraum3d.html
+ $('dti').innerHTML=h;p.style.display='block';
+ const b=$('dlk');if(b)b.onclick=()=>parent.postMessage({quelle:'3deep',download:o.dl,name:n.name},'*');
+}
+$('dtx').onclick=()=>waehle(-1);
+
+// ---------- Legende ----------
+function legende(){const lg=$('lg');lg.innerHTML='';typReihe().forEach(t=>{const ty=TY[t]||{};const z=N.filter(n=>n.ty===t).length;const d=document.createElement('div');
+ d.innerHTML='<i style="background:'+esc(ty.color||'#8aa0c0')+'"></i>'+esc(ty.label||t)+' <span style="color:var(--mu)">'+z+'</span>';if(typAus[t])d.className='aus';
+ d.onclick=()=>{typAus[t]=!typAus[t];d.className=typAus[t]?'aus':'';zeitAnwenden()};lg.appendChild(d)})}
+
+// ---------- Bedienung ----------
+$('ly').onchange=e=>setzeLayout(e.target.value,true);
+$('schatten').onchange=()=>{baueMeshes();faerben();neu()};
+$('kanten').onchange=neu;$('vergangen').onchange=zeitAnwenden;
+$('zr').oninput=e=>{spiel=false;$('zp').textContent='▶';tCur=tMin+(tMax-tMin)*e.target.value/1000;zeitAnwenden()};
+$('za').onclick=()=>{spiel=false;$('zp').textContent='▶';tCur=Infinity;zeitAnwenden()};
+function spielen(){if(!hatZeit)return;spiel=!spiel;$('zp').textContent=spiel?'❚❚':'▶';if(spiel&&(!isFinite(tCur)||tCur>=tMax))tCur=tMin;neu()}
+$('zp').onclick=spielen;
+addEventListener('keydown',e=>{if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;if(e.code==='Space'){e.preventDefault();spielen()}if(e.key==='Escape')waehle(-1);if(e.key==='m'||e.key==='M')$('pn').style.display=$('pn').style.display==='none'?'':'none'});
+$('jl').onclick=()=>$('jf').click();
+$('jf').onchange=e=>{const f=e.target.files[0];if(f)leseDatei(f);e.target.value=''};
+addEventListener('dragover',e=>e.preventDefault());
+addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer.files&&e.dataTransfer.files[0];if(f)leseDatei(f)});
+function leseDatei(f){const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);lauf=null;laden(j.daten&&j.daten.nodes?j.daten:j)}catch(e){meld('Datei ist kein gültiges JSON: '+e.message)}};r.readAsText(f)}
+$('ds').onchange=e=>waehleRaum(e.target.value);
+function waehleRaum(v){lauf=null;
+ if(v==='demo')laden(demoDaten());
+ else if(v.startsWith('stress:'))laden(stressDaten(+v.slice(7)));
+ else if(v.startsWith('thema:')){const name=v.slice(6);const pfade=['themen/'+name+'.json','3deep-widget/themen/'+name+'.json'];
+  const versuch=i=>{if(i>=pfade.length){meld('Thema nicht erreichbar (nur über einen Webserver, nicht per Doppelklick).');return}
+   fetch(pfade[i]).then(r=>{if(!r.ok)throw 0;return r.json()}).then(j=>laden(j.daten||j)).catch(()=>versuch(i+1))};versuch(0)}}
+function meld(t){$('leer').style.display='';$('leer').textContent=t}
+
+// ---------- Leistung ----------
+let fps=0,fz=0,fT=performance.now(),messung=null;
+$('lt').onclick=()=>{messung={start:performance.now(),frames:0,gier:K.gier}};
+function status(){$('st').innerHTML=N.length.toLocaleString('de-DE')+' Objekte · '+E.length.toLocaleString('de-DE')+' Beziehungen'+(fps?' · '+fps+' fps':'')+(sim?' · Layout '+Math.round(sim.iter/sim.max*100)+' %':'')+(messung&&messung.erg?'<br>Messung: '+messung.erg:'')}
+
+// ---------- Datenquellen: Adapter (postMessage), Beispiele ----------
+addEventListener('message',e=>{const m=e.data;if(!m||m.quelle!=='3deep-adapter'||!m.daten)return;
+ const gleich=m.lauf!=null&&m.lauf===lauf&&N.length>0;lauf=m.lauf;$('ds').value='';laden(m.daten,{behalten:gleich})});
+function demoDaten(){
+ // Produktentwicklung über 18 Monate: Baugruppen/Bauteile entstehen, Revisionen lösen einander ab, Issues öffnen und schließen sich
+ s=4242;const heute=Date.UTC(2026,10,22),T0=heute-540*864e5,tag=864e5,nodes=[],edges=[];const d=t=>new Date(t).toISOString().slice(0,10);
+ const add=(id,type,name,t0,t1,meta)=>{nodes.push({id,type,name,start:t0!=null?d(t0):undefined,end:t1!=null?d(t1):undefined,meta:meta||{}})};
+ add('p','produkt','E-Bike-Antrieb EB-500',T0,null,{Herkunft:'fiktiv'});
+ const personen=['A. Berger','T. Wagner','S. Albrecht','L. Brandt','K. Yilmaz','R. Hofmann'];personen.forEach((p,i)=>add('pe'+i,'person',p,null,null,{Rolle:['Projektleitung','Konstruktion','Elektronik','Software','Versuch','Qualität'][i]}));
+ const bgs=['Motor','Getriebe','Steuergerät','Akku','Gehäuse','Sensorik'];
+ bgs.forEach((bg,i)=>{const tb=T0+(i*25+rnd()*20)*tag;add('bg'+i,'baugruppe',bg,tb,null,{Teilenummer:'BG-'+(100+i)});edges.push({from:'bg'+i,to:'p',type:'struktur',start:d(tb)});
+  const nt=5+Math.floor(rnd()*5);for(let j=0;j<nt;j++){const id='t'+i+'_'+j;let t=tb+(10+rnd()*200)*tag;let vorher=null;const revs=1+Math.floor(rnd()*3);
+   for(let r=0;r<revs;r++){const t2=r<revs-1?t+(60+rnd()*150)*tag:null;const rid=id+'_'+'ABC'[r];add(rid,'bauteil',bg+'-Teil '+(j+1)+' Rev. '+'ABC'[r],t,t2,{Revision:'ABC'[r],Teilenummer:'T-'+(1000+i*20+j)});
+    edges.push({from:rid,to:'bg'+i,type:'struktur',start:d(t),end:t2?d(t2):undefined});if(vorher)edges.push({from:rid,to:vorher,type:'revision',start:d(t)});
+    if(rnd()<.5){add(rid+'_z','zeichnung','Zeichnung '+bg+'-'+(j+1)+' '+'ABC'[r],t+10*tag,t2,{});edges.push({from:rid+'_z',to:rid,type:'zeichnung',start:d(t+10*tag)})}
+    if(rnd()<.35){const ti=t+(5+rnd()*60)*tag,te=rnd()<.8?ti+(10+rnd()*90)*tag:null;add(rid+'_i','issue','Issue zu '+bg+'-Teil '+(j+1),ti,te&&te<heute?te:null,{Status:te&&te<heute?'geschlossen':'offen'});
+     edges.push({from:rid+'_i',to:rid,type:'betrifft',start:d(ti)});edges.push({from:rid+'_i',to:'pe'+Math.floor(rnd()*6),type:'zuweisung',start:d(ti)})}
+    vorher=rid;if(t2)t=t2}}
+  edges.push({from:'bg'+i,to:'pe'+(1+i%5),type:'zuweisung'})});
+ return{layout:'netz',types:{produkt:{label:'Produkt',color:'#f4c430',size:3,shape:'box'},baugruppe:{label:'Baugruppe',color:'#4f8cff',size:2,shape:'dodecahedron'},bauteil:{label:'Bauteil',color:'#3fbf7f',size:1},
+  zeichnung:{label:'Zeichnung',color:'#9bb2d1',size:.8,shape:'book'},issue:{label:'Issue',color:'#e63946',size:1,shape:'triangle'},person:{label:'Person',color:'#b07cff',size:1.2,shape:'bust'}},
+  relTypes:{struktur:{label:'Struktur',color:'#4f8cff',hierarchy:true},revision:{label:'Revision',color:'#ff9f1c',directed:true},zeichnung:{label:'Zeichnung',color:'#9bb2d1'},betrifft:{label:'betrifft',color:'#e63946'},zuweisung:{label:'zugewiesen',color:'#b07cff'}},nodes,edges};
+}
+function stressDaten(n){s=777;const T0=Date.UTC(2020,0,1),sp=6*JAHR,nodes=[],edges=[];const typen=['a','b','c','d','e'];const formen=['sphere','box','dodecahedron','diamond','triangle'];const farben=['#4f8cff','#3fbf7f','#f4c430','#e63946','#b07cff'];
+ for(let i=0;i<n;i++){const t=T0+sp*Math.pow(i/n,.8)*(.9+rnd()*.1);nodes.push({id:'n'+i,type:typen[i%5],name:'Objekt '+i,start:new Date(t).toISOString().slice(0,10),meta:{Nummer:String(i)}});
+  if(i)edges.push({from:'n'+i,to:'n'+Math.floor(rnd()*i),type:'r'});if(i>10&&rnd()<.3)edges.push({from:'n'+i,to:'n'+Math.floor(rnd()*i),type:'r'})}
+ const types={};typen.forEach((t,k)=>types[t]={label:'Typ '+t.toUpperCase(),color:farben[k],shape:formen[k],size:1});return{types,relTypes:{r:{label:'Beziehung',color:'#6f86ab'}},nodes,edges}}
+
+// ---------- Hauptschleife ----------
+let letzt=performance.now();
+function groesse(){const w=cv.clientWidth,h=cv.clientHeight;if(!w||!h)return false;if(cv.width!==Math.round(w*renderer.getPixelRatio())||cv.height!==Math.round(h*renderer.getPixelRatio())){renderer.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix();dirty=true}return true}
+function schleife(jetzt){requestAnimationFrame(schleife);const dt=Math.min(.1,(jetzt-letzt)/1000);letzt=jetzt;
+ if(!groesse())return;
+ if(sim){const t=performance.now();do simSchritt();while(sim&&performance.now()-t<12)}
+ if(spiel){tCur+= (tMax-tMin)/20*dt;if(tCur>=tMax){tCur=tMax;spiel=false;$('zp').textContent='▶'}zeitAnwenden()}
+ if(heimSpaeter&&!sim){heimSpaeter=false;heim()}else if(heimSpaeter&&sim&&sim.iter>sim.max*.4){heimSpaeter=false;heimNachSim=true;heim()}
+ if(sim&&heimNachSim&&sim.iter%Math.ceil(sim.max/5)===0)heim();
+ if(messung&&!messung.erg){K.gier=messung.gier+(jetzt-messung.start)/5000*Math.PI*2;messung.frames++;dirty=true;if(jetzt-messung.start>=5000){messung.erg=Math.round(messung.frames/5)+' fps im Mittel ('+N.length.toLocaleString('de-DE')+' Objekte, Schatten '+($('schatten').checked&&N.length<=12000?'an':'aus')+')';K.gier=messung.gier}}
+ const b=bewegen(dt);if(K.flug)dirty=true;
+ if(b||dirty){kameraSetzen();renderer.render(scene,cam);fz++;dirty=false}
+ if(jetzt-fT>1000){fps=fz;fz=0;fT=jetzt;status()}
+}
+requestAnimationFrame(schleife);
+// Meldung an den Adapter wie datenraum3d.html (Ausnahme (2) der Grundregel)
+if(window.parent!==window)parent.postMessage({quelle:'3deep',bereit:true},'*');
+window.__4deep={laden,setzeLayout,zustand:()=>({n:N.length,e:E.length,layout,sim:!!sim,hatZeit,tCur,tMin,tMax,sicht:N.filter(n=>n.sZiel>0).length,fps,messung}),setzeZeit:t=>{tCur=t;zeitAnwenden()},waehle,heim,VERSION};
+</script>
+</body>
+</html>
