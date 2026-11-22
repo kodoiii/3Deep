@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="1">
+<meta name="4deep-darstellung" content="2">
 <title>4Deep Machbarkeitsstudie</title>
 <!-- 4Deep, Stufe 1 (Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -57,7 +57,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font:13px sy
  <button id="lt">Leistung messen (5 s Drehung)</button>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profil · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen</div>
- <div id="ver">Darstellung 4D Version 1 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 2 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><button id="zp" title="Abspielen">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="dt"><span class="x" id="dtx">✕</span><div id="dti"></div></div>
@@ -114,7 +114,7 @@ const BALKEN=new T.BoxGeometry(1,1,1);BALKEN.translate(.5,0,0);
 let D=null;           // aktuelle Daten (Format wie datenraum3d.html)
 let N=[],E=[],TY={},byId={};
 let gruppen=[];       // je Form ein InstancedMesh
-let kantenMesh=null,balkenMesh=null;
+let kantenMesh=null,balkenMesh=null,kantenLinien=false,matAlle=true;const LINIEN_AB=15000;   // ab so vielen Beziehungen Linien statt Röhren
 let sel=-1,hov=-1,layout='netz',lauf=null;
 let tMin=0,tMax=0,tCur=Infinity,hatZeit=false,spiel=false;
 const typAus={};
@@ -141,7 +141,7 @@ function laden(daten,opt){
  opt=opt||{};
  if(!daten||!Array.isArray(daten.nodes)){meld('Keine Objekte in den Daten.');return}
  const alt={};if(opt.behalten)N.forEach(n=>alt[n.id]=n);
- D=daten;TY=daten.types||{};const RT=daten.relTypes||{};
+ D=daten;TY=daten.types||{};letzteSimDauer=0;const RT=daten.relTypes||{};
  // Größen auf den Median der Typgrößen normieren (Typgrößen sind je Datenquelle verschieden)
  const gr=Object.values(TY).map(t=>+t.size||0).filter(x=>x>0).sort((a,b)=>a-b);const med=gr.length?gr[gr.length>>1]:1;
  N=[];byId={};
@@ -164,13 +164,26 @@ function laden(daten,opt){
  hatZeit=hi>lo;tMin=lo;tMax=hi;if(!opt.behalten)tCur=Infinity;
  $('zt').style.display=hatZeit?'flex':'none';$('leer').style.display=N.length?'none':'';
  // neue Objekte neben bekannten Nachbarn beginnen lassen (schrittweiser Aufbau ohne Sprung)
- N.forEach(n=>{if(n.alt)return;const k=n.nb.find(m=>m.alt);if(k)n.pos.copy(k.pos).add(V.set(rnd()-.5,rnd()-.5,rnd()-.5).multiplyScalar(4));else n.pos.set((rnd()-.5)*20,(rnd()-.5)*20,(rnd()-.5)*20)});
+ if(N.length>1000&&!N.some(n=>n.alt))startLagen(abstand());
+ else N.forEach(n=>{if(n.alt)return;const k=n.nb.find(m=>m.alt);if(k)n.pos.copy(k.pos).add(V.set(rnd()-.5,rnd()-.5,rnd()-.5).multiplyScalar(4));else n.pos.set((rnd()-.5)*20,(rnd()-.5)*20,(rnd()-.5)*20)});
  baueMeshes();legende();
  const hatPos=N.some(n=>n.fest);
  let ly=opt.behalten?layout:(daten.layout==='plan'||daten.zeitArt?'zeit':hatPos?'fest':'netz');
  if(!$('ly').querySelector('option[value="'+ly+'"]'))ly='netz';
  $('ly').value=ly;setzeLayout(ly,!opt.behalten);
  sel=-1;$('dt').style.display='none';zeitAnwenden();neu();
+}
+// Startlagen für große Datenmengen: Breitensuche ab gut vernetzten Objekten, Kinder nach außen versetzt,
+// Schrittweite so, dass die Objekte etwa im Endvolumen verteilt sind (sonst rechnet das Kräfte-Layout fast n²)
+function startLagen(L){s=4242;const n=N.length,R=L*Math.cbrt(n)*1.8,tiefe=new Int32Array(n).fill(-1),wurzel=new Int32Array(n),reihe=[];
+ const ord=N.map(x=>x.i).sort((a,b)=>N[b].nb.length-N[a].nb.length);
+ for(const r of ord){if(tiefe[r]>=0)continue;tiefe[r]=0;wurzel[r]=r;reihe.push(r);for(let q=reihe.length-1;q<reihe.length;q++){const a=reihe[q];for(const m of N[a].nb)if(tiefe[m.i]<0){tiefe[m.i]=tiefe[a]+1;wurzel[m.i]=wurzel[a];reihe.push(m.i)}}}
+ let maxT=1;for(let i=0;i<n;i++)maxT=Math.max(maxT,tiefe[i]);const schritt=Math.max(L*1.5,R/maxT*1.3);const vater=new Int32Array(n).fill(-1);
+ for(const a of reihe)for(const m of N[a].nb)if(tiefe[m.i]===tiefe[a]+1&&vater[m.i]<0)vater[m.i]=a;
+ const rz=()=>{let x,y,z,d;do{x=rnd()*2-1;y=rnd()*2-1;z=rnd()*2-1;d=x*x+y*y+z*z}while(d>1||d<1e-3);return[x,y,z,Math.sqrt(d)]};
+ for(const i of reihe){const p=N[i].pos;if(vater[i]<0){const [x,y,z]=rz();const k=tiefe[i]===0&&N[i].nb.length>0?.25:.9;p.set(x*R*k,y*R*k,z*R*k);continue}
+  const v=N[vater[i]].pos,w=N[wurzel[i]].pos;let ox=v.x-w.x,oy=v.y-w.y,oz=v.z-w.z;const ol=Math.sqrt(ox*ox+oy*oy+oz*oz)||1;const [x,y,z,d]=rz();
+  ox=ox/ol*.7+x/d;oy=oy/ol*.7+y/d;oz=oz/ol*.7+z/d;const l=Math.sqrt(ox*ox+oy*oy+oz*oz)||1,st=schritt*(.6+rnd()*.8);p.set(v.x+ox/l*st,v.y+oy/l*st,v.z+oz/l*st)}
 }
 let s=1;function rnd(){s=(s*16807)%2147483647;return(s-1)/2147483646}
 
@@ -187,7 +200,10 @@ function baueMeshes(){
   liste.forEach((n,k)=>{n.g=gruppen.length;n.k=k;mesh.setColorAt(k,n.col)});
   mesh.userData.liste=liste;scene.add(mesh);gruppen.push({mesh,liste});
  });
- if(E.length){const mat=new T.MeshStandardMaterial({color:0xffffff,metalness:0,roughness:.6,transparent:true,opacity:.75});
+ kantenLinien=E.length>LINIEN_AB;matAlle=true;
+ if(E.length&&kantenLinien){const g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(new Float32Array(E.length*6),3).setUsage(T.DynamicDrawUsage));g.setAttribute('color',new T.BufferAttribute(new Float32Array(E.length*6),3));
+  kantenMesh=new T.LineSegments(g,new T.LineBasicMaterial({vertexColors:true,transparent:true,opacity:.4,depthWrite:false}));kantenMesh.frustumCulled=false;scene.add(kantenMesh)}
+ else if(E.length){const mat=new T.MeshStandardMaterial({color:0xffffff,metalness:0,roughness:.6,transparent:true,opacity:.75});
   kantenMesh=new T.InstancedMesh(ROHR,mat,E.length);kantenMesh.instanceMatrix.setUsage(T.DynamicDrawUsage);kantenMesh.frustumCulled=false;E.forEach((k,i)=>kantenMesh.setColorAt(i,k.col));scene.add(kantenMesh)}
  const mitDauer=N.filter(n=>isFinite(n.t0)&&isFinite(n.t1)&&n.t1>n.t0);
  if(mitDauer.length){const mat=new T.MeshStandardMaterial({color:0xffffff,transparent:true,opacity:.45,roughness:.5});
@@ -200,11 +216,11 @@ let sim=null;   // laufende Kräfteberechnung {iter,max,yFest}
 function abstand(){return D&&+D.spacing>0?Math.max(4,Math.min(14,+D.spacing*1.2)):6}
 function typReihe(){const k=Object.keys(TY).filter(t=>N.some(n=>n.ty===t));N.forEach(n=>{if(!k.includes(n.ty))k.push(n.ty)});return k}
 function setzeLayout(ly,kamera){
- layout=ly;sim=null;zeitEbene.visible=false;if(balkenMesh)balkenMesh.visible=false;const L=abstand();
+ layout=ly;stoppeSim();zeitEbene.visible=false;if(balkenMesh)balkenMesh.visible=false;const L=abstand();
  if(ly==='netz'||ly==='schichten'){
   const reihe=typReihe();
   N.forEach(n=>{n.ziel.copy(n.pos);n.yFest=ly==='schichten'?(reihe.length-1-reihe.indexOf(n.ty))*L*2.2:null;if(n.yFest!=null)n.ziel.y=n.yFest});
-  sim={iter:0,max:N.length>8000?90:N.length>2000?160:260,L};
+  starteSim(L);
  }else if(ly==='baum'){baum(L)}
  else if(ly==='zeit'){zeitachse(L)}
  else if(ly==='fest'){N.forEach((n,i)=>{const p=n.fest;if(Array.isArray(p))n.ziel.set(+p[0]||0,+p[1]||0,+p[2]||0);else if(p)n.ziel.set(+p.x||0,+p.y||0,+p.z||0);else n.ziel.set(0,-L*3,i*.5)});
@@ -212,22 +228,54 @@ function setzeLayout(ly,kamera){
   const b=new T.Box3();N.forEach(n=>b.expandByPoint(n.ziel));const g=b.getSize(V).length()||1,f=Math.max(1,Math.sqrt(N.length)*L/g);N.forEach(n=>n.ziel.multiplyScalar(f))}
  bodenSetzen();beschriften();if(kamera)heimSpaeter=true;neu();
 }
-function simSchritt(){
- if(!sim)return;const L=sim.L,n=N.length,zelle=L*2.5,gitterK={};const temp=L*0.6*Math.max(.05,1-sim.iter/sim.max);
- for(const a of N){a.fx=0;a.fy=0;a.fz=0;const key=Math.floor(a.ziel.x/zelle)+','+Math.floor(a.ziel.y/zelle)+','+Math.floor(a.ziel.z/zelle);(gitterK[key]=gitterK[key]||[]).push(a)}
- // Abstoßung nur in Nachbarzellen (sonst n²)
- for(const a of N){const cx=Math.floor(a.ziel.x/zelle),cy=Math.floor(a.ziel.y/zelle),cz=Math.floor(a.ziel.z/zelle);
-  for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)for(let dz=-1;dz<=1;dz++){const z=gitterK[(cx+dx)+','+(cy+dy)+','+(cz+dz)];if(!z)continue;
-   for(const b of z){if(b===a)continue;let x=a.ziel.x-b.ziel.x,y=a.ziel.y-b.ziel.y,w=a.ziel.z-b.ziel.z;let d2=x*x+y*y+w*w;if(d2<1e-4){x=rnd()-.5;y=rnd()-.5;w=rnd()-.5;d2=.1}
-    const f=L*L/d2;a.fx+=x*f;a.fy+=y*f;a.fz+=w*f}}}
+// Kräfte-Layout als reine Funktion über Zahlenfelder (Float32Array, Zahlen-Gitter mit Hash), läuft im Web Worker
+// (inline per Blob, auch per file://) oder ersatzweise im Hauptthread. P: 3n Lagen, YF: feste Höhe (NaN = frei), KA: 2m Enden, KW: m Gewichte.
+function kraftSchritt(P,YF,KA,KW,L,temp,A){
+ const n=YF.length,m=KW.length,iz=1/(L*2.5),L2=L*L,H=A.kopf.length-1,kopf=A.kopf,nx=A.nx,anz=A.anz,F=A.F,Z=A.Z,K=32;
+ kopf.fill(-1);anz.fill(0);
+ const hsh=(x,y,z)=>(Math.imul(x,73856093)^Math.imul(y,19349663)^Math.imul(z,83492791))&H;
+ for(let i=0;i<n;i++){const x=Math.floor(P[3*i]*iz),y=Math.floor(P[3*i+1]*iz),z=Math.floor(P[3*i+2]*iz);Z[3*i]=x;Z[3*i+1]=y;Z[3*i+2]=z;const h=hsh(x,y,z);nx[i]=kopf[h];kopf[h]=i;anz[h]++;F[3*i]=F[3*i+1]=F[3*i+2]=0}
+ const ges=new Int32Array(27);
+ // Abstoßung nur in Nachbarzellen; sehr volle Zellen nur mit K Stichproben (Kraft hochgerechnet)
+ for(let i=0;i<n;i++){const ax=P[3*i],ay=P[3*i+1],az=P[3*i+2],cx=Z[3*i],cy=Z[3*i+1],cz=Z[3*i+2];let fx=0,fy=0,fz=0,g=0;
+  for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)for(let dz=-1;dz<=1;dz++){const h=hsh(cx+dx,cy+dy,cz+dz);let dop=false;for(let q=0;q<g;q++)if(ges[q]===h){dop=true;break}if(dop)continue;ges[g++]=h;
+   const c=anz[h];if(!c)continue;const w=c>K?c/K:1;let j=kopf[h],k=0;
+   while(j>=0&&k<K){if(j!==i){let x=ax-P[3*j],y=ay-P[3*j+1],z=az-P[3*j+2];let d2=x*x+y*y+z*z;if(d2<1e-4){x=((i*7+j)%11)/11-.5;y=((i*3+j*5)%13)/13-.5;z=((i+j*11)%7)/7-.5;d2=.1}const f=L2/d2*w;fx+=x*f;fy+=y*f;fz+=z*f}j=nx[j];k++}}
+  F[3*i]=fx;F[3*i+1]=fy;F[3*i+2]=fz}
  // Anziehung entlang der Beziehungen
- for(const k of E){const a=k.a,b=k.b;const x=b.ziel.x-a.ziel.x,y=b.ziel.y-a.ziel.y,w=b.ziel.z-a.ziel.z;const d=Math.sqrt(x*x+y*y+w*w)||.01;const f=(d-L)/d*.5/Math.max(1,Math.sqrt(Math.min(a.nb.length,b.nb.length)));
-  a.fx+=x*f;a.fy+=y*f;a.fz+=w*f;b.fx-=x*f;b.fy-=y*f;b.fz-=w*f}
- // schwacher Zug zur Mitte, damit Teilnetze nicht wegdriften
- for(const a of N){a.fx-=a.ziel.x*.01;a.fy-=a.ziel.y*.01;a.fz-=a.ziel.z*.01;
-  const m=Math.sqrt(a.fx*a.fx+a.fy*a.fy+a.fz*a.fz)||1,s=Math.min(m,temp)/m;a.ziel.x+=a.fx*s;a.ziel.z+=a.fz*s;if(a.yFest==null)a.ziel.y+=a.fy*s;else a.ziel.y=a.yFest}
- sim.iter++;if(sim.iter>=sim.max){sim=null;bodenSetzen();beschriften();if(heimNachSim){heimNachSim=false;heim()}}
- neu();
+ for(let e=0;e<m;e++){const a=KA[2*e],b=KA[2*e+1];const x=P[3*b]-P[3*a],y=P[3*b+1]-P[3*a+1],z=P[3*b+2]-P[3*a+2];const d=Math.sqrt(x*x+y*y+z*z)||.01;const f=(d-L)/d*.5*KW[e];
+  F[3*a]+=x*f;F[3*a+1]+=y*f;F[3*a+2]+=z*f;F[3*b]-=x*f;F[3*b+1]-=y*f;F[3*b+2]-=z*f}
+ // schwacher Zug zur Mitte, Schritt durch Temperatur begrenzt
+ for(let i=0;i<n;i++){const fx=F[3*i]-P[3*i]*.01,fy=F[3*i+1]-P[3*i+1]*.01,fz=F[3*i+2]-P[3*i+2]*.01;const mg=Math.sqrt(fx*fx+fy*fy+fz*fz)||1,sc=Math.min(mg,temp)/mg;
+  P[3*i]+=fx*sc;P[3*i+2]+=fz*sc;if(YF[i]!==YF[i])P[3*i+1]+=fy*sc;else P[3*i+1]=YF[i]}
+}
+function kraftHilfe(n){let H=1;while(H<n*2)H*=2;return{kopf:new Int32Array(H),nx:new Int32Array(n),anz:new Int32Array(H),F:new Float32Array(3*n),Z:new Int32Array(3*n)}}
+function kraftTemp(L,it,max,n){return L*(n>5000?1.2:.6)*Math.max(.05,1-it/max)}
+const WORKER_CODE=kraftSchritt+'\n'+kraftHilfe+'\n'+kraftTemp+`
+onmessage=function(ev){const d=ev.data,A=kraftHilfe(d.YF.length);let it=0,last=0;
+ (function lauf(){const t=performance.now();
+  while(it<d.max&&performance.now()-t<30){kraftSchritt(d.P,d.YF,d.KA,d.KW,d.L,kraftTemp(d.L,it,d.max,d.YF.length),A);it++}
+  postMessage({it,P:d.P.slice()});if(it<d.max)setTimeout(lauf,0)})()}`;
+let workerUrl=null;
+function stoppeSim(){if(sim&&sim.w)sim.w.terminate();sim=null}
+function starteSim(L){stoppeSim();const n=N.length,P=new Float32Array(3*n),YF=new Float32Array(n),KA=new Int32Array(2*E.length),KW=new Float32Array(E.length);
+ N.forEach((a,i)=>{P[3*i]=a.ziel.x;P[3*i+1]=a.ziel.y;P[3*i+2]=a.ziel.z;YF[i]=a.yFest==null?NaN:a.yFest});
+ E.forEach((k,e)=>{KA[2*e]=k.a.i;KA[2*e+1]=k.b.i;KW[e]=1/Math.max(1,Math.sqrt(Math.min(k.a.nb.length,k.b.nb.length)))});
+ const max=n>8000?120:n>2000?160:260;sim={iter:0,max,L,P,YF,KA,KW,t0:performance.now()};
+ if(n>300){try{if(!workerUrl)workerUrl=URL.createObjectURL(new Blob([WORKER_CODE],{type:'text/javascript'}));
+   const w=new Worker(workerUrl),s0=sim;s0.w=w;w.onmessage=ev=>{if(sim!==s0)return;simUebernehmen(ev.data.P,ev.data.it)};
+   w.onerror=e=>{e.preventDefault&&e.preventDefault();if(sim===s0){w.terminate();s0.w=null}};   // Ersatz: Hauptthread
+   w.postMessage({P,YF,KA,KW,L,max});return}catch(e){sim.w=null}}
+}
+function simUebernehmen(P,it){for(let i=0;i<N.length;i++)N[i].ziel.set(P[3*i],P[3*i+1],P[3*i+2]);sim.iter=it;
+ const jetzt=performance.now();if(!sim.bt||jetzt-sim.bt>500){sim.bt=jetzt;bodenSetzen()}
+ if(it>=sim.max){sim.dauer=Math.round(performance.now()-sim.t0);letzteSimDauer=sim.dauer;stoppeSim();bodenSetzen();beschriften();if(heimNachSim){heimNachSim=false;heim()}}
+ neu()}
+let letzteSimDauer=0;
+function simSchritt(){   // Ersatz ohne Worker: Schritte im Hauptthread mit Zeitbudget
+ if(!sim||sim.w!==null&&sim.w!==undefined)return;if(!sim.A)sim.A=kraftHilfe(N.length);const t=performance.now();
+ while(sim.iter<sim.max&&performance.now()-t<12){kraftSchritt(sim.P,sim.YF,sim.KA,sim.KW,sim.L,kraftTemp(sim.L,sim.iter,sim.max,N.length),sim.A);sim.iter++}
+ simUebernehmen(sim.P,sim.iter);
 }
 function baum(L){
  // Wurzeln: Objekte ohne Eltern über Strukturlinks (from = Kind, to = Eltern); sonst je Teilnetz das Objekt mit den meisten Beziehungen
@@ -280,23 +328,36 @@ function zeitAnwenden(){
  N.forEach(n=>{n.sZiel=sichtbar(n)?(vergangen(n)?(blass?.55:0):1):0;n.blass=vergangen(n)});
  if(hatZeit){const f=isFinite(tCur)?(tCur-tMin)/(tMax-tMin):1;$('zr').value=Math.round(Math.max(0,Math.min(1,f))*1000);$('zjahr').textContent=isFinite(tCur)?'Stand '+zeitText(tCur):'alle Zeiten'}
  if(zeitX&&layout==='zeit'){zeitEbene.position.x=isFinite(tCur)?zeitX(Math.min(tCur,tMax)):zeitX(tMax);}
- faerben();neu();
+ matAlle=true;faerben();neu();
 }
 function faerben(){
  const nah=new Set();if(sel>=0){nah.add(N[sel]);N[sel].nb.forEach(m=>nah.add(m))}
  gruppen.forEach(g=>{g.liste.forEach((n,k)=>{TMP.copy(n.col);if(n.blass)TMP.lerp(HELL.set(0x55607a),.65);if(sel>=0&&!nah.has(n))TMP.multiplyScalar(.28);if(N[sel]===n)TMP.lerp(HELL.set(0xff9f1c),.35);if(hov===n.i)TMP.lerp(HELL.set(0xffffff),.25);g.mesh.setColorAt(k,TMP)});g.mesh.instanceColor.needsUpdate=true});
- if(kantenMesh){E.forEach((k,i)=>{TMP.copy(k.col);if(sel>=0)TMP.multiplyScalar(k.a.i===sel||k.b.i===sel?1.6:.2);kantenMesh.setColorAt(i,TMP)});kantenMesh.instanceColor.needsUpdate=true}
+ if(kantenMesh){const C=kantenLinien?kantenMesh.geometry.attributes.color:null;E.forEach((k,i)=>{TMP.copy(k.col);if(sel>=0)TMP.multiplyScalar(k.a.i===sel||k.b.i===sel?1.6:.2);if(C){C.setXYZ(2*i,TMP.r,TMP.g,TMP.b);C.setXYZ(2*i+1,TMP.r,TMP.g,TMP.b)}else kantenMesh.setColorAt(i,TMP)});if(C)C.needsUpdate=true;else kantenMesh.instanceColor.needsUpdate=true}
 }
 
 // ---------- Bild je Frame ----------
 function bewegen(dt){
  let bewegt=false;const a=1-Math.pow(.0015,dt);   // gleitend zum Ziel
- for(const n of N){const d=n.pos.distanceToSquared(n.ziel);if(d>1e-4){n.pos.lerp(n.ziel,a);bewegt=true}const ds=n.sZiel-n.s;if(Math.abs(ds)>1e-3){n.s+=ds*Math.min(1,dt*6);bewegt=true}else n.s=n.sZiel}
+ for(const n of N){n.m=false;const d=n.pos.distanceToSquared(n.ziel);if(d>1e-4){n.pos.lerp(n.ziel,a);n.m=true}const ds=n.sZiel-n.s;if(Math.abs(ds)>1e-3){n.s+=ds*Math.min(1,dt*6);n.m=true}else if(n.s!==n.sZiel){n.s=n.sZiel;n.m=true}if(n.m)bewegt=true}
  if(!bewegt&&!dirty)return false;
- for(const g of gruppen){const m=g.mesh;for(let k=0;k<g.liste.length;k++){const n=g.liste[k];SK.setScalar(n.r*n.s);Q.identity();M4.compose(n.pos,Q,SK);m.setMatrixAt(k,M4)}m.instanceMatrix.needsUpdate=true}
- if(kantenMesh){const zeig=$('kanten').checked;kantenMesh.visible=zeig;if(zeig){for(let i=0;i<E.length;i++){const k=E[i];const vis=k.a.s>.05&&k.b.s>.05&&!(isFinite(k.t0)&&k.t0>tCur);
-   V.subVectors(k.b.pos,k.a.pos);const len=V.length();if(!vis||len<1e-3){SK.set(0,0,0);M4.compose(k.a.pos,Q.identity(),SK)}else{Q.setFromUnitVectors(OBEN,V2.copy(V).divideScalar(len));const r=.09*Math.min(k.a.s,k.b.s)*(k.hier?1.6:1);SK.set(r,len,r);M4.compose(k.a.pos,Q,SK)}
-   kantenMesh.setMatrixAt(i,M4)}kantenMesh.instanceMatrix.needsUpdate=true}}
+ const alle=matAlle;matAlle=false;if(!bewegt&&!alle)return true;
+ // nur Matrizen bewegter Objekte neu (direkt ins Feld: Skalierung + Lage)
+ for(const g of gruppen){const A=g.mesh.instanceMatrix.array,li=g.liste;let ge=false;
+  for(let k=0;k<li.length;k++){const n=li[k];if(!n.m&&!alle)continue;const o=k*16,sc=n.r*n.s;A[o]=A[o+5]=A[o+10]=sc;A[o+1]=A[o+2]=A[o+3]=A[o+4]=A[o+6]=A[o+7]=A[o+8]=A[o+9]=A[o+11]=0;A[o+12]=n.pos.x;A[o+13]=n.pos.y;A[o+14]=n.pos.z;A[o+15]=1;ge=true}
+  if(ge)g.mesh.instanceMatrix.needsUpdate=true}
+ if(kantenMesh){const zeig=$('kanten').checked;kantenMesh.visible=zeig;if(zeig){let ge=false;
+  const A=kantenLinien?kantenMesh.geometry.attributes.position.array:kantenMesh.instanceMatrix.array;
+  for(let i=0;i<E.length;i++){const k=E[i],p=k.a.pos,q=k.b.pos;if(!alle&&!k.a.m&&!k.b.m)continue;ge=true;const vis=k.a.s>.05&&k.b.s>.05&&!(isFinite(k.t0)&&k.t0>tCur);
+   if(kantenLinien){const o=i*6;A[o]=p.x;A[o+1]=p.y;A[o+2]=p.z;if(vis){A[o+3]=q.x;A[o+4]=q.y;A[o+5]=q.z}else{A[o+3]=p.x;A[o+4]=p.y;A[o+5]=p.z}continue}
+   const o=i*16;let ux=q.x-p.x,uy=q.y-p.y,uz=q.z-p.z;const len=Math.sqrt(ux*ux+uy*uy+uz*uz);
+   if(!vis||len<1e-3){for(let j=0;j<16;j++)A[o+j]=0;A[o+15]=1;continue}
+   ux/=len;uy/=len;uz/=len;const r=.09*Math.min(k.a.s,k.b.s)*(k.hier?1.6:1);
+   // Querachse x = u × (0,1,0) bzw. u × (1,0,0), z = x × u
+   let xx,xy,xz;if(Math.abs(uy)<.99){xx=-uz;xy=0;xz=ux}else{xx=0;xy=uz;xz=-uy}const xl=Math.sqrt(xx*xx+xy*xy+xz*xz);xx/=xl;xy/=xl;xz/=xl;
+   const zx=xy*uz-xz*uy,zy=xz*ux-xx*uz,zz=xx*uy-xy*ux;
+   A[o]=xx*r;A[o+1]=xy*r;A[o+2]=xz*r;A[o+3]=0;A[o+4]=ux*len;A[o+5]=uy*len;A[o+6]=uz*len;A[o+7]=0;A[o+8]=zx*r;A[o+9]=zy*r;A[o+10]=zz*r;A[o+11]=0;A[o+12]=p.x;A[o+13]=p.y;A[o+14]=p.z;A[o+15]=1}
+  if(ge){if(kantenLinien)kantenMesh.geometry.attributes.position.needsUpdate=true;else kantenMesh.instanceMatrix.needsUpdate=true}}}
  if(balkenMesh&&balkenMesh.visible&&zeitX){const li=balkenMesh.userData.liste;for(let i=0;i<li.length;i++){const n=li[i];const x0=zeitX(n.t0),x1=zeitX(Math.min(n.t1,isFinite(tCur)?Math.max(tCur,n.t0):n.t1));
    const w=Math.max(0,x1-x0)*(n.s>.05?1:0);V.set(x0,n.pos.y,n.pos.z);SK.set(w,n.r*.5,n.r*.5);M4.compose(V,Q.identity(),SK);balkenMesh.setMatrixAt(i,M4)}balkenMesh.instanceMatrix.needsUpdate=true}
  return true;
@@ -312,7 +373,8 @@ let welt={c:new T.Vector3(),r:30};
 
 // ---------- Kamera (Steuerung wie CATIA in datenraum3d.html) ----------
 const K={ziel:new T.Vector3(),gier:-.6,nick:.45,dist:80,zZiel:new T.Vector3(),zDist:80,flug:false};
-let heimSpaeter=false,heimNachSim=false;
+let heimSpaeter=false,heimNachSim=false,heimT=0;
+function nutzerSteuert(){heimSpaeter=false;heimNachSim=false;K.flug=false}
 function heim(){if(sim){heimNachSim=true}const b=new T.Box3();N.forEach(n=>{if(n.sZiel>0)b.expandByPoint(n.ziel)});if(b.isEmpty())return;
  const c=b.getCenter(new T.Vector3()),r=Math.max(8,b.getSize(V).length()/2);K.zZiel.copy(c);K.zDist=r/Math.sin(cam.fov*Math.PI/360)*.95;K.flug=true;neu()}
 function kameraSetzen(){
@@ -320,9 +382,9 @@ function kameraSetzen(){
  const cp=Math.cos(K.nick);cam.position.set(K.ziel.x+K.dist*cp*Math.sin(K.gier),K.ziel.y+K.dist*Math.sin(K.nick),K.ziel.z+K.dist*cp*Math.cos(K.gier));
  cam.lookAt(K.ziel);cam.near=Math.max(.1,K.dist/200);cam.far=K.dist+welt.r*12;cam.updateProjectionMatrix();
 }
-function drehen(dx,dy){K.flug=false;K.gier-=dx*.006;K.nick=Math.max(-1.45,Math.min(1.45,K.nick+dy*.006));neu()}
-function schieben(dx,dy){K.flug=false;const f=K.dist*Math.tan(cam.fov*Math.PI/360)*2/cv.clientHeight;V.setFromMatrixColumn(cam.matrix,0).multiplyScalar(-dx*f);V2.setFromMatrixColumn(cam.matrix,1).multiplyScalar(dy*f);K.ziel.add(V).add(V2);K.zZiel.copy(K.ziel);neu()}
-function zoomen(f){K.flug=false;K.dist=Math.max(2,Math.min(8000,K.dist*f));K.zDist=K.dist;neu()}
+function drehen(dx,dy){nutzerSteuert();K.gier-=dx*.006;K.nick=Math.max(-1.45,Math.min(1.45,K.nick+dy*.006));neu()}
+function schieben(dx,dy){nutzerSteuert();const f=K.dist*Math.tan(cam.fov*Math.PI/360)*2/cv.clientHeight;V.setFromMatrixColumn(cam.matrix,0).multiplyScalar(-dx*f);V2.setFromMatrixColumn(cam.matrix,1).multiplyScalar(dy*f);K.ziel.add(V).add(V2);K.zZiel.copy(K.ziel);neu()}
+function zoomen(f){nutzerSteuert();K.dist=Math.max(2,Math.min(8000,K.dist*f));K.zDist=K.dist;neu()}
 const tasten={};let zug=null,zoomModus=false,bewegtMaus=0;
 cv.addEventListener('contextmenu',e=>e.preventDefault());
 cv.addEventListener('pointerdown',e=>{tasten[e.button]=true;bewegtMaus=0;cv.setPointerCapture(e.pointerId);
@@ -344,11 +406,13 @@ cv.addEventListener('pointerup',e=>{tasten[e.button]=false;
  if(bewegtMaus<4&&e.button===0)waehle(treffer(e));
  if(bewegtMaus<4&&e.button===2&&!tasten[1]){const n=treffer(e);if(n>=0){waehle(n)}}
 });
-cv.addEventListener('dblclick',e=>{const n=treffer(e);if(n<0){heim();return}K.zZiel.copy(N[n].pos);K.zDist=Math.max(12,N[n].r*14);K.flug=true;neu()});
+cv.addEventListener('dblclick',e=>{const n=treffer(e);nutzerSteuert();if(n<0){heim();return}K.zZiel.copy(N[n].pos);K.zDist=Math.max(12,N[n].r*14);K.flug=true;neu()});
 cv.addEventListener('wheel',e=>{e.preventDefault();zoomen(Math.exp(e.deltaY*.0012))},{passive:false});
 const ray=new T.Raycaster(),mausV=new T.Vector2();
 function treffer(e){const r=cv.getBoundingClientRect();mausV.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(mausV,cam);
- const hits=ray.intersectObjects(gruppen.map(g=>g.mesh),false);for(const h of hits){const n=h.object.userData.liste[h.instanceId];if(n&&n.s>.1)return n.i}return -1}
+ const o=ray.ray.origin,d=ray.ray.direction;let best=-1,bt=Infinity;
+ for(const n of N){if(n.s<=.1)continue;const wx=n.pos.x-o.x,wy=n.pos.y-o.y,wz=n.pos.z-o.z,t=wx*d.x+wy*d.y+wz*d.z;if(t<=0)continue;const rr=n.r*n.s,q=wx*wx+wy*wy+wz*wz-t*t;if(q>rr*rr)continue;const te=t-Math.sqrt(rr*rr-q);if(te<bt){bt=te;best=n.i}}
+ return best}
 let hoverZeit=0;
 function hover(e){const jetzt=performance.now();if(jetzt-hoverZeit<40)return;hoverZeit=jetzt;const n=treffer(e);if(n!==hov){hov=n;faerben();neu()}
  const tip=$('tip');if(n>=0){const o=N[n];tip.textContent=o.name+' · '+((TY[o.ty]||{}).label||o.ty)+(isFinite(o.t0)?' · '+zeitText(o.t0)+(isFinite(o.t1)?' – '+zeitText(o.t1):''):'');tip.style.display='block';tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY+12)+'px'}else tip.style.display='none'}
@@ -374,18 +438,20 @@ function legende(){const lg=$('lg');lg.innerHTML='';typReihe().forEach(t=>{const
 // ---------- Bedienung ----------
 $('ly').onchange=e=>setzeLayout(e.target.value,true);
 $('schatten').onchange=()=>{baueMeshes();faerben();neu()};
-$('kanten').onchange=neu;$('vergangen').onchange=zeitAnwenden;
+$('kanten').onchange=()=>{matAlle=true;neu()};$('vergangen').onchange=zeitAnwenden;
 $('zr').oninput=e=>{spiel=false;$('zp').textContent='▶';tCur=tMin+(tMax-tMin)*e.target.value/1000;zeitAnwenden()};
 $('za').onclick=()=>{spiel=false;$('zp').textContent='▶';tCur=Infinity;zeitAnwenden()};
 function spielen(){if(!hatZeit)return;spiel=!spiel;$('zp').textContent=spiel?'❚❚':'▶';if(spiel&&(!isFinite(tCur)||tCur>=tMax))tCur=tMin;neu()}
 $('zp').onclick=spielen;
-addEventListener('keydown',e=>{if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;if(e.code==='Space'){e.preventDefault();spielen()}if(e.key==='Escape')waehle(-1);if(e.key==='m'||e.key==='M')$('pn').style.display=$('pn').style.display==='none'?'':'none'});
+addEventListener('keydown',e=>{const tg=e.target;if(tg.tagName==='TEXTAREA'||(tg.tagName==='INPUT'&&!/range|checkbox|button|file/.test(tg.type)))return;if(e.code==='Space'){e.preventDefault();spielen()}if(e.key==='Escape')waehle(-1);if(e.key==='m'||e.key==='M')$('pn').style.display=$('pn').style.display==='none'?'':'none'});
 $('jl').onclick=()=>$('jf').click();
 $('jf').onchange=e=>{const f=e.target.files[0];if(f)leseDatei(f);e.target.value=''};
 addEventListener('dragover',e=>e.preventDefault());
 addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer.files&&e.dataTransfer.files[0];if(f)leseDatei(f)});
 function leseDatei(f){const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);lauf=null;laden(j.daten&&j.daten.nodes?j.daten:j)}catch(e){meld('Datei ist kein gültiges JSON: '+e.message)}};r.readAsText(f)}
 $('ds').onchange=e=>waehleRaum(e.target.value);
+document.querySelectorAll('select,input[type=checkbox],input[type=range]').forEach(el=>el.addEventListener('change',()=>el.blur()));
+cv.addEventListener('pointerdown',()=>{const a=document.activeElement;if(a&&a!==document.body)a.blur()});
 function waehleRaum(v){lauf=null;
  if(v==='demo')laden(demoDaten());
  else if(v.startsWith('stress:'))laden(stressDaten(+v.slice(7)));
@@ -397,7 +463,7 @@ function meld(t){$('leer').style.display='';$('leer').textContent=t}
 // ---------- Leistung ----------
 let fps=0,fz=0,fT=performance.now(),messung=null;
 $('lt').onclick=()=>{messung={start:performance.now(),frames:0,gier:K.gier}};
-function status(){$('st').innerHTML=N.length.toLocaleString('de-DE')+' Objekte · '+E.length.toLocaleString('de-DE')+' Beziehungen'+(fps?' · '+fps+' fps':'')+(sim?' · Layout '+Math.round(sim.iter/sim.max*100)+' %':'')+(messung&&messung.erg?'<br>Messung: '+messung.erg:'')}
+function status(){$('st').innerHTML=N.length.toLocaleString('de-DE')+' Objekte · '+E.length.toLocaleString('de-DE')+' Beziehungen'+(fps?' · '+fps+' fps':'')+(sim?' · Layout '+Math.round(sim.iter/sim.max*100)+' %':letzteSimDauer?' · Layout in '+(letzteSimDauer/1000).toFixed(1).replace('.',',')+' s':'')+(messung&&messung.erg?'<br>Messung: '+messung.erg:'')}
 
 // ---------- Datenquellen: Adapter (postMessage), Beispiele ----------
 addEventListener('message',e=>{const m=e.data;if(!m||m.quelle!=='3deep-adapter'||!m.daten)return;
@@ -432,10 +498,9 @@ let letzt=performance.now();
 function groesse(){const w=cv.clientWidth,h=cv.clientHeight;if(!w||!h)return false;if(cv.width!==Math.round(w*renderer.getPixelRatio())||cv.height!==Math.round(h*renderer.getPixelRatio())){renderer.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix();dirty=true}return true}
 function schleife(jetzt){requestAnimationFrame(schleife);const dt=Math.min(.1,(jetzt-letzt)/1000);letzt=jetzt;
  if(!groesse())return;
- if(sim){const t=performance.now();do simSchritt();while(sim&&performance.now()-t<12)}
+ if(sim&&!sim.w)simSchritt();
  if(spiel){tCur+= (tMax-tMin)/20*dt;if(tCur>=tMax){tCur=tMax;spiel=false;$('zp').textContent='▶'}zeitAnwenden()}
- if(heimSpaeter&&!sim){heimSpaeter=false;heim()}else if(heimSpaeter&&sim&&sim.iter>sim.max*.4){heimSpaeter=false;heimNachSim=true;heim()}
- if(sim&&heimNachSim&&sim.iter%Math.ceil(sim.max/5)===0)heim();
+ if(heimSpaeter&&(!sim||jetzt-heimT>700)){heimT=jetzt;if(!sim)heimSpaeter=false;heim()}   // Kamera während des Layouts mitführen, bis der Nutzer selbst steuert
  if(messung&&!messung.erg){K.gier=messung.gier+(jetzt-messung.start)/5000*Math.PI*2;messung.frames++;dirty=true;if(jetzt-messung.start>=5000){messung.erg=Math.round(messung.frames/5)+' fps im Mittel ('+N.length.toLocaleString('de-DE')+' Objekte, Schatten '+($('schatten').checked&&N.length<=12000?'an':'aus')+')';K.gier=messung.gier}}
  const b=bewegen(dt);if(K.flug)dirty=true;
  if(b||dirty){kameraSetzen();renderer.render(scene,cam);fz++;dirty=false}
@@ -444,7 +509,7 @@ function schleife(jetzt){requestAnimationFrame(schleife);const dt=Math.min(.1,(j
 requestAnimationFrame(schleife);
 // Meldung an den Adapter wie datenraum3d.html (Ausnahme (2) der Grundregel)
 if(window.parent!==window)parent.postMessage({quelle:'3deep',bereit:true},'*');
-window.__4deep={laden,setzeLayout,zustand:()=>({n:N.length,e:E.length,layout,sim:!!sim,hatZeit,tCur,tMin,tMax,sicht:N.filter(n=>n.sZiel>0).length,fps,messung}),setzeZeit:t=>{tCur=t;zeitAnwenden()},waehle,heim,VERSION};
+window.__4deep={laden,setzeLayout,zustand:()=>({layoutMs:letzteSimDauer,worker:!!(sim&&sim.w),n:N.length,e:E.length,layout,sim:!!sim,hatZeit,tCur,tMin,tMax,sicht:N.filter(n=>n.sZiel>0).length,fps,messung}),setzeZeit:t=>{tCur=t;zeitAnwenden()},waehle,heim,VERSION};
 </script>
 </body>
 </html>
