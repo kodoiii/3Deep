@@ -22,7 +22,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#0b0f1a;font:12px Aria
 </style>
 </head>
 <body>
-<iframe id="u-frame" src="datenraum3d.html?v=140" allow="fullscreen *; autoplay *; hid *" title="3Deep Darstellung"></iframe>
+<iframe id="u-frame" src="datenraum3d.html?v=147" allow="fullscreen *; autoplay *; hid *" title="3Deep Darstellung"></iframe>
 <div id="u-fuss">© 2026 kodoiii. · Unterrichtsinhalte: <a href="https://creativecommons.org/licenses/by-nc/4.0/deed.de" target="_blank" rel="noopener">CC BY-NC 4.0</a> (Namensnennung: kodoiii.) · Software: alle Rechte vorbehalten · <a id="u-dsl">Datenschutz</a></div>
 <div id="u-meld"></div>
 <div id="u-ds"><div><button id="u-dsz">Schließen</button>
@@ -52,7 +52,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#0b0f1a;font:12px Aria
   if (falsch.length) { meld('<b>Thema nicht gefunden.</b><br>Bitte den Link prüfen.'); return; }
   if (location.protocol === 'file:') { meld('<b>Diese Seite läuft nur über einen Webserver.</b><br>Für die lokale Nutzung die Einzeldatei <code>3Deep-Unterricht.html</code> verwenden.'); return; }
   Promise.all(namen.map(function (n) {
-    return fetch('themen/' + n + '.json?v=140').then(function (r) { if (!r.ok) throw new Error(n); return r.json(); });
+    return fetch('themen/' + n + '.json?v=147').then(function (r) { if (!r.ok) throw new Error(n); return r.json(); });
   })).then(function (liste) {
     document.title = '3Deep Unterricht – ' + liste.map(function (t) { return t.titel; }).join(', ');
     sende({ quelle: '3deep-adapter', start: true, fertig: true, lauf: 1, daten: { ansicht: 'schueler', start: '▶ Unterricht starten', erstes: 0, themen: liste } });
