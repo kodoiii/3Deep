@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="17">
+<meta name="4deep-darstellung" content="18">
 <title>4Deep Machbarkeitsstudie</title>
 <!-- 4Deep, Stufe 1 (Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -76,7 +76,7 @@ html.stereo .pn,html.stereo #st,html.stereo #tip,html.stereo #prof,html.stereo #
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 17 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 18 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="prof"></div><div id="profb"></div>
@@ -315,6 +315,9 @@ let sim=null;   // laufende Kräfteberechnung {iter,max,yFest}
 // Regler „Dichte“ (Version 17): 0 = locker (Kräfte wie bis Version 16), 100 = sehr kompakt; Wert bleibt im Browser gespeichert
 let DICHTE=70;try{const v=localStorage.getItem('4d_dichte');if(v!=null&&isFinite(+v))DICHTE=Math.max(0,Math.min(100,+v))}catch(_){}
 function dichteKraefte(){const d=DICHTE/100;return{kr:.06+.94*(1-d)*(1-d),ks:.5+2*d,blatt:1-.5*d}}
+// Version 18: Netz auf breiten Bildschirmen flacher (stärkerer Zug zur Mitte nur in der Höhe), damit es die Breite nutzt
+function netzFlach(){const A=freieFlaeche(),q=Math.max(1,(A.x1-A.x0)/Math.max(1,A.y1-A.y0));if(q<1.2)return{};   // Höhe und Blicktiefe (Kamera-Richtung) stärker zur Mitte
+ return{gy:.01*Math.min(25,Math.pow(q,2.5)),gd:.01*Math.min(10,Math.pow(q,1.8)),dx:Math.sin(K.gier),dz:Math.cos(K.gier)}}
 function abstand(){return D&&+D.spacing>0?Math.max(4,Math.min(14,+D.spacing*1.2)):6}
 // Version 16: Ebenen nach Reifegrad (wie 3Deep: In Work oben, dann Frozen, Released, Obsolete, ohne Reifegrad unten)
 const REIFE_ORD=['roh','glanz','kristall','alt','normal'];
@@ -354,7 +357,7 @@ function kraftSchritt(P,YF,KA,KW,L,temp,A,Q,KL){   // Q: {kr Abstoßung, ks Fede
  for(let e=0;e<m;e++){const a=KA[2*e],b=KA[2*e+1];const x=P[3*b]-P[3*a],y=P[3*b+1]-P[3*a+1],z=P[3*b+2]-P[3*a+2];const d=Math.sqrt(x*x+y*y+z*z)||.01;const f=(d-KL[e])/d*Q.ks*KW[e];
   F[3*a]+=x*f;F[3*a+1]+=y*f;F[3*a+2]+=z*f;F[3*b]-=x*f;F[3*b+1]-=y*f;F[3*b+2]-=z*f}
  // schwacher Zug zur Mitte, Schritt durch Temperatur begrenzt
- for(let i=0;i<n;i++){const fx=F[3*i]-P[3*i]*.01,fy=F[3*i+1]-P[3*i+1]*.01,fz=F[3*i+2]-P[3*i+2]*.01;const mg=Math.sqrt(fx*fx+fy*fy+fz*fz)||1,sc=Math.min(mg,temp)/mg;
+ for(let i=0;i<n;i++){const gd=Q.gd?(P[3*i]*Q.dx+P[3*i+2]*Q.dz)*(Q.gd-.01):0,fx=F[3*i]-P[3*i]*.01-gd*(Q.dx||0),fy=F[3*i+1]-P[3*i+1]*(Q.gy||.01),fz=F[3*i+2]-P[3*i+2]*.01-gd*(Q.dz||0);const mg=Math.sqrt(fx*fx+fy*fy+fz*fz)||1,sc=Math.min(mg,temp)/mg;
   P[3*i]+=fx*sc;P[3*i+2]+=fz*sc;if(YF[i]!==YF[i])P[3*i+1]+=fy*sc;else P[3*i+1]=YF[i]}
 }
 function kraftHilfe(n){let H=1;while(H<n*2)H*=2;return{kopf:new Int32Array(H),nx:new Int32Array(n),anz:new Int32Array(H),F:new Float32Array(3*n),Z:new Int32Array(3*n)}}
@@ -368,7 +371,7 @@ let workerUrl=null;
 function stoppeSim(){if(sim&&sim.w)sim.w.terminate();sim=null}
 function starteSim(L){stoppeSim();const n=N.length,P=new Float32Array(3*n),YF=new Float32Array(n),KA=new Int32Array(2*E.length),KW=new Float32Array(E.length);
  N.forEach((a,i)=>{P[3*i]=a.ziel.x;P[3*i+1]=a.ziel.y;P[3*i+2]=a.ziel.z;YF[i]=a.yFest==null?NaN:a.yFest});
- const Q=dichteKraefte(),KL=new Float32Array(E.length);
+ const Q=dichteKraefte(),KL=new Float32Array(E.length);Object.assign(Q,netzFlach());
  E.forEach((k,e)=>{KA[2*e]=k.a.i;KA[2*e+1]=k.b.i;KW[e]=1/Math.max(1,Math.sqrt(Math.min(k.a.nb.length,k.b.nb.length)));KL[e]=L*(k.a.nb.length===1||k.b.nb.length===1?Q.blatt:1)});
  const max=n>8000?120:n>2000?160:260;sim={iter:0,max,L,P,YF,KA,KW,Q,KL,t0:performance.now()};
  if(n>300){try{if(!workerUrl)workerUrl=URL.createObjectURL(new Blob([WORKER_CODE],{type:'text/javascript'}));
@@ -512,8 +515,22 @@ let welt={c:new T.Vector3(),r:30};
 const K={ziel:new T.Vector3(),gier:-.6,nick:.45,dist:80,zZiel:new T.Vector3(),zDist:80,flug:false};
 let heimSpaeter=false,heimNachSim=false,heimT=0;
 function nutzerSteuert(){heimSpaeter=false;heimNachSim=false;K.flug=false}
-function heim(){if(sim){heimNachSim=true}const b=new T.Box3();N.forEach(n=>{if(n.sZiel>0)b.expandByPoint(n.ziel)});if(b.isEmpty())return;
- const c=b.getCenter(new T.Vector3()),r=Math.max(8,b.getSize(V).length()/2);K.zZiel.copy(c);K.zDist=r/Math.sin(cam.fov*Math.PI/360)*.95;K.flug=true;neu()}
+// Version 18: Einpassen nach Bildformat (Breite und Höhe getrennt) in die freie Fläche neben Bedienfeld und Zeitleiste
+function freieFlaeche(){const W=cv.clientWidth||innerWidth,H=cv.clientHeight||innerHeight;let x0=0,x1=W,y0=0,y1=H;
+ const pn=$('pn'),zt=$('zt');
+ if(pn&&W>700){const r=pn.getBoundingClientRect();if(r.width>0&&r.right<W*.4)x0=r.right+8}
+ if(zt&&getComputedStyle(zt).display!=='none'){const r=zt.getBoundingClientRect();if(r.top>H*.5)y1=r.top-6}
+ return{W,H,x0,x1,y0,y1}}
+function heim(){if(sim){heimNachSim=true}const P=[];N.forEach(n=>{if(n.sZiel>0)P.push(n.ziel)});if(!P.length)return;
+ const cp=Math.cos(K.nick),f=new T.Vector3(cp*Math.sin(K.gier),Math.sin(K.nick),cp*Math.cos(K.gier)),re=new T.Vector3(Math.cos(K.gier),0,-Math.sin(K.gier)),up=new T.Vector3().crossVectors(f,re);
+ const st=Math.max(1,Math.floor(P.length/4000));let ax=1e9,bx=-1e9,ay=1e9,by=-1e9,az=1e9,bz=-1e9;
+ for(let i=0;i<P.length;i+=st){const p=P[i],x=p.dot(re),y=p.dot(up),z=p.dot(f);if(x<ax)ax=x;if(x>bx)bx=x;if(y<ay)ay=y;if(y>by)by=y;if(z<az)az=z;if(z>bz)bz=z}
+ const mx=(ax+bx)/2,my=(ay+by)/2,mz=(az+bz)/2,c=re.clone().multiplyScalar(mx).addScaledVector(up,my).addScaledVector(f,mz);
+ const A=freieFlaeche(),tv=Math.tan(cam.fov*Math.PI/360),tvE=tv*(A.y1-A.y0)/A.H*.92,thE=tv*A.W/A.H*(A.x1-A.x0)/A.W*.92;
+ let d=8/tv;for(let i=0;i<P.length;i+=st){const p=P[i],x=Math.abs(p.dot(re)-mx),y=Math.abs(p.dot(up)-my),z=p.dot(f)-mz;d=Math.max(d,z+x/thE,z+y/tvE)}
+ // Mitte der freien Fläche: Ziel gegenläufig verschieben (Maßstab in Zielentfernung)
+ const s=d*2*tv/A.H,ox=((A.x0+A.x1)/2-A.W/2)*s,oy=((A.y0+A.y1)/2-A.H/2)*s;
+ c.addScaledVector(re,-ox).addScaledVector(up,oy);K.zZiel.copy(c);K.zDist=d;K.flug=true;neu()}
 function kameraSetzen(){
  if(K.flug){K.ziel.lerp(K.zZiel,.12);K.dist+=(K.zDist-K.dist)*.12;if(K.ziel.distanceTo(K.zZiel)<.01&&Math.abs(K.zDist-K.dist)<.01)K.flug=false;dirty=true}
  if(![K.dist,K.gier,K.nick,K.ziel.x,K.ziel.y,K.ziel.z].every(isFinite)){K.ziel.set(0,0,0);K.dist=80;K.gier=-.6;K.nick=.45;K.zZiel.set(0,0,0);K.zDist=80;K.flug=false}   // Schutz: ungültige Kamera → Bild schwarz
