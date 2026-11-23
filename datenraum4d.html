@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="16">
+<meta name="4deep-darstellung" content="17">
 <title>4Deep Machbarkeitsstudie</title>
 <!-- 4Deep, Stufe 1 (Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -61,6 +61,7 @@ html.stereo .pn,html.stereo #st,html.stereo #tip,html.stereo #prof,html.stereo #
  <div class="cb"><input type="checkbox" id="schatten" checked><span>Schatten</span></div>
  <div class="cb"><input type="checkbox" id="kanten" checked><span>Beziehungen</span></div>
  <div class="cb"><input type="checkbox" id="vergangen" checked><span>Vergangenes blass zeigen</span></div>
+ <div class="cb" title="Netz und Schichten: Abstände zwischen den Objekten (wird im Browser gespeichert)"><span style="min-width:44px">Dichte</span><input type="range" id="dichte" min="0" max="100" step="5" style="flex:1"><span id="dichtew" style="min-width:26px;text-align:right"></span></div>
  <div class="cb"><input type="checkbox" id="namen"><span>Namen am Objekt (N)</span></div>
  <div class="cb"><input type="checkbox" id="glanz" checked><span>Glanz und Reifegrade</span></div>
  <button id="lt">Leistung messen (5 s Drehung)</button>
@@ -75,7 +76,7 @@ html.stereo .pn,html.stereo #st,html.stereo #tip,html.stereo #prof,html.stereo #
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 16 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 17 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="prof"></div><div id="profb"></div>
@@ -239,7 +240,7 @@ function fertig(n){const o=n.o,m=o.meta||{};if(n.stufe==='kristall'||n.stufe==='
  if(/^(geschlossen|closed|done|erledigt|complete|abgeschlossen|fertig|resolved|cancel|storniert|beendet|finished|approved|freigegeben|released)/.test(z))return true;
  const p=parseFloat(o.progress!=null?o.progress:m.Fortschritt);return p>=100||!!(m['Ist-Ende']&&String(m['Ist-Ende']).trim())}
 // Kette in Zeitrichtung: ältere Revisionen hinter der neuesten (−x), die neueste nimmt am Layout teil
-function kettenLage(L){KET.forEach(K2=>{const a=K2[K2.length-1];for(let i=0;i<K2.length-1;i++){K2[i].ziel.copy(a.ziel);K2[i].ziel.x-=(K2.length-1-i)*L*1.3}})}
+function kettenLage(L){KET.forEach(K2=>{const a=K2[K2.length-1];for(let i=0;i<K2.length-1;i++){const n=K2[i];n.ziel.copy(a.ziel);n.ziel.x-=(K2.length-1-i)*L*1.3;if(n.yFest!=null)n.ziel.y=n.yFest}})}   // Version 17: feste Ebene (Schichten) bleibt erhalten
 function revText(n){const k=n.kette;if(!k)return'';return k.L.map(m=>{const r=m.rev||'#'+(m.kette.i+1);return m===n?'['+r+']':r}).join(' → ')+' · '+(n.gueltig?'gültig':n.revAlt?'abgelöst':'neuer als die gültige')}
 function verzugText(n){return n.verzug?n.verzug+(n.verzug===1?' Tag':' Tage')+' (Termin '+zeitText(n.t1)+', nicht fertig)':''}
 // Startlagen für große Datenmengen: Breitensuche ab gut vernetzten Objekten, Kinder nach außen versetzt,
@@ -311,6 +312,9 @@ function material(stufe){
 
 // ---------- Layouts ----------
 let sim=null;   // laufende Kräfteberechnung {iter,max,yFest}
+// Regler „Dichte“ (Version 17): 0 = locker (Kräfte wie bis Version 16), 100 = sehr kompakt; Wert bleibt im Browser gespeichert
+let DICHTE=70;try{const v=localStorage.getItem('4d_dichte');if(v!=null&&isFinite(+v))DICHTE=Math.max(0,Math.min(100,+v))}catch(_){}
+function dichteKraefte(){const d=DICHTE/100;return{kr:.06+.94*(1-d)*(1-d),ks:.5+2*d,blatt:1-.5*d}}
 function abstand(){return D&&+D.spacing>0?Math.max(4,Math.min(14,+D.spacing*1.2)):6}
 // Version 16: Ebenen nach Reifegrad (wie 3Deep: In Work oben, dann Frozen, Released, Obsolete, ohne Reifegrad unten)
 const REIFE_ORD=['roh','glanz','kristall','alt','normal'];
@@ -334,7 +338,7 @@ function setzeLayout(ly,kamera){
 }
 // Kräfte-Layout als reine Funktion über Zahlenfelder (Float32Array, Zahlen-Gitter mit Hash), läuft im Web Worker
 // (inline per Blob, auch per file://) oder ersatzweise im Hauptthread. P: 3n Lagen, YF: feste Höhe (NaN = frei), KA: 2m Enden, KW: m Gewichte.
-function kraftSchritt(P,YF,KA,KW,L,temp,A){
+function kraftSchritt(P,YF,KA,KW,L,temp,A,Q,KL){   // Q: {kr Abstoßung, ks Federstärke} aus dem Regler „Dichte“ (Version 17), KL: Federlänge je Beziehung
  const n=YF.length,m=KW.length,iz=1/(L*2.5),L2=L*L,H=A.kopf.length-1,kopf=A.kopf,nx=A.nx,anz=A.anz,F=A.F,Z=A.Z,K=32;
  kopf.fill(-1);anz.fill(0);
  const hsh=(x,y,z)=>(Math.imul(x,73856093)^Math.imul(y,19349663)^Math.imul(z,83492791))&H;
@@ -344,10 +348,10 @@ function kraftSchritt(P,YF,KA,KW,L,temp,A){
  for(let i=0;i<n;i++){const ax=P[3*i],ay=P[3*i+1],az=P[3*i+2],cx=Z[3*i],cy=Z[3*i+1],cz=Z[3*i+2];let fx=0,fy=0,fz=0,g=0;
   for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)for(let dz=-1;dz<=1;dz++){const h=hsh(cx+dx,cy+dy,cz+dz);let dop=false;for(let q=0;q<g;q++)if(ges[q]===h){dop=true;break}if(dop)continue;ges[g++]=h;
    const c=anz[h];if(!c)continue;const w=c>K?c/K:1;let j=kopf[h],k=0;
-   while(j>=0&&k<K){if(j!==i){let x=ax-P[3*j],y=ay-P[3*j+1],z=az-P[3*j+2];let d2=x*x+y*y+z*z;if(d2<1e-4){x=((i*7+j)%11)/11-.5;y=((i*3+j*5)%13)/13-.5;z=((i+j*11)%7)/7-.5;d2=.1}const f=L2/d2*w;fx+=x*f;fy+=y*f;fz+=z*f}j=nx[j];k++}}
+   while(j>=0&&k<K){if(j!==i){let x=ax-P[3*j],y=ay-P[3*j+1],z=az-P[3*j+2];let d2=x*x+y*y+z*z;if(d2<1e-4){x=((i*7+j)%11)/11-.5;y=((i*3+j*5)%13)/13-.5;z=((i+j*11)%7)/7-.5;d2=.1}const f=L2/d2*w*Q.kr;fx+=x*f;fy+=y*f;fz+=z*f}j=nx[j];k++}}
   F[3*i]=fx;F[3*i+1]=fy;F[3*i+2]=fz}
  // Anziehung entlang der Beziehungen
- for(let e=0;e<m;e++){const a=KA[2*e],b=KA[2*e+1];const x=P[3*b]-P[3*a],y=P[3*b+1]-P[3*a+1],z=P[3*b+2]-P[3*a+2];const d=Math.sqrt(x*x+y*y+z*z)||.01;const f=(d-L)/d*.5*KW[e];
+ for(let e=0;e<m;e++){const a=KA[2*e],b=KA[2*e+1];const x=P[3*b]-P[3*a],y=P[3*b+1]-P[3*a+1],z=P[3*b+2]-P[3*a+2];const d=Math.sqrt(x*x+y*y+z*z)||.01;const f=(d-KL[e])/d*Q.ks*KW[e];
   F[3*a]+=x*f;F[3*a+1]+=y*f;F[3*a+2]+=z*f;F[3*b]-=x*f;F[3*b+1]-=y*f;F[3*b+2]-=z*f}
  // schwacher Zug zur Mitte, Schritt durch Temperatur begrenzt
  for(let i=0;i<n;i++){const fx=F[3*i]-P[3*i]*.01,fy=F[3*i+1]-P[3*i+1]*.01,fz=F[3*i+2]-P[3*i+2]*.01;const mg=Math.sqrt(fx*fx+fy*fy+fz*fz)||1,sc=Math.min(mg,temp)/mg;
@@ -358,18 +362,19 @@ function kraftTemp(L,it,max,n){return L*(n>5000?1.2:.6)*Math.max(.05,1-it/max)}
 const WORKER_CODE=kraftSchritt+'\n'+kraftHilfe+'\n'+kraftTemp+`
 onmessage=function(ev){const d=ev.data,A=kraftHilfe(d.YF.length);let it=0,last=0;
  (function lauf(){const t=performance.now();
-  while(it<d.max&&performance.now()-t<30){kraftSchritt(d.P,d.YF,d.KA,d.KW,d.L,kraftTemp(d.L,it,d.max,d.YF.length),A);it++}
+  while(it<d.max&&performance.now()-t<30){kraftSchritt(d.P,d.YF,d.KA,d.KW,d.L,kraftTemp(d.L,it,d.max,d.YF.length),A,d.Q,d.KL);it++}
   postMessage({it,P:d.P.slice()});if(it<d.max)setTimeout(lauf,0)})()}`;
 let workerUrl=null;
 function stoppeSim(){if(sim&&sim.w)sim.w.terminate();sim=null}
 function starteSim(L){stoppeSim();const n=N.length,P=new Float32Array(3*n),YF=new Float32Array(n),KA=new Int32Array(2*E.length),KW=new Float32Array(E.length);
  N.forEach((a,i)=>{P[3*i]=a.ziel.x;P[3*i+1]=a.ziel.y;P[3*i+2]=a.ziel.z;YF[i]=a.yFest==null?NaN:a.yFest});
- E.forEach((k,e)=>{KA[2*e]=k.a.i;KA[2*e+1]=k.b.i;KW[e]=1/Math.max(1,Math.sqrt(Math.min(k.a.nb.length,k.b.nb.length)))});
- const max=n>8000?120:n>2000?160:260;sim={iter:0,max,L,P,YF,KA,KW,t0:performance.now()};
+ const Q=dichteKraefte(),KL=new Float32Array(E.length);
+ E.forEach((k,e)=>{KA[2*e]=k.a.i;KA[2*e+1]=k.b.i;KW[e]=1/Math.max(1,Math.sqrt(Math.min(k.a.nb.length,k.b.nb.length)));KL[e]=L*(k.a.nb.length===1||k.b.nb.length===1?Q.blatt:1)});
+ const max=n>8000?120:n>2000?160:260;sim={iter:0,max,L,P,YF,KA,KW,Q,KL,t0:performance.now()};
  if(n>300){try{if(!workerUrl)workerUrl=URL.createObjectURL(new Blob([WORKER_CODE],{type:'text/javascript'}));
    const w=new Worker(workerUrl),s0=sim;s0.w=w;w.onmessage=ev=>{if(sim!==s0)return;simUebernehmen(ev.data.P,ev.data.it)};
    w.onerror=e=>{e.preventDefault&&e.preventDefault();if(sim===s0){w.terminate();s0.w=null}};   // Ersatz: Hauptthread
-   w.postMessage({P,YF,KA,KW,L,max});return}catch(e){sim.w=null}}
+   w.postMessage({P,YF,KA,KW,L,max,Q,KL});return}catch(e){sim.w=null}}
 }
 function simUebernehmen(P,it){for(let i=0;i<N.length;i++)N[i].ziel.set(P[3*i],P[3*i+1],P[3*i+2]);kettenLage(sim.L);sim.iter=it;
  const jetzt=performance.now();if(!sim.bt||jetzt-sim.bt>500){sim.bt=jetzt;bodenSetzen()}
@@ -378,7 +383,7 @@ function simUebernehmen(P,it){for(let i=0;i<N.length;i++)N[i].ziel.set(P[3*i],P[
 let letzteSimDauer=0;
 function simSchritt(){   // Ersatz ohne Worker: Schritte im Hauptthread mit Zeitbudget
  if(!sim||sim.w!==null&&sim.w!==undefined)return;if(!sim.A)sim.A=kraftHilfe(N.length);const t=performance.now();
- while(sim.iter<sim.max&&performance.now()-t<12){kraftSchritt(sim.P,sim.YF,sim.KA,sim.KW,sim.L,kraftTemp(sim.L,sim.iter,sim.max,N.length),sim.A);sim.iter++}
+ while(sim.iter<sim.max&&performance.now()-t<12){kraftSchritt(sim.P,sim.YF,sim.KA,sim.KW,sim.L,kraftTemp(sim.L,sim.iter,sim.max,N.length),sim.A,sim.Q,sim.KL);sim.iter++}
  simUebernehmen(sim.P,sim.iter);
 }
 function baum(L){
@@ -619,6 +624,9 @@ function legende(){const lg=$('lg');lg.innerHTML='';typReihe().forEach(t=>{const
 $('ly').onchange=e=>setzeLayout(e.target.value,true);
 $('schatten').onchange=$('glanz').onchange=()=>{baueMeshes();faerben();neu()};
 $('kanten').onchange=()=>{matAlle=true;neu()};$('vergangen').onchange=zeitAnwenden;
+{const dr=$('dichte'),dw=$('dichtew');dr.value=DICHTE;dw.textContent=DICHTE;
+ dr.oninput=()=>{dw.textContent=dr.value};
+ dr.onchange=()=>{DICHTE=+dr.value;try{localStorage.setItem('4d_dichte',String(DICHTE))}catch(_){}if(N.length&&['netz','schichten','reife'].includes(layout))setzeLayout(layout);dr.blur()}}
 $('zr').oninput=e=>{spiel=false;$('zp').textContent='▶';tCur=tMin+(tMax-tMin)*e.target.value/1000;zeitAnwenden()};
 $('za').onclick=()=>{spiel=false;$('zp').textContent='▶';tCur=Infinity;zeitAnwenden()};
 function spielen(){if(!hatZeit)return;spiel=!spiel;$('zp').textContent=spiel?'❚❚':'▶';if(spiel&&(!isFinite(tCur)||tCur>=tMax))tCur=tMin;neu()}
