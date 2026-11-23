@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="18">
+<meta name="4deep-darstellung" content="20">
 <title>4Deep Machbarkeitsstudie</title>
 <!-- 4Deep, Stufe 1 (Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -27,6 +27,7 @@ html.stereo .pn,html.stereo #st,html.stereo #tip,html.stereo #prof,html.stereo #
 #lg{margin-top:6px}#lg div{display:flex;align-items:center;gap:6px;font-size:12px;margin:2px 0;cursor:pointer}#lg i{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none}
 #lg div.aus{opacity:.35}#lg .lgk{color:var(--mu);font-size:11px;margin-top:6px;cursor:default}#lg .lgr{cursor:default}#lg i.r-gueltig{background:none;border:2.5px solid #1fa463;box-sizing:border-box}#lg i.r-verzug{background:none;border:2.5px solid #e0352b;box-sizing:border-box}#lg i.r-heute{border-radius:1px;width:3px;background:#e0352b}
 #lg i.r-kristall{background:linear-gradient(135deg,#e8f6ff,#9fd3ff 45%,#f4c6ff);box-shadow:0 0 4px #bfe6ff}#lg i.r-glanz{background:radial-gradient(circle at 35% 30%,#fff,#8aa6c8 60%,#4c6386)}#lg i.r-roh{background:#8b94a3;opacity:.8}#lg i.r-alt{background:#8b94a3;opacity:.4}
+#axui .axz{display:flex;align-items:center;gap:5px;margin-top:4px}#axui .axz select{flex:1;min-width:0}#axui .axl{display:flex;align-items:center;gap:2px;font-size:11px;color:var(--mu)}
 #ver{color:var(--mu);font-size:10px;margin-top:8px}
 #zt{left:50%;transform:translateX(-50%);bottom:10px;width:min(820px,calc(100% - 300px));display:none;align-items:center;gap:8px;flex-wrap:wrap}#zk{width:100%;height:38px;display:block;cursor:pointer}#zt .zr{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--mu);cursor:pointer}
 #zt select{background:#16213a;color:var(--tx);border:1px solid var(--rand);border-radius:6px;padding:3px;font:inherit}
@@ -54,10 +55,15 @@ html.stereo .pn,html.stereo #st,html.stereo #tip,html.stereo #prof,html.stereo #
  <select id="ds"><option value="">Datenraum wählen …</option><option value="demo">Produktentwicklung (fiktiv, 18 Monate)</option>
   <option value="thema:koenige">Könige Frankreichs und Englands</option><option value="stress:2000">Leistungstest 2 000 Objekte</option>
   <option value="stress:10000">Leistungstest 10 000 Objekte</option><option value="stress:30000">Leistungstest 30 000 Objekte</option></select>
- <button id="jl">JSON-Datei laden …</button><input type="file" id="jf" accept=".json,application/json" hidden>
+ <button id="jl" title="4Deep-JSON oder CRM-Export als ZIP (wird nur im Browser umgewandelt)">Datei laden (JSON / CRM-ZIP) …</button><input type="file" id="jf" accept=".json,.zip,application/json,application/zip" hidden>
  <label>Layout</label>
  <select id="ly"><option value="netz">Netz</option><option value="schichten">Schichten nach Objekttyp</option><option value="reife">Schichten nach Reifegrad</option><option value="baum">Baum</option>
-  <option value="zeit">Zeitachse (Zeit als Raumrichtung)</option><option value="fest">Feste Positionen (aus Daten)</option></select>
+  <option value="zeit">Zeitachse (Zeit als Raumrichtung)</option><option value="achsen">Kennzahlen (Achsen)</option><option value="fest">Feste Positionen (aus Daten)</option></select>
+ <div id="axui" style="display:none"><label>Kennzahlen-Vorlage</label><select id="axp"></select>
+  <div class="axz"><span style="color:#e0352b" title="rechts">→</span><select id="axx" title="rechts"></select><span class="axl"><input type="checkbox" id="axlx">log</span></div>
+  <div class="axz"><span style="color:#1fa463" title="oben">↑</span><select id="axy" title="oben"></select><span class="axl"><input type="checkbox" id="axly">log</span></div>
+  <div class="axz"><span style="color:#2f6fe0" title="vorne">↙</span><select id="axz" title="vorne (zum Betrachter)"></select><span class="axl"><input type="checkbox" id="axlz">log</span></div>
+  <div id="axnote" class="m" style="margin-top:4px"></div></div>
  <div class="cb"><input type="checkbox" id="schatten" checked><span>Schatten</span></div>
  <div class="cb"><input type="checkbox" id="kanten" checked><span>Beziehungen</span></div>
  <div class="cb"><input type="checkbox" id="vergangen" checked><span>Vergangenes blass zeigen</span></div>
@@ -76,7 +82,7 @@ html.stereo .pn,html.stereo #st,html.stereo #tip,html.stereo #prof,html.stereo #
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 18 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 20 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="prof"></div><div id="profb"></div>
@@ -179,7 +185,7 @@ function laden(daten,opt){
  opt=opt||{};
  if(!daten||!Array.isArray(daten.nodes)){meld('Keine Objekte in den Daten.');return}
  const alt={};if(opt.behalten)N.forEach(n=>alt[n.id]=n);
- D=daten;TY=daten.types||{};letzteSimDauer=0;const RT=daten.relTypes||{};
+ D=daten;TY=daten.types||{};STUFEN=Object.assign({},STUFEN0,daten.stufenNamen||{});letzteSimDauer=0;const RT=daten.relTypes||{};
  // Größen auf den Median der Typgrößen normieren (Typgrößen sind je Datenquelle verschieden)
  const gr=Object.values(TY).map(t=>+t.size||0).filter(x=>x>0).sort((a,b)=>a-b);const med=gr.length?gr[gr.length>>1]:1;
  N=[];byId={};
@@ -208,7 +214,8 @@ function laden(daten,opt){
  else N.forEach(n=>{if(n.alt)return;const k=n.nb.find(m=>m.alt);if(k)n.pos.copy(k.pos).add(V.set(rnd()-.5,rnd()-.5,rnd()-.5).multiplyScalar(4));else n.pos.set((rnd()-.5)*20,(rnd()-.5)*20,(rnd()-.5)*20)});
  baueMeshes();legende();
  const hatPos=N.some(n=>n.fest);
- let ly=opt.behalten?layout:(daten.layout==='plan'||daten.zeitArt?'zeit':hatPos?'fest':'netz');
+ axVorbereiten();
+ let ly=opt.behalten?layout:(daten.layout==='achsen'&&AXP.length?'achsen':daten.layout==='plan'||daten.zeitArt?'zeit':hatPos?'fest':'netz');
  if(!$('ly').querySelector('option[value="'+ly+'"]'))ly='netz';
  $('ly').value=ly;setzeLayout(ly,!opt.behalten);
  sel=-1;schliesseProfil();kurveBauen();zeitAnwenden();neu();
@@ -286,8 +293,9 @@ function baueMeshes(){
 
 // ---------- Optik: Glanz und Reifegrade (wie 3Deep: freigegeben = Kristall, eingefroren = Glanz, in Arbeit = matt) ----------
 const GLANZ_BIS=15000;let glanzAn=true;
-const STUFEN={kristall:'freigegeben (Kristall)',glanz:'eingefroren (Eis)',roh:'in Arbeit (matt)',alt:'veraltet'};
-function reifeStufe(o){const z=String(o.state||(o.meta&&(o.meta.Reifegrad||o.meta.Status||o.meta.Maturity))||'').toLowerCase().trim();
+const STUFEN0={kristall:'freigegeben (Kristall)',glanz:'eingefroren (Eis)',roh:'in Arbeit (matt)',alt:'veraltet'};let STUFEN=Object.assign({},STUFEN0);   // Version 19: daten.stufenNamen überschreibt die Namen
+function reifeStufe(o){if(o.stufe&&STUFEN0[o.stufe])return o.stufe;   // Version 19: Stufe direkt (kristall, glanz, roh, alt)
+const z=String(o.state||(o.meta&&(o.meta.Reifegrad||o.meta.Status||o.meta.Maturity))||'').toLowerCase().trim();
  if(/^(released|freigegeben|release|approved)/.test(z))return'kristall';if(/^(frozen|eingefroren|freeze)/.test(z))return'glanz';
  if(/^(in work|inwork|work|in arbeit|private|wip|todo|running)/.test(z))return'roh';if(/^(obsolete|veraltet)/.test(z))return'alt';return'normal'}
 // Eiskristall-Textur (Version 14): heller, leicht bläulicher Grund mit weißen sechsarmigen Kristallen; wird mit der Objektfarbe multipliziert
@@ -326,7 +334,7 @@ function reifeAbst(L){return Math.max(L*2.6,Math.sqrt(N.length)*L*.5)}   // Eben
 function reifeName(st){return st==='normal'?'ohne Reifegrad':STUFEN[st]}
 function typReihe(){const k=Object.keys(TY).filter(t=>N.some(n=>n.ty===t));N.forEach(n=>{if(!k.includes(n.ty))k.push(n.ty)});return k}
 function setzeLayout(ly,kamera){
- layout=ly;stoppeSim();zeitEbene.visible=false;heuteEbene.visible=false;if(balkenMesh)balkenMesh.visible=false;const L=abstand();
+ layout=ly;stoppeSim();zeitEbene.visible=false;N.forEach(n=>n.axAus=false);axLinien.visible=false;AXINFO=null;heuteEbene.visible=false;if(balkenMesh)balkenMesh.visible=false;const L=abstand();
  if(ly==='netz'||ly==='schichten'||ly==='reife'){
   const reihe=typReihe();
   const rr=reifeReihe();
@@ -334,10 +342,11 @@ function setzeLayout(ly,kamera){
   starteSim(L);
  }else if(ly==='baum'){baum(L)}
  else if(ly==='zeit'){zeitachse(L)}
+ else if(ly==='achsen'){achsenLayout(L);if(kamera){K.gier=-.3;K.nick=.32}}
  else if(ly==='fest'){N.forEach((n,i)=>{const p=n.fest;if(Array.isArray(p))n.ziel.set(+p[0]||0,+p[1]||0,+p[2]||0);else if(p)n.ziel.set(+p.x||0,+p.y||0,+p.z||0);else n.ziel.set(0,-L*3,i*.5)});
   // auf übliche Größe bringen
   const b=new T.Box3();N.forEach(n=>b.expandByPoint(n.ziel));const g=b.getSize(V).length()||1,f=Math.max(1,Math.sqrt(N.length)*L/g);N.forEach(n=>n.ziel.multiplyScalar(f))}
- bodenSetzen();beschriften();heuteSetzen();if(kamera)heimSpaeter=true;neu();
+ bodenSetzen();beschriften();heuteSetzen();axZeigen();if(N.length)zeitAnwenden();if(kamera)heimSpaeter=true;neu();
 }
 // Kräfte-Layout als reine Funktion über Zahlenfelder (Float32Array, Zahlen-Gitter mit Hash), läuft im Web Worker
 // (inline per Blob, auch per file://) oder ersatzweise im Hauptthread. P: 3n Lagen, YF: feste Höhe (NaN = frei), KA: 2m Enden, KW: m Gewichte.
@@ -437,7 +446,73 @@ const schrift=new T.Group();scene.add(schrift);
 function marke(text,x,y,z,h,farbe){const c=document.createElement('canvas'),g=c.getContext('2d');g.font='600 44px system-ui,sans-serif';const w=Math.ceil(g.measureText(text).width)+16;c.width=w;c.height=60;
  g.font='600 44px system-ui,sans-serif';g.fillStyle=farbe||'#1d2b45';g.textBaseline='middle';g.fillText(text,8,31);const t=new T.CanvasTexture(c);t.encoding=T.sRGBEncoding;
  const sp=new T.Sprite(new T.SpriteMaterial({map:t,transparent:true,depthWrite:false,fog:false}));sp.scale.set(h*w/60,h,1);sp.position.set(x,y,z);sp.center.set(0,.5);schrift.add(sp);return sp}
+// ---------- Version 20: Layout „Kennzahlen (Achsen)“ wie 3Deep: daten.axes [{name,x,y,z,xlog,ylog,zlog,xinv,yinv,zinv,note}], Werte aus meta ----------
+// rechts = x, oben = y, vorne (zum Betrachter) = z; Objekte ohne alle gewählten Werte werden ausgeblendet
+let AXP=[],AXS={p:0,k:['','',''],log:[false,false,false],inv:[false,false,false]},AXK=[],AXINFO=null;
+const axLinien=new T.Group();scene.add(axLinien);
+function numv(v){if(v==null)return NaN;if(typeof v==='number')return v;let t=String(v).trim();if(!t)return NaN;
+ if(/^\d{4}-\d\d-\d\d(T|$)/.test(t)){const d=Date.parse(t);return isNaN(d)?NaN:d}
+ t=t.replace(/\s*(€|EUR|%|h|Std\.?|Tage?)$/i,'').replace(/\s/g,'');
+ if(/^[-+]?\d{1,3}(\.\d{3})*(,\d+)?$/.test(t)||/^[-+]?\d+,\d+$/.test(t))return parseFloat(t.replace(/\./g,'').replace(',','.'));
+ if(/^[-+]?\d+(\.\d+)?$/.test(t))return parseFloat(t);return NaN}
+function istDatumWert(v){return typeof v==='string'&&/^\d{4}-\d\d-\d\d/.test(v.trim())}
+function axEinheit(k){for(const n of N){const v=(n.o.meta||{})[k];if(typeof v==='string'){const m=v.trim().match(/(€|%|h)$/);if(m)return m[1];if(isFinite(numv(v)))return''}}return''}
+function axSchluessel(){const z={},dz={};N.forEach(n=>{const m=n.o.meta||{};for(const k in m){if(isFinite(numv(m[k]))){z[k]=(z[k]||0)+1;if(istDatumWert(m[k]))dz[k]=(dz[k]||0)+1}}});
+ AXK=Object.keys(z).filter(k=>z[k]>=1).sort((a,b)=>a.localeCompare(b,'de'));AXK.datum=new Set(AXK.filter(k=>dz[k]>=z[k]*.8));return AXK}
+function axVorbereiten(){axSchluessel();const ks=AXK;
+ AXP=((D&&D.axes)||[]).filter(p=>[p.x,p.y,p.z].every(k=>!k||ks.includes(k)));
+ if(!AXP.length){   // ohne Vorlagen: je Objekttyp die am häufigsten gefüllten Kennzahlen
+  Object.keys(TY).forEach(t=>{const c={};N.forEach(n=>{if(n.ty!==t)return;const m=n.o.meta||{};ks.forEach(k=>{if(isFinite(numv(m[k])))c[k]=(c[k]||0)+1})});
+   const L=Object.keys(c).sort((a,b)=>c[b]-c[a]).slice(0,3);if(L.length)AXP.push({name:((TY[t]||{}).label||t)+': '+L.join(' · '),x:L[0],y:L[1]||'',z:L[2]||''})});AXP=AXP.slice(0,8)}
+ const opt='<option value="">–</option>'+ks.map(k=>'<option>'+esc(k)+'</option>').join('');['axx','axy','axz'].forEach(id=>$(id).innerHTML=opt);
+ $('axp').innerHTML=AXP.map((p,i)=>'<option value="'+i+'">'+esc(p.name)+'</option>').join('')+'<option value="eigen">Eigene Auswahl</option>';
+ if(AXP.length)axVorlage(0);else{AXS={p:'eigen',k:[ks[0]||'',ks[1]||'',ks[2]||''],log:[false,false,false],inv:[false,false,false]};axZeigen()}}
+function axVorlage(i){const p=AXP[i];if(!p)return;AXS={p:i,k:[p.x||'',p.y||'',p.z||''],log:[!!p.xlog,!!p.ylog,!!p.zlog],inv:[!!p.xinv,!!p.yinv,!!p.zinv]};axZeigen()}
+function axZeigen(){$('axui').style.display=layout==='achsen'?'':'none';$('axp').value=String(AXS.p);['axx','axy','axz'].forEach((id,j)=>$(id).value=AXS.k[j]);['axlx','axly','axlz'].forEach((id,j)=>$(id).checked=AXS.log[j]);
+ const p=AXP[AXS.p];$('axnote').textContent=p&&p.note?p.note:''}
+function axTicks(lo,hi,log,datum){const T2=[];if(!(hi>lo))return[lo];
+ if(datum){const j=(hi-lo)/JAHR,st=j>8?24:j>3?12:j>1.2?6:j>.4?3:1;const d=new Date(lo);let y=d.getUTCFullYear(),m=Math.floor(d.getUTCMonth()/st)*st;
+  for(let i=0;i<40;i++){const t=Date.UTC(y,m,1);if(t>hi)break;if(t>=lo)T2.push(t);m+=st;while(m>=12){m-=12;y++}}return T2}
+ if(log){for(let e=Math.floor(Math.log10(lo));e<=Math.ceil(Math.log10(hi));e++){const v=Math.pow(10,e);if(v>=lo*.999&&v<=hi*1.001)T2.push(v)}if(T2.length>=2)return T2}
+ const r=(hi-lo)/5,p=Math.pow(10,Math.floor(Math.log10(r))),f=r/p,st=(f<1.5?1:f<3?2:f<7?5:10)*p;for(let v=Math.ceil(lo/st)*st;v<=hi+st*1e-6;v+=st)T2.push(Math.abs(v)<st*1e-9?0:v);return T2}
+function axText(v,k){if(AXK.datum&&AXK.datum.has(k)){const d=new Date(v);return d.getUTCMonth()?String(d.getUTCMonth()+1).padStart(2,'0')+'/'+d.getUTCFullYear():String(d.getUTCFullYear())}
+ const e=axEinheit(k),a=Math.abs(v);return(a>=1e6?(v/1e6).toLocaleString('de-DE',{maximumFractionDigits:1})+' Mio.':v.toLocaleString('de-DE',{maximumFractionDigits:a<10?1:0}))+(e?' '+e:'')}
+function achsenLayout(L){
+ const ks=AXS.k,aktiv=[0,1,2].filter(j=>ks[j]);const W=N.map(n=>{const m=n.o.meta||{};return ks.map(k=>k?numv(m[k]):0)});
+ N.forEach((n,i)=>{n.axAus=!aktiv.length||aktiv.some(j=>!isFinite(W[i][j])||(AXS.log[j]&&!(W[i][j]>0)))});
+ const inn=N.filter(n=>!n.axAus),nIn=inn.length,mR=inn.reduce((x,n)=>x+n.r,0)/Math.max(1,nIn),LA=Math.max(60,Math.sqrt(Math.max(1,nIn))*Math.max(L*1.6,mR*10)),LEN=[LA,LA*.6,LA*.7];
+ const tf=(j,v)=>AXS.log[j]?Math.log10(v):v,lo=[0,0,0],hi=[1,1,1];
+ const rand=[false,false,false];
+ aktiv.forEach(j=>{const w=inn.map(n=>tf(j,W[n.i][j])).sort((x,y)=>x-y);let a=w[0],b=w[w.length-1];
+  if(w.length>=20){const qa=w[Math.floor(w.length*.03)],qb=w[Math.ceil(w.length*.97)-1],sp=qb-qa;   // Ausreißer: Skala ohne die äußersten 3 %, Ausreißer an den Rand
+   if(sp>0&&(qa-a>sp*.6||b-qb>sp*.6)){a=Math.min(qa,Math.max(a,qa-sp*.6));b=Math.max(qb,Math.min(b,qb+sp*.6));rand[j]=true}}
+  if(!(b>a)){a-=1;b+=1}lo[j]=a;hi[j]=b});
+ const f=(j,v)=>{if(!ks[j])return .5;let x=Math.max(-.02,Math.min(1.02,(tf(j,v)-lo[j])/(hi[j]-lo[j])));return AXS.inv[j]?1-x:x};
+ const belegt={};
+ N.forEach(n=>{if(n.axAus){n.ziel.copy(n.pos);return}const w=W[n.i];let x=(f(0,w[0])-.5)*LEN[0],y=f(1,w[1])*LEN[1],z=(f(2,w[2])-.5)*LEN[2];
+  const key=Math.round(x/(L*.6))+':'+Math.round(y/(L*.6))+':'+Math.round(z/(L*.6)),k=belegt[key]=(belegt[key]||0)+1;   // gleiche Werte leicht versetzt
+  if(k>1){const a=k*2.4;z+=Math.cos(a)*L*.45*Math.sqrt(k);x+=Math.sin(a)*L*.45*Math.sqrt(k)}n.ziel.set(x,y,z)});
+ AXINFO={ks:ks.slice(),lo,hi,LEN,log:AXS.log.slice(),inv:AXS.inv.slice(),nIn,rand};
+ // Achsenlinien und Raster am Boden
+ axLinien.children.slice().forEach(c=>{axLinien.remove(c);c.geometry.dispose();c.material.dispose()});
+ const A=LEN[0]/2,B=LEN[1],C=LEN[2]/2,P=[],Q=[],farben=[0xe0352b,0x1fa463,0x2f6fe0];
+ const linie=(pts,col,op)=>{const g=new T.BufferGeometry().setFromPoints(pts.map(p=>new T.Vector3(...p)));const l=new T.LineSegments(g,new T.LineBasicMaterial({color:col,transparent:true,opacity:op,depthWrite:false}));axLinien.add(l)};
+ if(ks[0])linie([[-A,0,-C],[A,0,-C]],farben[0],.9);if(ks[1])linie([[-A,0,-C],[-A,B,-C]],farben[1],.9);if(ks[2])linie([[-A,0,-C],[-A,0,C]],farben[2],.9);
+ [0,2].forEach(j=>{if(!ks[j])return;axTicks(AXS.log[j]?Math.pow(10,lo[j]):lo[j],AXS.log[j]?Math.pow(10,hi[j]):hi[j],AXS.log[j],AXK.datum.has(ks[j])).forEach(v=>{const u=(f(j,v)-.5);
+  if(j===0)Q.push([u*LEN[0],0,-C],[u*LEN[0],0,C]);else Q.push([-A,0,u*LEN[2]],[A,0,u*LEN[2]])})});
+ if(Q.length)linie(Q,0x40567a,.25);axLinien.visible=true}
+function achsenBeschriften(L){const I=AXINFO;if(!I)return;const A=I.LEN[0]/2,B=I.LEN[1],C=I.LEN[2]/2,h=Math.max(L*.5,I.LEN[0]*.02),farben=['#c0281f','#178a52','#2659c4'];
+ const f=(j,v)=>{let x=((I.log[j]?Math.log10(v):v)-I.lo[j])/(I.hi[j]-I.lo[j]);return I.inv[j]?1-x:x};
+ [0,1,2].forEach(j=>{const k=I.ks[j];if(!k)return;const dat=AXK.datum.has(k),T2=axTicks(I.log[j]?Math.pow(10,I.lo[j]):I.lo[j],I.log[j]?Math.pow(10,I.hi[j]):I.hi[j],I.log[j],dat);
+  T2.forEach(v=>{const u=f(j,v);if(u<-.001||u>1.001)return;const t=axText(v,k);
+   if(j===0)marke(t,(u-.5)*I.LEN[0],-L*.9,-C-L*.5,h*.8,farben[0]).center.set(.5,.5);
+   else if(j===1)marke(t,-A-L*.6,u*B,-C,h*.8,farben[1]).center.set(1,.5);
+   else marke(t,-A-L*.6,-L*.9,(u-.5)*I.LEN[2],h*.8,farben[2]).center.set(1,.5)});
+  const tt=['→ ','↑ ','↙ '][j]+k+(I.log[j]?' (log)':'')+(I.inv[j]?' (umgekehrt)':'')+(I.rand[j]?' · Ausreißer am Rand':'');
+  if(j===0)marke(tt,A+L*.8,0,-C,h*1.2,farben[0]).center.set(0,.5);else if(j===1)marke(tt,-A,B+L*1.5,-C,h*1.2,farben[1]).center.set(.5,.5);else marke(tt,-A-L*.6,-L*.9,C+L*2,h*.8,farben[2]).center.set(1,.5)});
+ if(!I.nIn)marke('Keine Objekte mit diesen Kennzahlen',0,B/2,0,h*1.4,'#c0281f').center.set(.5,.5)}
 function beschriften(){schrift.children.slice().forEach(c=>{schrift.remove(c);c.material.map.dispose();c.material.dispose()});const L=abstand();
+ if(layout==='achsen'){achsenBeschriften(L);return}
  if(layout!=='zeit'&&layout!=='schichten'&&layout!=='reife')return;const reihe=typReihe();const b=new T.Box3();N.forEach(n=>b.expandByPoint(n.ziel));if(b.isEmpty())return;
  const h=Math.max(L*.5,b.getSize(V).length()*.018);
  if(layout==='reife'){const rr=reifeReihe();rr.forEach((st,k)=>marke(reifeName(st),b.min.x-L*1.5,(rr.length-1-k)*reifeAbst(L),0,h,'#1d2b45').center.set(1,.5));return}
@@ -449,7 +524,7 @@ function beschriften(){schrift.children.slice().forEach(c=>{schrift.remove(c);c.
    const p=n=>String(n).padStart(2,'0');marke(st<1?p(d.getUTCMonth()+1)+'/'+d.getUTCFullYear():String(d.getUTCFullYear()),zeitX(t),b.min.y-L*.8,b.max.z+L,h*1.2,'#ff9f1c').center.set(.5,.5)}}}
 
 // ---------- Zeit anwenden ----------
-function sichtbar(n){return !typAus[n.ty]&&!(isFinite(n.t0)&&n.t0>tCur)}
+function sichtbar(n){return !typAus[n.ty]&&!n.axAus&&!(isFinite(n.t0)&&n.t0>tCur)}
 function vergangen(n){return isFinite(n.t1)&&isFinite(tCur)&&n.t1<tCur}   // „alle Zeiten“: nichts blass (Version 12)
 function zeitAnwenden(){
  const blass=$('vergangen').checked,ref=Math.min(tCur,HEUTE),da=t=>!(isFinite(t)&&t>tCur);
@@ -601,7 +676,7 @@ function profilAttr(n){const o=n.o,RT=(D&&D.relTypes)||{},meta=o.meta||{};
  const A=[['Name',n.name],['Typ',(TY[n.ty]||{}).label||n.ty],['ID',String(o.id)]];if(o.state)A.push(['Reifegrad',o.state+(n.stufe!=='normal'?' ('+STUFEN[n.stufe].replace(/^[^(]*\(|\)$/g,'')+')':'')]);
  if(n.kette)A.push(['Revisionen',revText(n)]);if(n.verzug)A.push(['Verzug',verzugText(n)]);
  if(isFinite(n.t0))A.push(['Beginn',zeitText(n.t0)]);if(isFinite(n.t1))A.push(['Ende',zeitText(n.t1)]);
- const leer=[];Object.keys(meta).forEach(k=>{const v=meta[k];if(v===''||v==null)leer.push(k)});Object.keys(meta).filter(k=>!leer.includes(k)).slice(0,12).forEach(k=>A.push([k,String(meta[k])]));
+ const leer=[];Object.keys(meta).forEach(k=>{const v=meta[k];if(v===''||v==null)leer.push(k)});Object.keys(meta).filter(k=>!leer.includes(k)).slice(0,30).forEach(k=>A.push([k,String(meta[k])]));
  const kn=E.filter(k=>k.a===n||k.b===n),aus=kn.filter(k=>k.a===n).length,byT={},byR={};kn.forEach(k=>{const m=k.a===n?k.b:k.a,t=(TY[m.ty]||{}).label||m.ty,r=((RT[k.e.type]||{}).label)||k.e.type||'–';byT[t]=(byT[t]||0)+1;byR[r]=(byR[r]||0)+1});
  const fm=x=>Object.keys(x).map(k=>k+' '+x[k]).join(', ')||'–';
  [['Beziehungen gesamt',String(kn.length)],['ausgehend',String(aus)],['eingehend',String(kn.length-aus)],['Verbunden mit',fm(byT)],['Beziehungsarten',fm(byR)],['Leere Felder',leer.length?leer.join(', '):'keine'],
@@ -639,6 +714,11 @@ function legende(){const lg=$('lg');lg.innerHTML='';typReihe().forEach(t=>{const
 
 // ---------- Bedienung ----------
 $('ly').onchange=e=>setzeLayout(e.target.value,true);
+// Version 20: Kennzahlen-Achsen bedienen
+const axNeu=()=>{$('ly').value='achsen';setzeLayout('achsen',true)};
+$('axp').onchange=e=>{const v=e.target.value;if(v==='eigen'){AXS.p='eigen';axZeigen()}else{axVorlage(+v);axNeu()}};
+['axx','axy','axz'].forEach((id,j)=>$(id).onchange=e=>{AXS.k[j]=e.target.value;AXS.inv[j]=false;AXS.p='eigen';axNeu()});
+['axlx','axly','axlz'].forEach((id,j)=>$(id).onchange=e=>{AXS.log[j]=e.target.checked;axNeu()});
 $('schatten').onchange=$('glanz').onchange=()=>{baueMeshes();faerben();neu()};
 $('kanten').onchange=()=>{matAlle=true;neu()};$('vergangen').onchange=zeitAnwenden;
 {const dr=$('dichte'),dw=$('dichtew');dr.value=DICHTE;dw.textContent=DICHTE;
@@ -659,7 +739,12 @@ function kurveBauen(){if(!hatZeit){kurve=null;return}const B=240,neu=new Float32
  // ruhige Phasen zusammen höchstens 25 % der Abspielzeit (mindestens aber sichtbar: höchstens 40× schneller)
  const akt=new Uint8Array(B);let na=0;for(let i=0;i<B;i++){for(let j=Math.max(0,i-3);j<=Math.min(B-1,i+3);j++)if(neu[j]||ae[j]){akt[i]=1;break}na+=akt[i]}
  const nr=B-na,wq=nr&&na?Math.max(.025,Math.min(.12,na/3/nr)):1;const w=new Float32Array(B);let sw=0;for(let i=0;i<B;i++){w[i]=akt[i]?1:wq;sw+=w[i]}
- kurve={B,sum,ae,w,sw,ohne:N.filter(n=>!isFinite(n.t0)).length}}
+ const bet=new Float64Array(B);let hatBet=false;N.forEach(n=>{const b=+n.o.betrag;if((TY[n.ty]||{}).summe&&isFinite(b)&&isFinite(n.t0)){bet[Math.min(B-1,Math.floor((n.t0-tMin)/sp*B))]+=b;hatBet=true}});
+ let cb=0;for(let i=0;i<B;i++){cb+=bet[i];bet[i]=cb}
+ kurve={B,sum,ae,w,sw,ohne:N.filter(n=>!isFinite(n.t0)).length,bet:hatBet?bet:null}}
+// Version 19: Betragssumme (z. B. Umsatz) bis zum Zeitpunkt, Typen mit summe:true, Feld betrag
+function betragBis(t){let s2=0;N.forEach(n=>{const b=+n.o.betrag;if((TY[n.ty]||{}).summe&&isFinite(b)&&isFinite(n.t0)&&n.t0<=t)s2+=b});return s2}
+function betragText(x){return x.toLocaleString('de-DE',{maximumFractionDigits:0})+(D&&D.betragEinheit?' '+D.betragEinheit:'')}
 function tempoFaktor(){if(!kurve||!$('raffen').checked)return 1;const i=Math.max(0,Math.min(kurve.B-1,Math.floor((tCur-tMin)/(tMax-tMin)*kurve.B)));return kurve.sw/kurve.B/kurve.w[i]}
 function kurveZeichnen(){const cv2=$('zk');if(!kurve||!cv2.offsetWidth)return;const dpr=Math.min(devicePixelRatio,2),w=cv2.offsetWidth,h=cv2.offsetHeight;if(cv2.width!==Math.round(w*dpr)){cv2.width=Math.round(w*dpr);cv2.height=Math.round(h*dpr)}
  const g=cv2.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,w,h);const {B,sum,ae}=kurve,mx=Math.max(1,sum[B-1]),ma=Math.max(1,...ae),xi=i=>(i+.5)/B*w;
@@ -668,6 +753,9 @@ function kurveZeichnen(){const cv2=$('zk');if(!kurve||!cv2.offsetWidth)return;co
  for(let pass=0;pass<2;pass++){g.beginPath();g.moveTo(0,h);for(let i=0;i<B;i++){if(pass===0&&i>ic)break;g.lineTo(xi(i),h-2-sum[i]/mx*(h-6))}if(pass===0){g.lineTo(xi(Math.min(ic,B-1)),h);g.closePath();g.fillStyle='rgba(79,140,255,.55)';g.fill()}else{g.strokeStyle='rgba(147,163,189,.8)';g.lineWidth=1.2;g.stroke()}}
  g.fillStyle='#19c3d6';for(let i=0;i<B;i++)if(ae[i]){const bh=Math.max(2,ae[i]/ma*(h*.45));g.globalAlpha=i<=ic?1:.35;g.fillRect(xi(i)-.75,h-bh,1.5,bh)}g.globalAlpha=1;
  if(HEUTE>=tMin&&HEUTE<=tMax){const xh=(HEUTE-tMin)/(tMax-tMin)*w;g.fillStyle='#e0352b';for(let y=0;y<h;y+=4)g.fillRect(xh-.75,y,1.5,2);g.font='600 9px system-ui,sans-serif';g.textBaseline='top';g.textAlign=xh>w-34?'right':'left';g.fillText('Heute',xh+(xh>w-34?-3:3),1)}
+ if(kurve.bet){const mb=Math.max(1,kurve.bet[B-1]);g.beginPath();for(let i=0;i<B;i++){const y=h-2-kurve.bet[i]/mb*(h-6);i?g.lineTo(xi(i),y):g.moveTo(xi(i),y)}g.strokeStyle='#f4c430';g.lineWidth=2;g.stroke();
+  g.font='600 10px system-ui,sans-serif';g.textBaseline='top';g.textAlign='left';const txt=(D.betragName||'Summe')+': '+betragText(isFinite(tCur)?betragBis(tCur):kurve.bet[B-1]);
+  g.fillStyle='rgba(14,22,38,.7)';g.fillRect(2,1,g.measureText(txt).width+8,13);g.fillStyle='#f4c430';g.fillText(txt,6,2)}
  if(isFinite(tCur)){g.fillStyle='#ff9f1c';g.fillRect(tc*w-1,0,2,h)}}
 $('zk').onpointerdown=e=>{const r=$('zk').getBoundingClientRect();const f=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));spiel=false;$('zp').textContent='▶';tCur=tMin+(tMax-tMin)*f;zeitAnwenden()};
 addEventListener('resize',()=>kurveZeichnen());
@@ -793,8 +881,139 @@ $('jl').onclick=()=>$('jf').click();
 $('jf').onchange=e=>{const f=e.target.files[0];if(f)leseDatei(f);e.target.value=''};
 addEventListener('dragover',e=>e.preventDefault());
 addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer.files&&e.dataTransfer.files[0];if(f)leseDatei(f)});
-function leseDatei(f){const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);lauf=null;laden(j.daten&&j.daten.nodes?j.daten:j)}catch(e){meld('Datei ist kein gültiges JSON: '+e.message)}};r.readAsText(f)}
+function leseDatei(f){if(/\.zip$/i.test(f.name)){leseZip(f);return}const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);lauf=null;laden(j.daten&&j.daten.nodes?j.daten:j)}catch(e){meld('Datei ist kein gültiges JSON: '+e.message)}};r.readAsText(f)}
 $('ds').onchange=e=>waehleRaum(e.target.value);
+// ---------- Version 19: CRM-Export (ZIP mit busses/… und rels/…) direkt laden, Umwandlung nur im Browser ----------
+async function zipLesen(buf){
+ const dv=new DataView(buf),u8=new Uint8Array(buf);let eocd=-1;
+ for(let i=buf.byteLength-22;i>=Math.max(0,buf.byteLength-65557);i--)if(dv.getUint32(i,true)===0x06054b50){eocd=i;break}
+ if(eocd<0)throw new Error('keine gültige ZIP-Datei');
+ let anz=dv.getUint16(eocd+10,true),cd=dv.getUint32(eocd+16,true);
+ if(anz===0xffff||cd===0xffffffff){const loc=eocd-20;if(loc>=0&&dv.getUint32(loc,true)===0x07064b50){const z=Number(dv.getBigUint64(loc+8,true));anz=Number(dv.getBigUint64(z+32,true));cd=Number(dv.getBigUint64(z+48,true))}}
+ const dec=new TextDecoder('utf-8'),aus=[];let p=cd;
+ for(let k=0;k<anz;k++){
+  if(dv.getUint32(p,true)!==0x02014b50)throw new Error('ZIP-Verzeichnis beschädigt');
+  const meth=dv.getUint16(p+10,true),nl=dv.getUint16(p+28,true),el=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true);let cs=dv.getUint32(p+20,true),off=dv.getUint32(p+42,true);
+  if(cs===0xffffffff||off===0xffffffff){let e=p+46+nl;const ee=e+el;while(e<ee){const id=dv.getUint16(e,true),sz=dv.getUint16(e+2,true);if(id===1){let q=e+4;if(dv.getUint32(p+24,true)===0xffffffff)q+=8;if(cs===0xffffffff){cs=Number(dv.getBigUint64(q,true));q+=8}if(off===0xffffffff)off=Number(dv.getBigUint64(q,true))}e+=4+sz}}
+  const name=dec.decode(u8.subarray(p+46,p+46+nl));p+=46+nl+el+cl;if(name.endsWith('/'))continue;
+  const st=off+30+dv.getUint16(off+26,true)+dv.getUint16(off+28,true);aus.push({name,meth,daten:u8.subarray(st,st+cs)})}
+ return aus}
+async function zipEntpacken(e){if(e.meth===0)return e.daten;if(e.meth!==8)throw new Error('Packverfahren '+e.meth+' nicht unterstützt');
+ return new Uint8Array(await new Response(new Blob([e.daten]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer())}
+async function leseZip(f){
+ meld('Lese '+f.name+' …');
+ try{const ein=await zipLesen(await f.arrayBuffer()),dec=new TextDecoder('utf-8'),busse=[],rels=[];let json4d=null;
+  for(const e of ein){if(!/\.json$/i.test(e.name))continue;const teile=e.name.split('/');const art=teile.includes('busses')?'b':teile.includes('rels')?'r':'';
+   if(!art&&ein.length>1)continue;let t=dec.decode(await zipEntpacken(e));if(t.charCodeAt(0)===0xfeff)t=t.slice(1);let o;try{o=JSON.parse(t)}catch(_){continue}
+   if(art==='b')busse.push(o);else if(art==='r')rels.push(o);else json4d=o}
+  if(busse.length){const d=crmZuDaten(busse,rels);lauf=null;laden(d);return}
+  if(json4d){lauf=null;laden(json4d.daten&&json4d.daten.nodes?json4d.daten:json4d);return}
+  meld('Im ZIP wurden weder CRM-Daten (Ordner busses/ und rels/) noch ein 4Deep-JSON gefunden.')
+ }catch(err){meld('ZIP konnte nicht gelesen werden: '+err.message)}}
+
+// Objekttypen des CRM (Kürzel → Darstellung); unbekannte Kürzel erscheinen mit ihrem Kürzel
+const CRM_TYPEN={
+ tCO:{label:'Firma',color:'#f4c430',shape:'box',size:3},
+ tPE:{label:'Person',color:'#b07cf0',shape:'bust',size:1.1},
+ tAD:{label:'Adresse',color:'#9bb2d1',shape:'diamond',size:.7},
+ tAS:{label:'Dokument',color:'#9bb2d1',shape:'book',size:.8},
+ tOF:{label:'Angebot',color:'#f08c00',shape:'octagon',size:1.5},
+ tOFI:{label:'Angebotsposition',color:'#f6b26b',size:.6},
+ tCT:{label:'Auftrag',color:'#4f8cff',shape:'dodecahedron',size:1.8},
+ tCTI:{label:'Auftragsposition',color:'#8fb4ff',size:.6},
+ tSI:{label:'Rechnung',color:'#2fb36d',shape:'folder',size:1.4,summe:true},
+ tSII:{label:'Rechnungsposition',color:'#9be3b8',size:.5},
+ tBS:{label:'Billing Sheet',color:'#17a2a2',shape:'triangle',size:1.4},
+ tBA:{label:'Batch',color:'#7f9cc4',size:.2},
+ tTA:{label:'Aufgabe',color:'#e63946',shape:'torus',size:1}};
+const CRM_ROLLEN={Person:'Bearbeiter',Reviewer:'Prüfer',Responsible:'Verantwortlich',BillingSheet:'Billing Sheet',CustomerCompany:'Kunde',Customer:'Kunde',Contact:'Kontakt',CustomerContact:'Kontakt',SalesPerson:'Vertrieb',Company:'Firma',Contract:'Auftrag',Project:'Projekt'};
+function crmZahl(v){if(typeof v==='number')return v;if(v==null)return NaN;const t=String(v).trim();if(!/^-?[\d.]*,?\d+$|^-?\d+(\.\d+)?$/.test(t))return NaN;
+ return /,/.test(t)?parseFloat(t.replace(/\./g,'').replace(',','.')):parseFloat(t)}
+function crmMs(v){const x=crmZahl(v);return isFinite(x)&&x>1e11?x:NaN}
+function crmDatum(v){const t=crmMs(v);return isFinite(t)?new Date(t).toISOString().slice(0,10):''}
+// Betrag aus der Preisstruktur: Gesamt „VK“ (netto aus cPriceDetails, sonst cPrice)
+function crmBetragArt(d,art){const q=d.cPriceDetails;if(!Array.isArray(q))return NaN;const x=q.find(y=>y&&y.name===art);const t=x&&Array.isArray(x.total)&&x.total[0];return t&&t.result?crmZahl(t.result.key):NaN}
+function crmBetrag(d){for(const q of [d.cPriceDetails,d.cPrice]){if(!Array.isArray(q))continue;const vk=q.find(x=>x&&x.name==='VK')||q[0];
+  const t=vk&&Array.isArray(vk.total)&&vk.total[0];const b=t&&t.result?crmZahl(t.result.key):NaN;if(isFinite(b))return b}return NaN}
+function crmZuDaten(busse,rels){
+ const byId={},nodes=[],edges=[],types={},relTypes={};
+ const ty=t=>{if(!types[t])types[t]=Object.assign({},CRM_TYPEN[t]||{label:t,color:'#8b94a3',size:1});return t};
+ const fmt=x=>isFinite(x)?x.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2}):'';
+ busse.forEach(o=>{if(!o||!o.id||byId[o.id])return;const d=o.data||{},pol=o.policy||{},st=String(pol.current||'');
+  const titel=String(d.cTitle||'').trim(),nr=String(o.name||'').trim();
+  const n={id:o.id,type:ty(o.type||'?'),name:nr&&titel&&titel!==nr?nr+' · '+titel:(titel||nr||o.id),meta:{}};const m=n.meta;
+  if(nr)m.Nummer=nr;if(o.rev)m.Revision=o.rev;if(st)m.Status=st;
+  // Stufe: abgeschlossen = Kristall, offen/in Arbeit = matt, inaktiv = blass
+  if(/^(finished|closed|done|shipped)$/i.test(st))n.stufe='kristall';else if(/^(work|pending|onhold|open|draft)$/i.test(st))n.stufe='roh';else if(/^(inactive|canceled|cancelled|obsolete)$/i.test(st))n.stufe='alt';
+  let t0=NaN;const b=crmBetrag(d);
+  switch(o.type){
+   case'tBA':t0=crmMs(d.cDate);m.Datum=crmDatum(d.cDate);m.Stunden=d.cNetDeci||'';m.Arbeitszeit=d.cWorkingTime||'';m.Entscheidung=d.cDecision||'';m['Prüfer']=d.cReviewer||'';m.Verantwortlich=d.cResponsible||'';if(d.cRemote!=null)m.Remote=d.cRemote?'ja':'nein';n.wert=crmZahl(d.cNetDeci);break;
+   case'tSI':t0=crmMs(d.cInvoiceDate);m.Rechnungsdatum=crmDatum(d.cInvoiceDate);m['Fällig']=crmDatum(d.cDueDate);m['Netto']=fmt(b)+' €';{const ek=crmBetragArt(d,'EK');if(isFinite(ek)&&isFinite(b)){m.EK=fmt(ek)+' €';m.Deckungsbeitrag=fmt(b-ek)+' €';if(b)m.Marge=((b-ek)/b*100).toLocaleString('de-DE',{maximumFractionDigits:1})+' %';n._ek=ek}}m.Jahr=d.cYear||'';m.Ablauf=d.cProcess||'';m.Entscheidung=d.cDecision||'';if(d.cAR)m.Buchung=d.cAR;break;
+   case'tBS':m.Stundensatz=d.cHourlyRate||'';m['Stunden gesamt']=d.cNetTotal||'';m['Stunden offen']=d.cNetOpen||'';m['Stunden abgerechnet']=d.cNetBilling||'';m.Sollstunden=d.cTargetHour||'';m.Saldo=d.cBookingBalance||'';n.wert=crmZahl(d.cNetTotal);{const h=crmZahl(d.cNetTotal),sa=crmZahl(d.cHourlyRate),so=crmZahl(d.cTargetHour);if(isFinite(h)&&isFinite(sa))m.Wert=fmt(h*sa)+' €';if(isFinite(h)&&so>0)m.Auslastung=(h/so*100).toLocaleString('de-DE',{maximumFractionDigits:0})+' %';n._h=h;n._satz=sa}break;
+   case'tTA':t0=crmMs(d.cStartDate);m.Wichtigkeit=d.cImportance||'';if(d.cCompletedPct)m.Fortschritt=d.cCompletedPct+' %';m['Erledigt am']=crmDatum(d.cCompletedDate);if(crmMs(d.cDueDate))n.end=crmDatum(d.cDueDate);break;
+   case'tOF':t0=crmMs(d.cOfferingDate);break;
+   case'tCTI':case'tOFI':case'tSII':m.Menge=d.cQuantity||'';m['Fällig']=crmDatum(d.cDueDate);break;
+   case'tPE':if(d.cEmail)m['E-Mail']=d.cEmail;break;
+  }
+  if(isFinite(b)&&o.type!=='tSI'){m.Betrag=fmt(b)+' €'}if(o.type==='tBA')n._h=crmZahl(d.cNetDeci);n._st=st
+  if(isFinite(b)){n.betrag=b;if(n.wert==null)n.wert=Math.abs(b)}
+  if(d.cDesc&&typeof d.cDesc==='string')m.Beschreibung=d.cDesc;
+  m.Angelegt=crmDatum(o.originated);m['Zuletzt geändert']=crmDatum(o.modified);
+  // Stammdaten (Firma, Person, Adresse, Dokument) sind immer da; Geschäftsobjekte entstehen zu ihrem Datum
+  if(!isFinite(t0)&&!/^t(CO|PE|AD|AS)$/.test(o.type))t0=crmMs(o.originated);
+  if(isFinite(t0))n.start=new Date(t0).toISOString();
+  Object.keys(m).forEach(k=>{if(m[k]===''||m[k]==null)delete m[k]});
+  byId[o.id]=n;nodes.push(n)});
+ const rt=(k,def)=>{if(!relTypes[k])relTypes[k]=def;return k};
+ const kante=(von,nach,typ)=>{if(byId[von]&&byId[nach]&&von!==nach)edges.push({from:von,to:nach,type:typ})};
+ rels.forEach(r=>{if(!r)return;const a=r.fromid,b=r.toid,A=byId[a],B=byId[b];if(!A||!B)return;const d=r.data||{};
+  switch(r.type){
+   case'rList':case'rTree':   // Kopf → Position; Rechnungsposition → Batch = abgerechnet
+    if(A.type==='tSII'&&B.type==='tBA')kante(b,a,rt('abgerechnet',{label:'abgerechnet in',color:'#2fb36d'}));
+    else kante(b,a,rt('position',{label:'Position',color:'#8aa6c8',hierarchy:true}));break;
+   case'rContext':{const ro=String(d.cRole||'').trim();
+    if(ro==='BillingSheet'&&A.type==='tBS'){kante(b,a,rt('billing',{label:'Billing Sheet',color:'#17a2a2',hierarchy:true}));break}
+    const lab=CRM_ROLLEN[ro]||ro||'Zuordnung';kante(a,b,rt('ctx:'+lab,{label:lab,color:/^(Kunde|Firma)$/.test(lab)?'#f4c430':/^(Prüfer|Verantwortlich|Bearbeiter|Kontakt|Vertrieb)$/.test(lab)?'#b07cf0':'#6f86ab'}));break}
+   case'rAll_AD':kante(b,a,rt('adresse',{label:'Adresse',color:'#9bb2d1'}));break;
+   case'rAll_AS':kante(b,a,rt('dokument',{label:'Dokument',color:'#9bb2d1'}));break;
+   case'rCO_Role':kante(a,b,rt('rolle',{label:'Rolle',color:'#b07cf0'}));break;
+   default:kante(a,b,rt(r.type||'beziehung',{label:r.type||'Beziehung',color:'#6f86ab'}))}});
+ // Positionen ohne eigenes Datum entstehen mit ihrem Kopf
+ const kopf={};edges.forEach(e=>{if(e.type==='position')kopf[e.from]=byId[e.to]});
+ nodes.forEach(n=>{const k=kopf[n.id];if(k&&k.start&&(!n.start||/^t(SII|CTI|OFI)$/.test(n.type)))n.start=k.start});
+ crmKennzahlen(nodes,edges,byId);
+ // Größe nach Wert (Betrag bzw. Stunden) relativ zum Median des Typs
+ const med={};nodes.forEach(n=>{if(isFinite(n.wert)&&n.wert>0)(med[n.type]=med[n.type]||[]).push(n.wert)});
+ Object.keys(med).forEach(t=>{const L=med[t].sort((x,y)=>x-y);med[t]=L[L.length>>1]});
+ nodes.forEach(n=>{const g=types[n.type].size||1;n.size=isFinite(n.wert)&&n.wert>0&&med[n.type]?g*Math.max(.5,Math.min(2.5,Math.sqrt(n.wert/med[n.type]))):g;['wert','_ek','_h','_satz','_st'].forEach(k=>delete n[k])});
+ return{titel:'CRM',layout:'netz',types,relTypes,nodes,edges,betragName:'Umsatz (Rechnungen netto)',betragEinheit:'€',
+  stufenNamen:{kristall:'abgeschlossen (Kristall)',roh:'offen / in Arbeit (matt)',alt:'inaktiv'},axes:CRM_ACHSEN}}
+// Version 20: Vorlagen für das Layout „Kennzahlen (Achsen)“ (Namen wie im kaufmännischen Datenraum von 3Deep)
+const CRM_ACHSEN=[
+ {name:'Rechnungen: Datum · Netto (log) · Marge',x:'Rechnungsdatum',y:'Netto',z:'Marge',ylog:true,note:'Jede Rechnung ein Körper. Rechts = später, oben = höherer Nettobetrag (logarithmisch), vorne = bessere Marge. Unten hinten: kleine Rechnungen mit wenig Marge.'},
+ {name:'Batches: Datum · Stunden',x:'Datum',y:'Stunden',note:'Jeder Batch (Zeitaufwand) ein Körper. Rechts = später, oben = mehr Stunden. Dichte Bereiche = viel Arbeit in dieser Zeit.'},
+ {name:'Billing Sheets: Stunden · Stundensatz · Beginn',x:'Stunden gesamt',y:'Stundensatz',z:'Angelegt',note:'Rechts = viele Stunden, oben = hoher Stundensatz, vorne = neuer.'},
+ {name:'Angebote und Aufträge: Datum · Betrag',x:'Angelegt',y:'Betrag',note:'Angebote, Aufträge und Positionen mit Betrag. Rechts = später, oben = höherer Betrag. Offene Angebote sind matt.'},
+ {name:'Kundenportfolio: Umsatz · Marge · Wachstum',x:'Umsatz 12 Monate',y:'Marge',z:'Wachstum ggü. Vorjahr',note:'Nur Firmen (wie 3Deep). Rechts = viel Umsatz, oben = hohe Marge, vorne = wachsend. Mit nur einer Firma ein einzelner Punkt; aussagekräftig, sobald mehrere Firmen im Export sind.'}];
+// Kennzahlen je Firma: Rechnungen, Batches (über Billing Sheets) und Angebote, die mit der Firma verbunden sind; Stichtag = letztes Datum im Export
+function crmKennzahlen(nodes,edges,byId){const nb={};edges.forEach(e=>{(nb[e.from]=nb[e.from]||[]).push(e.to);(nb[e.to]=nb[e.to]||[]).push(e.from)});
+ const ms=n=>n.start?Date.parse(n.start):NaN;let ref=-Infinity;nodes.forEach(n=>{if(/^t(SI|BA)$/.test(n.type)&&isFinite(ms(n)))ref=Math.max(ref,ms(n))});if(!isFinite(ref))return;
+ const fE=x=>x.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' €',fP=x=>x.toLocaleString('de-DE',{maximumFractionDigits:1})+' %',J=365*864e5;
+ nodes.filter(n=>n.type==='tCO').forEach(co=>{const um=(nb[co.id]||[]).map(i=>byId[i]).filter(Boolean);
+  const re=um.filter(n=>n.type==='tSI'&&isFinite(n.betrag)&&isFinite(ms(n)));const bs=um.filter(n=>n.type==='tBS');
+  const ba=[];bs.forEach(b=>(nb[b.id]||[]).forEach(i=>{const x=byId[i];if(x&&x.type==='tBA'&&!ba.includes(x))ba.push(x)}));
+  const an=um.filter(n=>n.type==='tOF'&&n.stufe==='roh');
+  const sum=(L,f)=>L.reduce((a,n)=>a+(f(n)||0),0);const imZ=(a,b)=>re.filter(n=>ms(n)>a&&ms(n)<=b);
+  const u=sum(re,n=>n.betrag),u12=sum(imZ(ref-J,ref),n=>n.betrag),uv=sum(imZ(ref-2*J,ref-J),n=>n.betrag);const mitEk=re.filter(n=>isFinite(n._ek)),vk=sum(mitEk,n=>n.betrag),ek=sum(mitEk,n=>n._ek);
+  const h=sum(ba,n=>n._h),hs=sum(bs,n=>isFinite(n._h)&&isFinite(n._satz)?n._h:0),satz=hs?sum(bs,n=>isFinite(n._h)&&isFinite(n._satz)?n._h*n._satz:0)/hs:NaN;
+  const K={'Kennzahlen zum':new Date(ref).toISOString().slice(0,10),'Umsatz gesamt':fE(u),'Umsatz 12 Monate':fE(u12),'Umsatz Vorjahr':fE(uv)};
+  if(uv>0)K['Wachstum ggü. Vorjahr']=fP((u12-uv)/uv*100);if(vk>0){K.Marge=fP((vk-ek)/vk*100);K.Deckungsbeitrag=fE(vk-ek)}
+  K.Rechnungen=String(re.length);if(re.length)K['Ø Rechnung']=fE(u/re.length);
+  if(ba.length){K['Geleistete Stunden']=h.toLocaleString('de-DE',{maximumFractionDigits:2})+' h';K.Batches=String(ba.length)}if(isFinite(satz))K['Ø Stundensatz']=fE(satz);
+  K['Offene Angebote']=String(an.length);const aw=sum(an,n=>isFinite(n.betrag)?n.betrag:0);if(aw)K['Wert offene Angebote']=fE(aw);
+  const jahre={};re.forEach(n=>{const y=new Date(ms(n)).getUTCFullYear();jahre[y]=(jahre[y]||0)+n.betrag});Object.keys(jahre).sort().forEach(y=>K['Umsatz '+y]=fE(jahre[y]));
+  co.meta=Object.assign(K,co.meta)})}
+
 document.querySelectorAll('select,input[type=checkbox],input[type=range]').forEach(el=>el.addEventListener('change',()=>el.blur()));
 function waehleRaum(v){lauf=null;
  if(v==='demo')laden(demoDaten());
