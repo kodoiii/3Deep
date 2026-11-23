@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="6">
+<meta name="4deep-darstellung" content="7">
 <title>4Deep Machbarkeitsstudie</title>
 <!-- 4Deep, Stufe 1 (Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -25,7 +25,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font:13px sy
 #lg div.aus{opacity:.35}#lg .lgk{color:var(--mu);font-size:11px;margin-top:6px;cursor:default}#lg .lgr{cursor:default}
 #lg i.r-kristall{background:linear-gradient(135deg,#e8f6ff,#9fd3ff 45%,#f4c6ff);box-shadow:0 0 4px #bfe6ff}#lg i.r-glanz{background:radial-gradient(circle at 35% 30%,#fff,#8aa6c8 60%,#4c6386)}#lg i.r-roh{background:#8b94a3;opacity:.8}#lg i.r-alt{background:#8b94a3;opacity:.4}
 #ver{color:var(--mu);font-size:10px;margin-top:8px}
-#zt{left:50%;transform:translateX(-50%);bottom:10px;width:min(820px,calc(100% - 300px));display:none;align-items:center;gap:8px;flex-wrap:wrap}#zk{width:100%;height:38px;display:block;cursor:pointer}
+#zt{left:50%;transform:translateX(-50%);bottom:10px;width:min(820px,calc(100% - 300px));display:none;align-items:center;gap:8px;flex-wrap:wrap}#zk{width:100%;height:38px;display:block;cursor:pointer}#zt .zr{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--mu);cursor:pointer}
 #zt select{background:#16213a;color:var(--tx);border:1px solid var(--rand);border-radius:6px;padding:3px;font:inherit}
 #zt input{flex:1}#zt button{background:#16213a;color:var(--tx);border:1px solid var(--rand);border-radius:6px;padding:4px 10px;cursor:pointer;font:inherit}
 #zjahr{min-width:170px;text-align:right;font-weight:600;color:var(--ak)}
@@ -68,9 +68,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font:13px sy
  <button id="lt">Leistung messen (5 s Drehung)</button>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 6 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 7 · three.js r149</div>
 </div>
-<div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><button id="za" title="Alles zeigen">Alles</button></div>
+<div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="dt"><span class="x" id="dtx">✕</span><div id="dti"></div></div>
 <div class="pn" id="prof"></div><div id="profb"></div>
 <div id="tip"></div>
@@ -359,7 +359,7 @@ function vergangen(n){return isFinite(n.t1)&&n.t1<tCur}
 function zeitAnwenden(){
  const blass=$('vergangen').checked;
  N.forEach(n=>{n.sZiel=sichtbar(n)?(vergangen(n)?(blass?.55:0):1):0;n.blass=vergangen(n)});
- if(hatZeit){const f=isFinite(tCur)?(tCur-tMin)/(tMax-tMin):1;$('zr').value=Math.round(Math.max(0,Math.min(1,f))*1000);$('zjahr').textContent=isFinite(tCur)?'Stand '+zeitText(tCur)+' · '+N.filter(n=>n.sZiel>0).length.toLocaleString('de-DE')+' Obj.':'alle Zeiten'}
+ if(hatZeit){const f=isFinite(tCur)?(tCur-tMin)/(tMax-tMin):1;$('zr').value=Math.round(Math.max(0,Math.min(1,f))*1000);$('zjahr').textContent=isFinite(tCur)?(spiel&&tempoFaktor()>1.5?'⏩ ':'')+'Stand '+zeitText(tCur)+' · '+N.filter(n=>n.sZiel>0).length.toLocaleString('de-DE')+' Obj.':'alle Zeiten'}
  kurveZeichnen();
  if(zeitX&&layout==='zeit'){zeitEbene.position.x=isFinite(tCur)?zeitX(Math.min(tCur,tMax)):zeitX(tMax);}
  matAlle=true;faerben();neu();
@@ -523,16 +523,23 @@ $('zr').oninput=e=>{spiel=false;$('zp').textContent='▶';tCur=tMin+(tMax-tMin)*
 $('za').onclick=()=>{spiel=false;$('zp').textContent='▶';tCur=Infinity;zeitAnwenden()};
 function spielen(){if(!hatZeit)return;spiel=!spiel;$('zp').textContent=spiel?'❚❚':'▶';if(spiel&&(!isFinite(tCur)||tCur>=tMax))tCur=tMin;neu()}
 $('zp').onclick=spielen;
-$('ztempo').onchange=e=>e.target.blur();
+$('ztempo').onchange=e=>e.target.blur();$('raffen').onchange=()=>kurveZeichnen();
 
 // ---------- Zeitraffer: Wachstumskurve, Leuchten bei neuen und geänderten Objekten, neue Beziehungen hervorgehoben ----------
 let kurve=null;   // {neu:[],aend:[]} je Spalte
 function kurveBauen(){if(!hatZeit){kurve=null;return}const B=240,neu=new Float32Array(B),ae=new Float32Array(B),sp=tMax-tMin;
  N.forEach(n=>{if(isFinite(n.t0))neu[Math.min(B-1,Math.floor((n.t0-tMin)/sp*B))]++;if(isFinite(n.tg))ae[Math.min(B-1,Math.max(0,Math.floor((n.tg-tMin)/sp*B)))]++});
- let c=0;const sum=new Float32Array(B);for(let i=0;i<B;i++){c+=neu[i];sum[i]=c}kurve={B,sum,ae,ohne:N.filter(n=>!isFinite(n.t0)).length}}
+ let c=0;const sum=new Float32Array(B);for(let i=0;i<B;i++){c+=neu[i];sum[i]=c}
+ // Abspielzeit je Spalte: aktiv (Ereignis in der Nähe ±3 Spalten) = 1, ruhig = 0,12 → ruhige Phasen laufen bis ~8× schneller, Gesamtdauer bleibt wie gewählt
+ // ruhige Phasen zusammen höchstens 25 % der Abspielzeit (mindestens aber sichtbar: höchstens 40× schneller)
+ const akt=new Uint8Array(B);let na=0;for(let i=0;i<B;i++){for(let j=Math.max(0,i-3);j<=Math.min(B-1,i+3);j++)if(neu[j]||ae[j]){akt[i]=1;break}na+=akt[i]}
+ const nr=B-na,wq=nr&&na?Math.max(.025,Math.min(.12,na/3/nr)):1;const w=new Float32Array(B);let sw=0;for(let i=0;i<B;i++){w[i]=akt[i]?1:wq;sw+=w[i]}
+ kurve={B,sum,ae,w,sw,ohne:N.filter(n=>!isFinite(n.t0)).length}}
+function tempoFaktor(){if(!kurve||!$('raffen').checked)return 1;const i=Math.max(0,Math.min(kurve.B-1,Math.floor((tCur-tMin)/(tMax-tMin)*kurve.B)));return kurve.sw/kurve.B/kurve.w[i]}
 function kurveZeichnen(){const cv2=$('zk');if(!kurve||!cv2.offsetWidth)return;const dpr=Math.min(devicePixelRatio,2),w=cv2.offsetWidth,h=cv2.offsetHeight;if(cv2.width!==Math.round(w*dpr)){cv2.width=Math.round(w*dpr);cv2.height=Math.round(h*dpr)}
  const g=cv2.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,w,h);const {B,sum,ae}=kurve,mx=Math.max(1,sum[B-1]),ma=Math.max(1,...ae),xi=i=>(i+.5)/B*w;
  const tc=isFinite(tCur)?(tCur-tMin)/(tMax-tMin):1,ic=Math.floor(tc*B);
+ if($('raffen').checked&&kurve.w){g.fillStyle='rgba(147,163,189,.13)';for(let i=0;i<B;i++)if(kurve.w[i]<1){let j=i;while(j+1<B&&kurve.w[j+1]<1)j++;g.fillRect(i/B*w,0,(j-i+1)/B*w,h);i=j}}
  for(let pass=0;pass<2;pass++){g.beginPath();g.moveTo(0,h);for(let i=0;i<B;i++){if(pass===0&&i>ic)break;g.lineTo(xi(i),h-2-sum[i]/mx*(h-6))}if(pass===0){g.lineTo(xi(Math.min(ic,B-1)),h);g.closePath();g.fillStyle='rgba(79,140,255,.55)';g.fill()}else{g.strokeStyle='rgba(147,163,189,.8)';g.lineWidth=1.2;g.stroke()}}
  g.fillStyle='#19c3d6';for(let i=0;i<B;i++)if(ae[i]){const bh=Math.max(2,ae[i]/ma*(h*.45));g.globalAlpha=i<=ic?1:.35;g.fillRect(xi(i)-.75,h-bh,1.5,bh)}g.globalAlpha=1;
  if(isFinite(tCur)){g.fillStyle='#ff9f1c';g.fillRect(tc*w-1,0,2,h)}}
@@ -642,7 +649,7 @@ function groesse(){const w=cv.clientWidth,h=cv.clientHeight;if(!w||!h)return fal
 function schleife(jetzt){requestAnimationFrame(schleife);const dt=Math.min(.1,(jetzt-letzt)/1000);letzt=jetzt;
  if(!groesse())return;
  if(sim&&!sim.w)simSchritt();
- if(spiel){tCur+=(tMax-tMin)/(+$('ztempo').value||20)*dt;if(tCur>=tMax){tCur=tMax;spiel=false;$('zp').textContent='▶'}zeitAnwenden()}
+ if(spiel){tCur+=(tMax-tMin)/(+$('ztempo').value||20)*dt*tempoFaktor();if(tCur>=tMax){tCur=tMax;spiel=false;$('zp').textContent='▶'}zeitAnwenden()}
  if(heimSpaeter&&(!sim||jetzt-heimT>700)){heimT=jetzt;if(!sim)heimSpaeter=false;heim()}   // Kamera während des Layouts mitführen, bis der Nutzer selbst steuert
  if(messung&&!messung.erg){K.gier=messung.gier+(jetzt-messung.start)/5000*Math.PI*2;messung.frames++;dirty=true;if(jetzt-messung.start>=5000){messung.erg=Math.round(messung.frames/5)+' fps im Mittel ('+N.length.toLocaleString('de-DE')+' Objekte, Schatten '+($('schatten').checked&&N.length<=12000?'an':'aus')+')';K.gier=messung.gier}}
  const b=bewegen(dt);if(K.flug)dirty=true;leuchten();
