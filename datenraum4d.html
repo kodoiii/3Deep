@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="12">
+<meta name="4deep-darstellung" content="13">
 <title>4Deep Machbarkeitsstudie</title>
 <!-- 4Deep, Stufe 1 (Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -80,7 +80,7 @@ html.stereo .pn,html.stereo #st,html.stereo #tip,html.stereo #prof,html.stereo #
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 12 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 13 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="dt"><span class="x" id="dtx">✕</span><div id="dti"></div></div>
@@ -368,18 +368,28 @@ function baum(L){
  // Wurzeln: Objekte ohne Eltern über Strukturlinks (from = Kind, to = Eltern); sonst je Teilnetz das Objekt mit den meisten Beziehungen
  const kinder=new Map(),hatEltern=new Set();E.forEach(k=>{if(!k.hier)return;(kinder.get(k.b)||kinder.set(k.b,[]).get(k.b)).push(k.a);hatEltern.add(k.a)});
  const besucht=new Set(),wurzeln=[],tiefe=new Map(),kind=new Map();N.forEach(n=>kind.set(n,[]));
- const bfs=(w,nur)=>{const q=[w];while(q.length){const n=q.shift();for(const m of(nur?(kinder.get(n)||[]):n.nb))if(!besucht.has(m)){besucht.add(m);tiefe.set(m,tiefe.get(n)+1);kind.get(n).push(m);q.push(m)}}};
+ const bfs=(w,nur)=>{const q=[w];while(q.length){const n=q.shift();for(const m of(nur?(kinder.get(n)||[]):n.nb))if(!besucht.has(m)){besucht.add(m);tiefe.set(m,tiefe.get(n)+1);kind.get(n).push(m);m.eltern=n;q.push(m)}}};
  // 1. Wurzeln der Produktstruktur (Eltern ohne eigene Eltern), größte zuerst
  [...kinder.keys()].filter(n=>!hatEltern.has(n)).sort((a,b)=>b.nb.length-a.nb.length).forEach(w=>{if(besucht.has(w))return;besucht.add(w);tiefe.set(w,0);wurzeln.push(w);bfs(w,true)});
  // 2. übrige Objekte (Dokumente, Issues, Personen) an ein schon platziertes Nachbarobjekt hängen
  let rest=N.filter(n=>!besucht.has(n)),weiter=true;
- while(rest.length&&weiter){weiter=false;rest.forEach(n=>{if(besucht.has(n))return;const m=n.nb.filter(x=>besucht.has(x)).sort((a,b)=>tiefe.get(b)-tiefe.get(a))[0];if(m){besucht.add(n);tiefe.set(n,tiefe.get(m)+1);kind.get(m).push(n);weiter=true}});rest=rest.filter(n=>!besucht.has(n))}
+ while(rest.length&&weiter){weiter=false;rest.forEach(n=>{if(besucht.has(n))return;const m=n.nb.filter(x=>besucht.has(x)).sort((a,b)=>tiefe.get(b)-tiefe.get(a))[0];if(m){besucht.add(n);tiefe.set(n,tiefe.get(m)+1);kind.get(m).push(n);n.eltern=m;weiter=true}});rest=rest.filter(n=>!besucht.has(n))}
  // 3. Teilnetze ohne Struktur: Objekt mit den meisten Beziehungen als Wurzel
  rest.sort((a,b)=>b.nb.length-a.nb.length).forEach(w=>{if(besucht.has(w))return;besucht.add(w);tiefe.set(w,0);wurzeln.push(w);bfs(w,false)});
- // Blätterzahl je Teilbaum → Winkelbereich (Kegelbaum)
- const blatt=new Map();const zaehl=n=>{const ks=kind.get(n)||[];let s=ks.length?0:1;ks.forEach(k=>s+=zaehl(k));blatt.set(n,s);return s};
- const setze=(n,a0,a1,mx,mz)=>{const d=tiefe.get(n),r=d*L*1.6,w=(a0+a1)/2;n.ziel.set(mx+Math.cos(w)*r,-d*L*1.4,mz+Math.sin(w)*r);let a=a0;(kind.get(n)||[]).forEach(k=>{const b=a+(a1-a0)*blatt.get(k)/Math.max(1,blatt.get(n));setze(k,a,b,mx,mz);a=b})};
- let x=0;wurzeln.forEach(w=>{zaehl(w);const breite=Math.sqrt(blatt.get(w))*L*2.2;x+=breite/2;setze(w,0,Math.PI*2,x,0);x+=breite/2+L*2});
+ // Kegelbaum (Version 13): je Tiefe ein Ring, bei vielen Objekten in mehreren Reihen (nach außen und leicht nach unten
+ // gestaffelt). Reihenfolge im Ring folgt dem Winkel der Eltern, Geschwister liegen beieinander; feste Plätze → keine Überlappung.
+ const dy=L*2.4,R0=L*1.6,sp=L*1.15;let x=0;
+ wurzeln.forEach(w=>{const ebenen=[[w]];w.wk=0;
+  for(let d=0;ebenen[d].length;d++){const nx=[];ebenen[d].forEach(n=>(kind.get(n)||[]).forEach(k=>nx.push(k)));ebenen.push(nx)}
+  let innen=0;w.ziel.set(0,0,0);
+  for(let d=1;ebenen[d].length;d++){const E2=ebenen[d],c=E2.length;
+   let r=Math.max(innen+R0,Math.sqrt(c)*L*.75),z=1;while(c*sp/z>Math.PI*2*(r+(z-1)*L*.5))z++;   // Reihen, bis der Umfang reicht
+   const spalten=Math.ceil(c/z),da=Math.PI*2/spalten;
+   // Eltern-Winkel als Sollwert; gleich verteilt in dieser Reihenfolge, Drehung so, dass Kinder möglichst unter den Eltern liegen
+   let sx=0,sz=0;E2.forEach((n,i)=>{const p=n.eltern.wk,s0=Math.floor(i/z)*da;sx+=Math.cos(p-s0);sz+=Math.sin(p-s0)});const dreh=Math.atan2(sz,sx);
+   E2.forEach((n,i)=>{const j=i%z,m=dreh+(Math.floor(i/z)+(j%2)*.5)*da,rr=r+j*L;n.wk=m;n.ziel.set(Math.cos(m)*rr,-d*dy-j*L*.5,Math.sin(m)*rr)});
+   innen=r+(z-1)*L}
+  const rand=Math.max(L,innen);x+=rand;ebenen.flat().forEach(n=>n.ziel.x+=x);x+=rand+L*3});
  const mx=x/2;N.forEach(n=>{n.ziel.x-=mx;n.ziel.y+=L*4});kettenLage(L);
 }
 const ZEILE=2.3;   // Zeilenabstand der Zeitachse (× Abstand), Version 12: luftiger (vorher 1,6)
