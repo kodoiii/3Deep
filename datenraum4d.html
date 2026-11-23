@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="14">
+<meta name="4deep-darstellung" content="15">
 <title>4Deep Machbarkeitsstudie</title>
 <!-- 4Deep, Stufe 1 (Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -32,15 +32,10 @@ html.stereo .pn,html.stereo #st,html.stereo #tip,html.stereo #prof,html.stereo #
 #zt select{background:#16213a;color:var(--tx);border:1px solid var(--rand);border-radius:6px;padding:3px;font:inherit}
 #zt input{flex:1}#zt button{background:#16213a;color:var(--tx);border:1px solid var(--rand);border-radius:6px;padding:4px 10px;cursor:pointer;font:inherit}
 #zjahr{min-width:170px;text-align:right;font-weight:600;color:var(--ak)}
-#dt{right:10px;top:10px;width:300px;max-height:calc(100% - 20px);overflow:auto;display:none}
-#dt h2{font-size:15px;margin:0 0 2px}#dt .ty{color:var(--mu);margin-bottom:8px}
-#dt table{border-collapse:collapse;width:100%}#dt td{padding:2px 4px;vertical-align:top;border-top:1px solid #1c2740;font-size:12px;overflow-wrap:anywhere}#dt td:first-child{color:var(--mu);width:42%}
-#dt .x{position:absolute;right:8px;top:6px;cursor:pointer;color:var(--mu);font-size:16px}
-#dt button{margin-top:8px;padding:5px 8px;background:#16213a;color:var(--tx);border:1px solid var(--rand);border-radius:6px;cursor:pointer}
-#dt .bz{margin-top:8px;border-top:1px solid #1c2740;padding-top:4px;max-height:260px;overflow:auto}#dt .it{font-size:12px;padding:2px 3px;border-radius:4px;cursor:pointer}#dt .it:hover{background:#1c2a48}#dt .it span{color:var(--mu);font-size:11px}
 #prof{width:340px;max-height:calc(100% - 16px);overflow:auto;display:none;z-index:20;box-shadow:0 6px 24px rgba(0,0,0,.45);font-size:12px}
 #prof h2{font-size:15px;margin:0 18px 2px 0}#prof h2 i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:6px}#prof .ty{color:var(--mu);margin-bottom:6px}
 #prof table{border-collapse:collapse;width:100%}#prof td{padding:2px 4px;vertical-align:top;border-top:1px solid #1c2740;overflow-wrap:anywhere}#prof td:first-child{color:var(--mu);width:42%}
+#prof .bz{margin-top:8px;border-top:1px solid #1c2740;padding-top:4px}#prof summary{cursor:pointer;color:var(--mu);font-weight:600;padding:3px 0}#prof .bzl{max-height:260px;overflow:auto}#prof .bzg{color:var(--mu);font-size:11px;margin:5px 0 1px;text-transform:uppercase;letter-spacing:.04em}#prof .it{padding:2px 3px;border-radius:4px;cursor:pointer}#prof .it:hover{background:#1c2a48}#prof .it span{color:var(--mu);font-size:11px}
 #prof .x{position:absolute;right:8px;top:6px;cursor:pointer;color:var(--mu);font-size:16px}#prof button{margin-top:8px;padding:5px 8px;background:#16213a;color:var(--tx);border:1px solid var(--rand);border-radius:6px;cursor:pointer}
 #profb{position:fixed;display:none;z-index:21;pointer-events:none;filter:drop-shadow(0 6px 9px rgba(0,0,0,.45))}#profb img{display:block;border-radius:6px}
 #profb .txt{max-width:280px;padding:10px 14px;background:#fff8e6;color:#1a2433;border-radius:8px;font:600 15px/1.35 system-ui,sans-serif;white-space:pre-wrap;overflow-wrap:anywhere}
@@ -80,10 +75,9 @@ html.stereo .pn,html.stereo #st,html.stereo #tip,html.stereo #prof,html.stereo #
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 14 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 15 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
-<div class="pn" id="dt"><span class="x" id="dtx">✕</span><div id="dti"></div></div>
 <div class="pn" id="prof"></div><div id="profb"></div>
 <div id="tip"></div>
 <div id="st"></div>
@@ -213,7 +207,7 @@ function laden(daten,opt){
  let ly=opt.behalten?layout:(daten.layout==='plan'||daten.zeitArt?'zeit':hatPos?'fest':'netz');
  if(!$('ly').querySelector('option[value="'+ly+'"]'))ly='netz';
  $('ly').value=ly;setzeLayout(ly,!opt.behalten);
- sel=-1;$('dt').style.display='none';schliesseProfil();kurveBauen();zeitAnwenden();neu();
+ sel=-1;schliesseProfil();kurveBauen();zeitAnwenden();neu();
 }
 // ---------- Revisionsketten (allgemein): verbunden über Beziehungen vom Typ revision (bzw. relTypes[].revision), gleiche familie
 // oder gleiche Teilenummer (meta.Teilenummer, sonst meta.Name) bei verschiedener Revision (meta.Revision bzw. revision) ----------
@@ -552,23 +546,16 @@ function hover(e){const jetzt=performance.now();if(jetzt-hoverZeit<40)return;hov
 
 // ---------- Auswahl und Profil ----------
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-function waehle(i){sel=i;NM.t=0;NM.neu=true;faerben();neu();const p=$('dt');if(i<0){p.style.display='none';return}const n=N[i],o=n.o;
- let h='<h2>'+esc(n.name)+'</h2><div class="ty">'+esc((TY[n.ty]||{}).label||n.ty)+(o.state?' · '+esc(o.state):'')+'</div><table>';
- if(n.kette)h+='<tr><td>Revisionen</td><td>'+esc(revText(n))+'</td></tr>';if(n.verzug)h+='<tr><td>Verzug</td><td style="color:#d0302a;font-weight:600">'+esc(verzugText(n))+'</td></tr>';
- if(isFinite(n.t0))h+='<tr><td>Beginn</td><td>'+zeitText(n.t0)+'</td></tr>';if(isFinite(n.t1))h+='<tr><td>Ende</td><td>'+zeitText(n.t1)+'</td></tr>';
- Object.entries(o.meta||{}).forEach(([k,v])=>{if(v!==''&&v!=null)h+='<tr><td>'+esc(k)+'</td><td>'+esc(v)+'</td></tr>'});
- h+='<tr><td>Beziehungen</td><td>'+n.nb.length+'</td></tr></table>';
- const RT=(D&&D.relTypes)||{},kn=E.filter(k=>k.a===n||k.b===n);
- if(kn.length){h+='<div class="bz">'+kn.slice(0,80).map(k=>{const o2=k.a===n?k.b:k.a,ar=k.a===n?'→':'←';return'<div class="it" data-i="'+o2.i+'">'+ar+' '+esc(o2.name)+' <span>'+esc(((RT[k.e.type]||{}).label)||k.e.type||'')+' · '+esc((TY[o2.ty]||{}).label||o2.ty)+'</span></div>'}).join('')+(kn.length>80?'<div class="ty">… und '+(kn.length-80)+' weitere</div>':'')+'</div>'}
- if(o.dl&&window.parent!==window)h+='<button id="dlk">⬇ Datei herunterladen</button>';   // Ausnahme (1) der Grundregel, wie in datenraum3d.html
- $('dti').innerHTML=h;p.style.display='block';
- $('dti').querySelectorAll('.it').forEach(el=>el.onclick=()=>{const j=+el.dataset.i;waehle(j);if(prof.i>=0)zeigeProfil(j);nutzerSteuert();K.zZiel.copy(N[j].pos);K.flug=true;neu()});
- const b=$('dlk');if(b)b.onclick=()=>parent.postMessage({quelle:'3deep',download:o.dl,name:n.name},'*');
-}
-$('dtx').onclick=()=>{waehle(-1);schliesseProfil()};
+function waehle(i){sel=i;NM.t=0;NM.neu=true;faerben();neu()}   // Version 15: Linksklick nur auswählen (Name am Objekt), kein Detailfeld mehr
 
 // ---------- Profilkarte am Objekt (Rechtsklick, wie datenraum3d.html: 15–20 Attribute, Vorschaubild, folgt dem Objekt) ----------
-const prof={i:-1};
+const prof={i:-1,auf:false};
+// Version 15: Beziehungen in der Profilkarte, aufklappbar, gruppiert nach Beziehungsart; Klick fliegt zum Nachbarobjekt (Zustand auf/zu bleibt beim Weiterklicken)
+function bezListe(n){const RT=(D&&D.relTypes)||{},kn=E.filter(k=>k.a===n||k.b===n);if(!kn.length)return'';const gr={};
+ kn.forEach(k=>{const g=((RT[k.e.type]||{}).label)||k.e.type||'Beziehung';(gr[g]=gr[g]||[]).push(k)});
+ let h='';Object.keys(gr).sort((a,b)=>gr[b].length-gr[a].length).forEach(g=>{const L=gr[g];h+='<div class="bzg">'+esc(g)+' · '+L.length+'</div>'+L.slice(0,100).map(k=>{const o2=k.a===n?k.b:k.a;
+  return'<div class="it" data-i="'+o2.i+'">'+(k.a===n?'→':'←')+' '+esc(o2.name)+' <span>'+esc((TY[o2.ty]||{}).label||o2.ty)+'</span></div>'}).join('')+(L.length>100?'<div class="bzg">… und '+(L.length-100)+' weitere</div>':'')});
+ return'<details class="bz"'+(prof.auf?' open':'')+'><summary>Beziehungen ('+kn.length+')</summary><div class="bzl">'+h+'</div></details>'}
 const FORMNAME={sphere:'Kugel',box:'Würfel',torus:'Torus',dodecahedron:'Dodekaeder',diamond:'Raute',octagon:'Achteck',triangle:'Dreieck',book:'Buch',folder:'Ordner',bust:'Büste',bar:'Balken',linie:'Linie'};
 const bildAdr=u=>{if(typeof u!=='string')return'';u=u.trim();return u&&(/^(https?:|data:image\/|blob:)/i.test(u)||!/^[a-z][a-z0-9+.-]*:/i.test(u))?u:''};
 function profilAttr(n){const o=n.o,RT=(D&&D.relTypes)||{},meta=o.meta||{};
@@ -581,17 +568,19 @@ function profilAttr(n){const o=n.o,RT=(D&&D.relTypes)||{},meta=o.meta||{};
  [['Beziehungen gesamt',String(kn.length)],['ausgehend',String(aus)],['eingehend',String(kn.length-aus)],['Verbunden mit',fm(byT)],['Beziehungsarten',fm(byR)],['Leere Felder',leer.length?leer.join(', '):'keine'],
   ['Position',[n.ziel.x,n.ziel.y,n.ziel.z].map(v=>Math.round(v)).join(' / ')],['Darstellung',(FORMNAME[n.form]||n.form)+', Ø '+(n.r*2).toFixed(1)]].forEach(d=>A.push(d));
  return A.slice(0,24)}
-function zeigeProfil(i){prof.i=i;$('dt').style.display='none';   // Version 14: Detailfeld oben rechts weicht der Profilkarte
+function zeigeProfil(i){prof.i=i;
  const n=N[i],o=n.o,el=$('prof'),A=profilAttr(n);
  el.innerHTML='<span class="x" id="pfx">✕</span><h2><i style="background:#'+n.col.getHexString()+'"></i>'+esc(n.name)+'</h2><div class="ty">Profilkarte · '+esc((TY[n.ty]||{}).label||n.ty)+' · '+A.length+' Attribute</div><table>'+
-  A.map(a=>'<tr><td>'+esc(a[0])+'</td><td>'+esc(a[1])+'</td></tr>').join('')+'</table>'+(o.dl&&window.parent!==window?'<button id="pdl">⬇ Datei herunterladen</button>':'');
- el.style.display='block';$('pfx').onclick=schliesseProfil;const b=$('pdl');if(b)b.onclick=()=>parent.postMessage({quelle:'3deep',download:o.dl,name:n.name},'*');
+  A.map(a=>'<tr><td>'+esc(a[0])+'</td><td>'+esc(a[1])+'</td></tr>').join('')+'</table>'+bezListe(n)+(o.dl&&window.parent!==window?'<button id="pdl">⬇ Datei herunterladen</button>':'');
+ el.style.display='block';$('pfx').onclick=()=>{schliesseProfil();waehle(-1)};
+ const dz=el.querySelector('details');if(dz)dz.ontoggle=()=>{prof.auf=dz.open;profLage()};
+ el.querySelectorAll('.it').forEach(e2=>e2.onclick=()=>{const j=+e2.dataset.i;waehle(j);zeigeProfil(j);nutzerSteuert();K.zZiel.copy(N[j].pos);K.flug=true;neu()});const b=$('pdl');if(b)b.onclick=()=>parent.postMessage({quelle:'3deep',download:o.dl,name:n.name},'*');
  // Vorschaubild bzw. Text (o.img / o.imgText wie 3Deep) schwebt links oben an der Karte
  const pb=$('profb');pb.innerHTML='';pb.style.display='none';
  if(typeof o.imgText==='string'&&o.imgText.trim()){pb.innerHTML='<div class="txt">'+esc(o.imgText.trim().slice(0,500))+'</div>';pb.style.display='block'}
  else{const u=bildAdr(o.img);if(u){const im=new Image();im.onload=()=>{if(prof.i!==i)return;const f=Math.min(1,(o.imgFoto?380:240)/im.naturalWidth,(o.imgFoto?320:200)/im.naturalHeight,.45*innerHeight/im.naturalHeight);im.width=Math.round(im.naturalWidth*f);im.height=Math.round(im.naturalHeight*f);pb.appendChild(im);pb.style.display='block';profLage()};im.src=u}}
  profLage()}
-function schliesseProfil(){const war=prof.i>=0;prof.i=-1;$('prof').style.display='none';$('profb').style.display='none';if(war&&sel>=0)$('dt').style.display='block'}
+function schliesseProfil(){prof.i=-1;$('prof').style.display='none';$('profb').style.display='none'}
 function profLage(){if(prof.i<0)return;const n=N[prof.i],el=$('prof');if(!n){schliesseProfil();return}const q=proj(n,{}),w=el.offsetWidth||340,h=el.offsetHeight||300;
  const sicht=q.z<1&&q.z>-1&&n.s>.05;el.style.opacity=sicht?1:.35;
  const ra=q.R+12;let x=q.x+ra;if(x+w>innerWidth-8&&q.x-ra-w>=8)x=q.x-ra-w;x=Math.max(8,Math.min(innerWidth-w-8,x));const y=Math.max(8,Math.min(innerHeight-h-8,q.y-20));
@@ -821,7 +810,7 @@ function namenKurz(n){if(n._nt0!==n.name){n._nt0=n.name;const t=String(n.name||'
 function proj(n,out){V.copy(n.pos).project(PCAM);out.x=(V.x+1)/2*innerWidth;out.y=(1-V.y)/2*innerHeight;out.z=V.z;
  // Bildschirmradius des Objekts (für Abstand des Schilds über dem Objekt)
  const d=cam.position.distanceTo(n.pos);out.R=Math.max(4,n.r*n.s/(d*Math.tan(cam.fov*Math.PI/360))*innerHeight/2);return out}
-function namenWaehlen(){const W=innerWidth,H=innerHeight;NM.sp=['pn','dt','zt','st'].map(id=>$(id)).filter(el=>el&&el.offsetParent!==null&&getComputedStyle(el).display!=='none').map(el=>{const r=el.getBoundingClientRect();return{x:r.left-4,y:r.top-4,w:r.width+8,h:r.height+8}});
+function namenWaehlen(){const W=innerWidth,H=innerHeight;NM.sp=['pn','zt','st'].map(id=>$(id)).filter(el=>el&&el.offsetParent!==null&&getComputedStyle(el).display!=='none').map(el=>{const r=el.getBoundingClientRect();return{x:r.left-4,y:r.top-4,w:r.width+8,h:r.height+8}});
  const C=[],q={};const wahl=new Set();
  if(NM.an){const cp=cam.position;let kand=[];
   const fw=cam.getWorldDirection(V2);
