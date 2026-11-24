@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="22">
+<meta name="4deep-darstellung" content="23">
 <title>4Deep Machbarkeitsstudie</title>
 <!-- 4Deep, Stufe 1 (Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -12,7 +12,7 @@
 <style>
 :root{--bg:#0b1220;--pn:rgba(15,23,40,.92);--tx:#e6edf7;--mu:#93a3bd;--ak:#ff9f1c;--rand:#243049}
 *{box-sizing:border-box}
-#cv{background:linear-gradient(#8fb2e0,#c4d8f1 45%,#d6e4f5 50%,#a9c1e4)}
+#cv{background:var(--himmel,linear-gradient(#8fb2e0,#c4d8f1 45%,#d6e4f5 50%,#a9c1e4))}
 html,body{margin:0;height:100%;background:#c4d8f1;color:var(--tx);font:13px system-ui,Segoe UI,sans-serif;overflow:hidden}
 #cv,#nm{position:fixed;inset:0;display:block;width:100%;height:100%}#nm{pointer-events:none}
 .pn{position:fixed;background:var(--pn);border:1px solid var(--rand);border-radius:10px;padding:10px 12px;backdrop-filter:blur(6px)}
@@ -80,6 +80,8 @@ html.stereo .pn,html.stereo #st,html.stereo #tip,html.stereo #prof,html.stereo #
  <div class="cb" title="Netz und Schichten: Abstände zwischen den Objekten (wird im Browser gespeichert)"><span style="min-width:44px">Dichte</span><input type="range" id="dichte" min="0" max="100" step="5" style="flex:1"><span id="dichtew" style="min-width:26px;text-align:right"></span></div>
  <div class="cb"><input type="checkbox" id="namen"><span>Namen am Objekt (N)</span></div>
  <div class="cb"><input type="checkbox" id="glanz" checked><span>Glanz und Reifegrade</span></div>
+ <label>Farbschema</label><select id="fs" title="Hintergrund, Licht und Objektfarben"></select>
+ <label>Oberfläche</label><select id="of" title="Materialwirkung der Objekte"><option value="satin">Satin (seidenmatt)</option><option value="metall">Metall (eloxiert)</option><option value="lack">Lack (glänzend, bisher)</option></select>
  <button id="lt">Leistung messen (5 s Drehung)</button>
  <button id="st3" title="3D-Fernseher: Side-by-Side oder Top-and-Bottom, Vollbild · T Augen tauschen · B SBS/TB · + − Tiefe · Bild↑↓ Ebene · Esc Ende">3D-TV (Strg+Umschalt+3)</button>
  <details id="smd"><summary>SpaceMouse (3Dconnexion)</summary>
@@ -92,7 +94,7 @@ html.stereo .pn,html.stereo #st,html.stereo #tip,html.stereo #prof,html.stereo #
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 22 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 23 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="chr"></div><div class="pn" id="mas"></div><div class="pn" id="prof"></div><div id="profb"></div>
@@ -115,21 +117,32 @@ renderer.outputEncoding=T.sRGBEncoding;renderer.toneMapping=T.ACESFilmicToneMapp
 renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;
 const scene=new T.Scene();let HIMMEL=null;
 // hellblauer Himmel wie in datenraum3d.html (Verlauf oben → Horizont → unten), als Rundum-Bild, damit der Horizont beim Neigen mitgeht
-{const c=document.createElement('canvas');c.width=4;c.height=512;const g=c.getContext('2d'),gr=g.createLinearGradient(0,0,0,512);
- gr.addColorStop(0,'#5f8bcb');gr.addColorStop(.3,'#8fb2e0');gr.addColorStop(.47,'#c4d8f1');gr.addColorStop(.5,'#d6e4f5');gr.addColorStop(.53,'#c9d9ef');gr.addColorStop(.7,'#a9c1e4');gr.addColorStop(1,'#7e9fcf');
- g.fillStyle=gr;g.fillRect(0,0,4,512);const t=new T.CanvasTexture(c);t.mapping=T.EquirectangularReflectionMapping;t.encoding=T.sRGBEncoding;scene.background=t;HIMMEL=t;umgebung()}
+const HIMMEL_C=document.createElement('canvas');HIMMEL_C.width=4;HIMMEL_C.height=512;
+function himmelMalen(stops){const g=HIMMEL_C.getContext('2d'),gr=g.createLinearGradient(0,0,0,512);stops.forEach(x=>gr.addColorStop(x[0],x[1]));g.fillStyle=gr;g.fillRect(0,0,4,512);
+ if(HIMMEL)HIMMEL.dispose();const t=new T.CanvasTexture(HIMMEL_C);t.mapping=T.EquirectangularReflectionMapping;t.encoding=T.sRGBEncoding;scene.background=t;HIMMEL=t;umgebung();   // neue Textur je Schema (Aktualisierung allein greift nicht)
+ const st=stops.map(x=>x[1]);document.documentElement.style.setProperty('--himmel','linear-gradient('+st[1]+','+st[Math.floor(st.length/2)]+' 50%,'+st[st.length-2]+')')}
+// Version 23: Farbschemata – Hintergrund, Nebel, Licht, Belichtung, Raster, Schatten und Objektfarben gemeinsam
+const FARBSCHEMATA={
+ atlas:{name:'Atlas (Papier, Druckfarben)',himmel:[[0,'#e2dac8'],[.45,'#f1ece0'],[.5,'#f6f2e9'],[.55,'#eee8db'],[1,'#ddd4c0']],nebel:'#efe9dc',hemi:['#fffaf0','#6f6553',.5],sonne:['#fffaf2',1.25],belicht:.82,gitter:['#8f846d','#c4b9a2'],schatten:.25,farbe:{sat:1.15,hell:.72}},
+ himmel:{name:'Himmel (bisher)',himmel:[[0,'#5f8bcb'],[.3,'#8fb2e0'],[.47,'#c4d8f1'],[.5,'#d6e4f5'],[.53,'#c9d9ef'],[.7,'#a9c1e4'],[1,'#7e9fcf']],nebel:'#cbdcf1',hemi:['#e4eeff','#55688a',.6],sonne:['#ffffff',1.1],belicht:.95,gitter:['#4f6f9f','#7d99c4'],schatten:.22,farbe:{}},
+ hitze:{name:'Hitze (Wüstensand)',himmel:[[0,'#d99a45'],[.3,'#ebc27a'],[.47,'#f5dcaa'],[.5,'#f9e7c0'],[.53,'#eed49d'],[.7,'#dcb06e'],[1,'#b8823f']],nebel:'#f0d7a4',hemi:['#fff0d2','#7a5228',.6],sonne:['#ffdca0',1.35],belicht:.88,gitter:['#9a6a32','#c49a5c'],schatten:.3,farbe:{mix:'#ff6a00',anteil:.32,sat:1.25,hell:.88}},
+ graphit:{name:'Graphit (Studio)',himmel:[[0,'#17191d'],[.4,'#2e3238'],[.5,'#454a52'],[.6,'#2c3036'],[1,'#141619']],nebel:'#2a2e34',hemi:['#ffffff','#2a2e34',.5],sonne:['#fff6ec',1.6],belicht:.98,gitter:['#5d6570','#3f454e'],schatten:.5,farbe:{sat:1.3,hell:.98}},
+ nacht:{name:'Nacht (Leitstand)',himmel:[[0,'#03060d'],[.42,'#0b1631'],[.5,'#142650'],[.58,'#0a1531'],[1,'#02040a']],nebel:'#0b142c',hemi:['#9fb4ff','#05080f',.35],sonne:['#e3ebff',1.5],belicht:1.02,gitter:['#2a8fb0','#173450'],schatten:.55,farbe:{sat:1.4,hell:1}},
+ abendrot:{name:'Abendrot',himmel:[[0,'#272048'],[.28,'#6e3a66'],[.44,'#d8735a'],[.5,'#f4ad6a'],[.56,'#bb6450'],[.75,'#4f3450'],[1,'#221c30']],nebel:'#c97f66',hemi:['#ffd0a6','#33243a',.5],sonne:['#ffbe80',1.45],belicht:.95,gitter:['#7d4b5c','#a06a7c'],schatten:.35,farbe:{mix:'#ff5a2a',anteil:.1,sat:1.25,hell:1}}};
+let SCHEMA='atlas';try{const v=localStorage.getItem('4d_farbschema');if(v&&FARBSCHEMATA[v])SCHEMA=v}catch(_){}
+himmelMalen(FARBSCHEMATA[SCHEMA].himmel)
 function umgebung(){try{const pm=new T.PMREMGenerator(renderer);if(scene.environment)scene.environment.dispose();scene.environment=pm.fromEquirectangular(HIMMEL).texture;pm.dispose()}catch(e){}}
-renderer.setClearColor(0xcbdcf1,1);   // falls der Himmel einmal nicht gezeichnet wird: hell statt schwarz
+renderer.setClearColor(FARBSCHEMATA[SCHEMA].nebel,1);   // falls der Himmel einmal nicht gezeichnet wird: hell statt schwarz
 scene.fog=new T.Fog(0xcbdcf1,200,900);
 const cam=new T.PerspectiveCamera(45,1,0.5,5000);
 // Grafikkontext verloren (Grafikkarte überlastet, viele WebGL-Seiten/Widgets, Treiber-Neustart): Wiederherstellung zulassen und alles neu aufbauen (Version 11)
 let kontextWeg=false;
 cv.addEventListener('webglcontextlost',e=>{e.preventDefault();kontextWeg=true;const l=$('leer');l.style.display='';l.textContent='Grafik kurz unterbrochen (Grafikkontext verloren) – wird wiederhergestellt …'});
 cv.addEventListener('webglcontextrestored',()=>{kontextWeg=false;HIMMEL.needsUpdate=true;umgebung();if(N.length){baueMeshes();leucht.n=-1;marker.n=0;markerBauen();zeitAnwenden()}$('leer').style.display=N.length?'none':'';$('leer').textContent='Datenraum wählen oder JSON-Datei hierher ziehen …';matAlle=true;neu()});
-scene.add(new T.HemisphereLight(0xe4eeff,0x55688a,0.6));
+const hemi=new T.HemisphereLight(0xe4eeff,0x55688a,0.6);scene.add(hemi);
 const sonne=new T.DirectionalLight(0xffffff,1.1);sonne.castShadow=true;sonne.shadow.mapSize.set(2048,2048);sonne.shadow.bias=-0.0005;scene.add(sonne,sonne.target);
 const boden=new T.Mesh(new T.CircleGeometry(1,64),new T.ShadowMaterial({opacity:.22}));boden.rotation.x=-Math.PI/2;boden.receiveShadow=true;scene.add(boden);
-const gitter=new T.GridHelper(2,40,0x4f6f9f,0x7d99c4);gitter.material.transparent=true;gitter.material.opacity=.45;scene.add(gitter);
+let gitter=new T.GridHelper(2,40,0x4f6f9f,0x7d99c4);gitter.material.transparent=true;gitter.material.opacity=.45;scene.add(gitter);
 const zeitEbene=new T.Mesh(new T.PlaneGeometry(1,1),new T.MeshBasicMaterial({color:0xff9f1c,transparent:true,opacity:.07,side:T.DoubleSide,depthWrite:false}));zeitEbene.visible=false;scene.add(zeitEbene);
 const heuteEbene=new T.Mesh(new T.PlaneGeometry(1,1),new T.MeshBasicMaterial({color:0xe0352b,transparent:true,opacity:.09,side:T.DoubleSide,depthWrite:false}));heuteEbene.visible=false;heuteEbene.rotation.y=Math.PI/2;scene.add(heuteEbene);
 let dirty=true;const neu=()=>{dirty=true};
@@ -210,7 +223,7 @@ function laden(daten,opt){
   let t0=zeit(o.start);if(!isFinite(t0))t0=zeit(meta.Erstellt);if(!isFinite(t0))t0=zeit(meta['Geändert']);
   const t1=zeit(o.end);let tg=zeit(meta['Geändert']!=null?meta['Geändert']:meta.Modified);if(!(tg>t0+864e5))tg=NaN;   // Änderung (Widget-Daten) leuchtet beim Zeitraffer auf
   const sz=(+o.size||+ty.size||med)/med;
-  const n={id:o.id,o,ty:o.type,stufe:reifeStufe(o),name:o.name||String(o.id),form:ty.shape||'sphere',col:kraeftig(farbe(o.color||ty.color)),r:1.7*Math.max(.35,Math.min(3.2,Math.sqrt(sz))),
+  const n={id:o.id,o,ty:o.type,stufe:reifeStufe(o),name:o.name||String(o.id),form:ty.shape||'sphere',col:schemaFarbe(kraeftig(farbe(o.color||ty.color))),_cq:o.color||ty.color,r:1.7*Math.max(.35,Math.min(3.2,Math.sqrt(sz))),
    t0,t1,tg,pos:new T.Vector3(),ziel:new T.Vector3(),s:0,sZiel:1,i:N.length,nb:[],fest:o.pos,warn:o.warnung?String(o.warnung):''};
   const a=alt[o.id];if(a){n.pos.copy(a.pos);n.s=a.s;n.alt=true}
   byId[o.id]=n;N.push(n);
@@ -323,6 +336,10 @@ function eisTextur(){if(EIS)return EIS;const c=document.createElement('canvas');
  for(let i=0;i<18;i++){const x=rnd()*256,y=rnd()*256,R=10+rnd()*26;g.strokeStyle='rgba(255,255,255,'+(.75+rnd()*.25)+')';
   for(const dx of[-256,0,256])for(const dy of[-256,0,256])if(x+dx>-R&&x+dx<256+R&&y+dy>-R&&y+dy<256+R){const s0=s;kristall(x+dx,y+dy,R);s=s0}rnd()}   // nahtlos kachelbar
  EIS=new T.CanvasTexture(c);EIS.encoding=T.sRGBEncoding;EIS.wrapS=EIS.wrapT=T.RepeatWrapping;EIS.repeat.set(2,1);EIS.anisotropy=4;s=sAlt;return EIS}
+let OBERFLAECHE='satin';try{const v=localStorage.getItem('4d_oberflaeche');if(/^(satin|metall|lack)$/.test(v))OBERFLAECHE=v}catch(_){}
+// Körnung: feines Rauschen als Rauheitskarte (gegen den glatten Kunststoff-Eindruck)
+let KOERNUNG=null;function koernung(){if(KOERNUNG)return KOERNUNG;const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d'),d=g.createImageData(128,128);const s0=s;s=4711;
+ for(let i=0;i<d.data.length;i+=4){const v=200+Math.floor(rnd()*55);d.data[i]=d.data[i+1]=d.data[i+2]=v;d.data[i+3]=255}s=s0;g.putImageData(d,0,0);KOERNUNG=new T.CanvasTexture(c);KOERNUNG.wrapS=KOERNUNG.wrapT=T.RepeatWrapping;KOERNUNG.repeat.set(3,3);return KOERNUNG}
 function material(stufe,form){
  // Version 22: Münze aus poliertem Metall, Saphir als geschliffener Edelstein (offene Stufe matter, inaktive blass)
  if(form==='muenze')return glanzAn?new T.MeshPhysicalMaterial({color:0xffffff,metalness:.6,roughness:stufe==='roh'?.45:stufe==='alt'?.55:.28,clearcoat:.6,clearcoatRoughness:.12,sheen:.4,sheenColor:0xfff2b0,envMapIntensity:1.6,transparent:stufe==='alt',opacity:stufe==='alt'?.5:1})
@@ -330,6 +347,13 @@ function material(stufe,form){
  if(form==='saphir')return glanzAn?new T.MeshPhysicalMaterial({color:0xffffff,metalness:.15,roughness:stufe==='roh'?.25:.03,clearcoat:1,clearcoatRoughness:.02,iridescence:.25,specularIntensity:1,envMapIntensity:1.9,flatShading:true,transparent:true,opacity:stufe==='alt'?.45:.9})
   :new T.MeshStandardMaterial({color:0xffffff,metalness:.3,roughness:.12,flatShading:true,envMapIntensity:1.2});
  if(!glanzAn)return new T.MeshStandardMaterial({color:0xffffff,metalness:.15,roughness:.38,envMapIntensity:.35});
+ // Version 23: Oberfläche Satin (seidenmatt, deckend, feine Körnung) bzw. Metall (eloxiert); Lack = bisheriger Glanz
+ if(OBERFLAECHE!=='lack'){const M=OBERFLAECHE==='metall',Q={color:0xffffff,roughnessMap:koernung(),metalness:M?.55:.04,roughness:M?.42:.62,envMapIntensity:M?.9:.5,clearcoat:0,sheen:M?0:.25,sheenRoughness:.8,sheenColor:0xffffff};
+  if(stufe==='kristall')Object.assign(Q,{metalness:M?.7:.2,roughness:M?.22:.26,clearcoat:M?0:.25,clearcoatRoughness:.3,envMapIntensity:M?1.1:.8});
+  else if(stufe==='glanz')Object.assign(Q,{map:eisTextur(),roughness:M?.35:.45,envMapIntensity:.7});
+  else if(stufe==='roh')Object.assign(Q,{metalness:0,roughness:.95,sheen:0,envMapIntensity:.25});   // offen: stumpf und deckend (kein Gummibärchen-Effekt)
+  else if(stufe==='alt')Object.assign(Q,{metalness:0,roughness:.8,sheen:0,envMapIntensity:.25,transparent:true,opacity:.5});
+  return new T.MeshPhysicalMaterial(Q)}
  const P={color:0xffffff,metalness:.08,roughness:.32,clearcoat:.7,clearcoatRoughness:.18,envMapIntensity:.6};
  if(stufe==='kristall')Object.assign(P,{metalness:.15,roughness:.04,clearcoat:1,clearcoatRoughness:.03,iridescence:.9,iridescenceIOR:1.35,iridescenceThicknessRange:[150,600],envMapIntensity:1.5,transparent:true,opacity:.88,specularIntensity:1});
  else if(stufe==='glanz')Object.assign(P,{map:eisTextur(),metalness:.1,roughness:.3,clearcoat:1,clearcoatRoughness:.12,envMapIntensity:.9});   // Version 14: Eiskristalle statt reinem Glanz
@@ -771,6 +795,13 @@ $('axp').onchange=e=>{const v=e.target.value;if(v==='eigen'){AXS.p='eigen';axZei
 ['axx','axy','axz'].forEach((id,j)=>$(id).onchange=e=>{AXS.k[j]=e.target.value;AXS.inv[j]=false;AXS.p='eigen';axNeu()});
 ['axlx','axly','axlz'].forEach((id,j)=>$(id).onchange=e=>{AXS.log[j]=e.target.checked;axNeu()});
 $('schatten').onchange=$('glanz').onchange=()=>{baueMeshes();faerben();neu()};
+function schemaFarbe(c){const f=FARBSCHEMATA[SCHEMA].farbe||{};if(OBERFLAECHE!=='lack'){c.getHSL(HSL);c.setHSL(HSL.h,HSL.s*.82,HSL.l*.94)}if(f.mix&&f.anteil)c.lerp(new T.Color(f.mix),f.anteil);if(f.sat||f.hell){c.getHSL(HSL);c.setHSL(HSL.h,Math.min(1,HSL.s*(f.sat||1)),Math.min(.85,HSL.l*(f.hell||1)))}return c}
+function schemaAnwenden(k){if(!FARBSCHEMATA[k])k='himmel';SCHEMA=k;const F=FARBSCHEMATA[k];try{localStorage.setItem('4d_farbschema',k)}catch(_){}
+ himmelMalen(F.himmel);renderer.setClearColor(F.nebel,1);scene.fog.color.set(F.nebel);hemi.color.set(F.hemi[0]);hemi.groundColor.set(F.hemi[1]);hemi.intensity=F.hemi[2];sonne.color.set(F.sonne[0]);sonne.intensity=F.sonne[1];renderer.toneMappingExposure=F.belicht;
+ const g2=new T.GridHelper(2,40,F.gitter[0],F.gitter[1]);g2.material.transparent=true;g2.material.opacity=.45;g2.position.copy(gitter.position);g2.scale.copy(gitter.scale);g2.visible=gitter.visible;scene.remove(gitter);gitter.geometry.dispose();gitter=g2;scene.add(gitter);
+ boden.material.opacity=F.schatten;document.body.dataset.schema=k;$('fs').value=k;
+ if(N.length){N.forEach(n=>{n.col=schemaFarbe(kraeftig(farbe(n._cq)))});baueMeshes();faerben()}neu()}
+$('fs').innerHTML=Object.keys(FARBSCHEMATA).map(k=>'<option value="'+k+'">'+FARBSCHEMATA[k].name+'</option>').join('');$('fs').onchange=e=>schemaAnwenden(e.target.value);$('of').value=OBERFLAECHE;$('of').onchange=e=>{OBERFLAECHE=e.target.value;try{localStorage.setItem('4d_oberflaeche',OBERFLAECHE)}catch(_){}schemaAnwenden(SCHEMA)};schemaAnwenden(SCHEMA);
 $('kanten').onchange=()=>{matAlle=true;neu()};$('vergangen').onchange=zeitAnwenden;
 {const dr=$('dichte'),dw=$('dichtew');dr.value=DICHTE;dw.textContent=DICHTE;
  dr.oninput=()=>{dw.textContent=dr.value};
@@ -968,19 +999,19 @@ async function leseZip(f){
 // Objekttypen des CRM (Kürzel → Darstellung); unbekannte Kürzel erscheinen mit ihrem Kürzel
 const CRM_TYPEN={
  tCO:{label:'Firma',color:'#f4c430',shape:'box',size:3},
- tPE:{label:'Person',color:'#b07cf0',shape:'bust',size:1.1},
- tAD:{label:'Adresse',color:'#9bb2d1',shape:'diamond',size:.7},
- tAS:{label:'Dokument',color:'#9bb2d1',shape:'book',size:.8},
- tOF:{label:'Angebot',color:'#f08c00',shape:'octagon',size:1.5},
- tOFI:{label:'Angebotsposition',color:'#f6b26b',size:.6},
- tCT:{label:'Auftrag',color:'#4f8cff',shape:'dodecahedron',size:1.8},
- tCTI:{label:'Auftragsposition',color:'#8fb4ff',size:.6},
+ tPE:{label:'Person',color:'#7451b0',shape:'bust',size:1.1},
+ tAD:{label:'Adresse',color:'#66788f',shape:'diamond',size:.7},
+ tAS:{label:'Dokument',color:'#66788f',shape:'book',size:.8},
+ tOF:{label:'Angebot',color:'#d9730d',shape:'octagon',size:1.5},
+ tOFI:{label:'Angebotsposition',color:'#b8732e',size:.6},
+ tCT:{label:'Auftrag',color:'#2f63c8',shape:'dodecahedron',size:1.8},
+ tCTI:{label:'Auftragsposition',color:'#4f75b5',size:.6},
  tSI:{label:'Rechnung',color:'#e8b13a',shape:'muenze',size:1.4,summe:true},   // Version 22: Goldmünze
- tSII:{label:'Rechnungsposition',color:'#9be3b8',size:.5},
- tBS:{label:'Billing Sheet',color:'#17a2a2',shape:'triangle',size:1.4},
- tBA:{label:'Batch',color:'#7f9cc4',size:.2},
- tTA:{label:'Aufgabe',color:'#e63946',shape:'torus',size:1},
- tZN:{label:'Zeitnachweise (gebündelt)',color:'#7f9cc4',size:.6}};
+ tSII:{label:'Rechnungsposition',color:'#3b8a64',size:.5},
+ tBS:{label:'Billing Sheet',color:'#127f86',shape:'triangle',size:1.4},
+ tBA:{label:'Batch',color:'#5d7593',size:.2},
+ tTA:{label:'Aufgabe',color:'#c3283a',shape:'torus',size:1},
+ tZN:{label:'Zeitnachweise (gebündelt)',color:'#5d7593',size:.6}};
 const CRM_STATUS={pending:'offen',work:'in Arbeit',review:'in Prüfung',approved:'freigegeben',billing:'in Abrechnung',finished:'abgeschlossen',onHold:'zurückgestellt',inactive:'inaktiv',active:'aktiv',shipped:'versendet',closed:'geschlossen',canceled:'storniert',cancelled:'storniert'};
 const CRM_ROLLEN={Person:'Bearbeiter',Reviewer:'Prüfer',Responsible:'Verantwortlich',BillingSheet:'Billing Sheet',CustomerCompany:'Kunde',Customer:'Kunde',Contact:'Kontakt',CustomerContact:'Kontakt',SalesPerson:'Vertrieb',Company:'Firma',Contract:'Auftrag',Project:'Projekt'};
 function crmZahl(v){if(typeof v==='number')return v;if(v==null)return NaN;const t=String(v).trim();if(!/^-?[\d.]*,?\d+$|^-?\d+(\.\d+)?$/.test(t))return NaN;
