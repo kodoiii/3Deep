@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="23">
+<meta name="4deep-darstellung" content="25">
 <title>4Deep Machbarkeitsstudie</title>
 <!-- 4Deep, Stufe 1 (Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -50,7 +50,7 @@ html.stereo .pn,html.stereo #st,html.stereo #tip,html.stereo #prof,html.stereo #
 #st{position:fixed;right:10px;bottom:10px;color:var(--tx);background:var(--pn);border-radius:6px;padding:3px 8px;font-size:11px;text-align:right}
 #hint{color:var(--mu);font-size:10.5px;line-height:1.4;margin-top:8px;border-top:1px solid var(--rand);padding-top:6px}
 #leer{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;color:var(--mu);font-size:15px}
-#mas .p{font-weight:700;border-radius:4px;text-align:center;padding:0 3px;height:fit-content}#mas .p1{background:#7a1d1d;color:#ffd6d1}#mas .p2{background:#6b4a10;color:#ffe2a8}#mas .p3{background:#2a3550;color:#c9d5ee}#mas .ev .w{grid-column:2;color:var(--mu);font-size:11px}#mas .ev{grid-template-columns:30px 1fr}
+#mas .p{font-weight:700;border-radius:4px;text-align:center;padding:0 3px;height:fit-content}#mas .p1{background:#7a1d1d;color:#ffd6d1}#mas .p2{background:#6b4a10;color:#ffe2a8}#mas .p3{background:#2a3550;color:#c9d5ee}#mas .ev .w{grid-column:2;color:var(--mu);font-size:11px}#mas .ev{grid-template-columns:30px 1fr}#pn details.grp{margin-top:8px;border-top:1px solid var(--rand);padding-top:4px}#pn details.grp>summary{cursor:pointer;color:var(--mu);font-weight:600;padding:3px 0}#pn #finb{border:1px solid #c9a227;color:#ffd970;font-weight:600}#mas .ki{background:#1d4d7a;color:#d6ecff;border-radius:3px;padding:0 4px;font-size:10px;font-weight:700}#mas .nok{color:#ff6b5e}#fkw .cb{margin-top:2px}
 </style>
 </head>
 <body>
@@ -63,9 +63,13 @@ html.stereo .pn,html.stereo #st,html.stereo #tip,html.stereo #prof,html.stereo #
   <option value="stress:2000">Leistungstest 2 000 Objekte</option>
   <option value="stress:10000">Leistungstest 10 000 Objekte</option><option value="stress:30000">Leistungstest 30 000 Objekte</option></select>
  <button id="jl" title="4Deep-JSON oder CRM-Export als ZIP (wird nur im Browser umgewandelt)">Datei laden (JSON / CRM-ZIP) …</button><input type="file" id="jf" accept=".json,.zip,application/json,application/zip" hidden>
+ <button id="finb" style="display:none" title="Finanzauswertung: Layout „Kennzahlen (Achsen)“ mit der Vorlage „Rechnungen“; weitere Vorlagen darunter (Projekte, Billing Sheets, Kundenportfolio)">Finanzauswertung …</button>
  <button id="chrb" style="display:none" title="Aktionen nach Datum mit Ergebnis, Zusammenfassung je Zeitraum">Chronik (Aktionen nach Zeit) …</button>
  <button id="masb" style="display:none" title="Handlungsliste: Signale mit Priorität, Rolle und Beleg; Klick springt zu den betroffenen Objekten">Handlungsliste (Maßnahmen) …</button>
- <div class="cb" id="baew" style="display:none" title="CRM: Zeitnachweise (Batches) einzeln statt je Rechnung bzw. je Billing Sheet und Monat gebündelt"><input type="checkbox" id="bae"><span>Batches einzeln</span></div>
+ <details id="crmd" class="grp" style="display:none"><summary>CRM: Export und Optionen</summary>
+ <div id="fkw"><button id="fkb" title="JSON mit allen berechneten Fakten und Freitexten für den KI-Agenten (docs/agent-kundenanalyse.md)">Fakten exportieren (für KI-Agent) …</button><div class="cb" title="Ohne Haken: Personen nur mit Nummer und Position, ihre Namen werden in allen Texten durch die Nummer ersetzt"><input type="checkbox" id="fkn"><span>mit Personennamen</span></div></div>
+ <div class="cb" id="baew" title="CRM: Zeitnachweise (Batches) einzeln statt je Rechnung bzw. je Billing Sheet und Monat gebündelt"><input type="checkbox" id="bae"><span>Batches einzeln</span></div>
+ </details>
  <label>Layout</label>
  <select id="ly"><option value="netz">Netz</option><option value="schichten">Schichten nach Objekttyp</option><option value="reife">Schichten nach Reifegrad</option><option value="baum">Baum</option>
   <option value="zeit">Zeitachse (Zeit als Raumrichtung)</option><option value="achsen">Kennzahlen (Achsen)</option><option value="fest">Feste Positionen (aus Daten)</option></select>
@@ -74,6 +78,7 @@ html.stereo .pn,html.stereo #st,html.stereo #tip,html.stereo #prof,html.stereo #
   <div class="axz"><span style="color:#1fa463" title="oben">↑</span><select id="axy" title="oben"></select><span class="axl"><input type="checkbox" id="axly">log</span></div>
   <div class="axz"><span style="color:#2f6fe0" title="vorne">↙</span><select id="axz" title="vorne (zum Betrachter)"></select><span class="axl"><input type="checkbox" id="axlz">log</span></div>
   <div id="axnote" class="m" style="margin-top:4px"></div></div>
+ <details id="dard" class="grp"><summary>Darstellung (Licht, Farben, Oberfläche, Geräte)</summary>
  <div class="cb"><input type="checkbox" id="schatten" checked><span>Schatten</span></div>
  <div class="cb"><input type="checkbox" id="kanten" checked><span>Beziehungen</span></div>
  <div class="cb"><input type="checkbox" id="vergangen" checked><span>Vergangenes blass zeigen</span></div>
@@ -92,9 +97,10 @@ html.stereo .pn,html.stereo #st,html.stereo #tip,html.stereo #prof,html.stereo #
   <div class="m" style="margin-top:4px">Tasten zuordnen (Knopf klicken, dann Taste am Gerät drücken):</div><div id="smb"></div><div id="smv"></div>
   <div class="m" style="margin-top:4px">Plus/Minus = Zoom (halten) · Fit = Startansicht · Esc = Auswahl aufheben · Umschalt = schneller · Strg = feiner · Alt = nur stärkste Achse · Panel = Bedienfeld (wie M) · Auswahl / Profilkarte = Objekt unter der Maus, sonst in der Bildmitte</div>
  </details>
+ </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 23 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 25 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="chr"></div><div class="pn" id="mas"></div><div class="pn" id="prof"></div><div id="profb"></div>
@@ -241,7 +247,7 @@ function laden(daten,opt){
  else N.forEach(n=>{if(n.alt)return;const k=n.nb.find(m=>m.alt);if(k)n.pos.copy(k.pos).add(V.set(rnd()-.5,rnd()-.5,rnd()-.5).multiplyScalar(4));else n.pos.set((rnd()-.5)*20,(rnd()-.5)*20,(rnd()-.5)*20)});
  baueMeshes();legende();
  const hatPos=N.some(n=>n.fest);
- axVorbereiten();{const hm=Array.isArray(daten.massnahmen)&&daten.massnahmen.length;$('masb').style.display=hm?'':'none';if(!hm)$('mas').style.display='none';else if($('mas').style.display==='block')massnahmenZeigen()}$('chrb').style.display=Array.isArray(daten.chronik)&&daten.chronik.length?'':'none';$('baew').style.display=daten.crm?'':'none';if(!(Array.isArray(daten.chronik)&&daten.chronik.length))$('chr').style.display='none';else if($('chr').style.display==='block')chronikZeigen();
+ axVorbereiten();$('finb').style.display=daten.crm?'':'none';$('crmd').style.display=daten.crm?'':'none';$('fkw').style.display=daten.fakten?'':'none';{const hm=Array.isArray(daten.massnahmen)&&daten.massnahmen.length;$('masb').style.display=hm?'':'none';if(!hm)$('mas').style.display='none';else if($('mas').style.display==='block')massnahmenZeigen()}$('chrb').style.display=Array.isArray(daten.chronik)&&daten.chronik.length?'':'none';if(!(Array.isArray(daten.chronik)&&daten.chronik.length))$('chr').style.display='none';else if($('chr').style.display==='block')chronikZeigen();
  let ly=opt.behalten?layout:(daten.layout==='achsen'&&AXP.length?'achsen':daten.layout==='plan'||daten.zeitArt?'zeit':hatPos?'fest':'netz');
  if(!$('ly').querySelector('option[value="'+ly+'"]'))ly='netz';
  $('ly').value=ly;setzeLayout(ly,!opt.behalten);
@@ -774,18 +780,37 @@ function chronikZeigen(){const L=(D&&D.chronik||[]).map(e=>Object.assign({},e,{m
   if(n){waehle(n.i);nutzerSteuert();K.zZiel.copy(n.ziel);K.zDist=Math.max(25,n.r*18);K.flug=true;neu()}})}
 $('chrb').onclick=()=>{const el=$('chr');if(el.style.display==='block')el.style.display='none';else{$('mas').style.display='none';chronikZeigen()}};
 // Version 22: Handlungsliste (daten.massnahmen [{prio,rolle,signal,text,ids,beleg,t}]), nach Priorität; Filter nach Rolle; Klick springt reihum zu den betroffenen Objekten
-let MAS_R='alle';const MAS_I={};
+let MAS_R='alle',MAS_Q='alle';const MAS_I={};
 function massnahmenZeigen(){const L=(D&&D.massnahmen||[]).filter(m=>m&&(m.text||m.signal)).map((m,i)=>Object.assign({},m,{_i:i,prio:Math.max(1,Math.min(3,+m.prio||3))})).sort((a,b)=>a.prio-b.prio||String(b.t||'').localeCompare(String(a.t||'')));const el=$('mas');
- const rollen=[...new Set(L.map(m=>m.rolle).filter(Boolean))].sort();if(MAS_R!=='alle'&&!rollen.includes(MAS_R))MAS_R='alle';const S=L.filter(m=>MAS_R==='alle'||m.rolle===MAS_R);
+ const rollen=[...new Set(L.map(m=>m.rolle).filter(Boolean))].sort();if(MAS_R!=='alle'&&!rollen.includes(MAS_R))MAS_R='alle';const qn=[...new Set(L.map(m=>m.quelle||'Regel'))];if(!qn.includes(MAS_Q))MAS_Q='alle';const S=L.filter(m=>(MAS_R==='alle'||m.rolle===MAS_R)&&(MAS_Q==='alle'||(m.quelle||'Regel')===MAS_Q));
  const np=[1,2,3].map(p=>S.filter(m=>m.prio===p).length),PN=['','hoch','mittel','niedrig'];
- el.innerHTML='<span class="x" id="masx">✕</span><h2>Handlungsliste</h2><select id="masr"><option value="alle">alle Rollen</option>'+rollen.map(r=>'<option'+(r===MAS_R?' selected':'')+'>'+esc(r)+'</option>').join('')+'</select>'+
+ el.innerHTML='<span class="x" id="masx">✕</span><h2>Handlungsliste</h2><select id="masr"><option value="alle">alle Rollen</option>'+rollen.map(r=>'<option'+(r===MAS_R?' selected':'')+'>'+esc(r)+'</option>').join('')+'</select>'+(qn.length>1?' <select id="masq"><option value="alle">alle Quellen</option>'+qn.map(q=>'<option'+(q===MAS_Q?' selected':'')+'>'+esc(q)+'</option>').join('')+'</select>':'')+(D.massnahmenStand?'<div class="m" style="color:var(--mu)">'+esc(D.massnahmenStand)+'</div>':'')+
   '<div class="sum">'+[1,2,3].map(p=>'<span class="p p'+p+'">P'+p+'</span> '+PN[p]+' '+np[p-1]).join(' · ')+'<br><span style="color:var(--mu)">'+esc(D.massnahmenHinweis||'Regelbasiert aus den Daten; vor dem Handeln fachlich prüfen.')+'</span></div>'+
-  S.map((m,k)=>{const ids=(m.ids||[]).filter(id=>byId[id]);return'<div class="ev" data-k="'+k+'"><span class="p p'+m.prio+'" title="Priorität '+PN[m.prio]+'">P'+m.prio+'</span><span>'+(m.signal?'<b>'+esc(m.signal)+'</b> · ':'')+esc(m.text||'')+'</span>'+(m.beleg?'<span class="e">Beleg: '+esc(m.beleg)+'</span>':'')+
+  S.map((m,k)=>{const ids=(m.ids||[]).filter(id=>byId[id]);return'<div class="ev" data-k="'+k+'"><span class="p p'+m.prio+'" title="Priorität '+PN[m.prio]+'">P'+m.prio+'</span><span>'+(m.quelle==='KI'?'<span class="ki" title="vom KI-Agenten – vor dem Handeln prüfen">KI</span> ':'')+(m.signal?'<b>'+esc(m.signal)+'</b> · ':'')+esc(m.text||'')+'</span>'+(m.beleg?'<span class="e">Beleg: '+esc(m.beleg)+'</span>':'')+(m.fehlt&&m.fehlt.length?'<span class="e nok">nicht gefunden: '+esc(m.fehlt.join(', '))+'</span>':'')+
    '<span class="w">'+[m.rolle,m.t,ids.length?ids.length+' Objekt'+(ids.length>1?'e':'')+(ids.length>1?' (Klick: nächstes)':''):''].filter(Boolean).map(esc).join(' · ')+'</span></div>'}).join('')+(S.length?'':'<div class="m">keine Maßnahmen</div>');
- el.style.display='block';$('masx').onclick=()=>{el.style.display='none'};$('masr').onchange=ev=>{MAS_R=ev.target.value;massnahmenZeigen()};
+ el.style.display='block';$('masx').onclick=()=>{el.style.display='none'};$('masr').onchange=ev=>{MAS_R=ev.target.value;massnahmenZeigen()};if($('masq'))$('masq').onchange=ev=>{MAS_Q=ev.target.value;massnahmenZeigen()};
  el.querySelectorAll('.ev').forEach(d=>d.onclick=()=>{const m=S[+d.dataset.k],ids=(m.ids||[]).filter(id=>byId[id]);if(!ids.length)return;const j=MAS_I[m._i]=((MAS_I[m._i]==null?-1:MAS_I[m._i])+1)%ids.length,n=byId[ids[j]];
   if(n.sZiel<=0&&isFinite(n.t0)&&n.t0>tCur){spiel=false;$('zp').textContent='▶';tCur=Math.min(tMax,n.t0+864e5);zeitAnwenden()}
   waehle(n.i);nutzerSteuert();K.zZiel.copy(n.ziel);K.zDist=Math.max(25,n.r*18);K.flug=true;neu()})}
+// Version 24: Maßnahmen-Datei des KI-Agenten laden ({massnahmen:[…]} oder Liste); ids dürfen CRM-Nummern sein (z. B. AU240749); ersetzt frühere KI-Maßnahmen, Regel-Maßnahmen bleiben
+function istMassnahmenDatei(j){const L=Array.isArray(j)?j:j&&!j.nodes&&!(j.daten&&j.daten.nodes)&&Array.isArray(j.massnahmen)?j.massnahmen:null;return!!L&&L.length>0&&L.every(m=>m&&typeof m==='object'&&(m.text||m.signal))}
+function massnahmenLaden(j){if(!D||!N.length){meld('Erst den Datenraum (CRM-ZIP) laden, dann die Maßnahmen-Datei.');return}
+ const L=Array.isArray(j)?j:j.massnahmen,idx={};N.forEach(n=>{const m=n.o.meta||{};[m.Nummer,String(n.name).split(' · ')[0],n.o.familie].forEach(k=>{if(k&&!idx[k])idx[k]=n.id})});
+ const neu=L.map(m=>{const ids=[],fehlt=[];(Array.isArray(m.ids)?m.ids:m.ids?[m.ids]:[]).forEach(x=>{x=String(x).trim();const id=byId[x]?x:idx[x];if(id)ids.push(id);else fehlt.push(x)});
+  return{quelle:'KI',prio:Math.max(1,Math.min(3,+m.prio||3)),rolle:m.rolle?String(m.rolle):'',signal:m.signal?String(m.signal):'',text:String(m.text||''),ids,beleg:m.beleg?String(m.beleg):'',t:m.t?String(m.t):undefined,fehlt}});
+ D.massnahmen=(D.massnahmen||[]).filter(m=>m.quelle!=='KI').concat(neu);D.massnahmenStand=(j.stand||j.erzeugt?'KI-Maßnahmen vom '+(j.stand||j.erzeugt)+(j.firma?' · '+j.firma:''):'KI-Maßnahmen geladen')+' · '+neu.length+' Einträge'+(neu.some(m=>m.fehlt.length)?' · nicht alle Objekte gefunden':'');
+ $('masb').style.display='';MAS_Q='KI';$('chr').style.display='none';massnahmenZeigen()}
+// Version 24: Fakten exportieren (JSON für den KI-Agenten); ohne Haken „mit Personennamen“ ersetzt 4Deep die Namen der Personen in allen Texten durch ihre Nummer
+function faktenText(mitNamen){const F=D&&D.fakten;if(!F)return'';const o=JSON.parse(JSON.stringify(F));o.erzeugt=new Date().toISOString().slice(0,10);
+ if(mitNamen)return JSON.stringify(o,null,1);
+ const P=(F.kontakte||[]).filter(k=>k.name&&k.name.length>=3&&k.name!==k.nr).sort((a,b)=>b.name.length-a.name.length);o.kontakte.forEach(k=>delete k.name);o.namen='Personennamen durch Personennummern ersetzt';
+ let t=JSON.stringify(o,null,1);P.forEach(k=>{const n=JSON.stringify(k.name).slice(1,-1);t=t.split(n).join(k.nr)});return t}
+function faktenExport(){const F=D&&D.fakten;if(!F)return;const t=faktenText($('fkn').checked);
+ const fi=(F.firmen&&F.firmen[0]&&F.firmen[0].nr)||'crm',a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'application/json'}));a.download='fakten-'+fi+'-'+(F.stichtag||'stand')+'.json';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
+$('fkb').onclick=faktenExport;
+// Version 25: Knopf „Finanzauswertung“ (Layout Kennzahlen, Vorlage Rechnungen); Menügruppen aufklappbar, Zustand bleibt im Browser
+$('finb').onclick=()=>{$('ly').value='achsen';setzeLayout('achsen',true);const o=[...$('axp').options].findIndex(x=>/^Rechnungen/.test(x.text));if(o>=0&&$('axp').selectedIndex!==o){$('axp').selectedIndex=o;$('axp').dispatchEvent(new Event('change'))}};
+document.querySelectorAll('#pn details.grp').forEach(d=>{try{d.open=localStorage.getItem('4d_auf_'+d.id)==='1'}catch(_){}d.addEventListener('toggle',()=>{try{localStorage.setItem('4d_auf_'+d.id,d.open?'1':'0')}catch(_){}})});
 $('masb').onclick=()=>{const el=$('mas');if(el.style.display==='block')el.style.display='none';else{$('chr').style.display='none';massnahmenZeigen()}};
 $('bae').onchange=e=>{try{localStorage.setItem('4d_crm_einzeln',e.target.checked?'1':'0')}catch(_){}if(CRM_ROH){lauf=null;laden(crmZuDaten(CRM_ROH.b,CRM_ROH.r,{einzeln:e.target.checked}))}};
 try{$('bae').checked=localStorage.getItem('4d_crm_einzeln')==='1'}catch(_){}
@@ -965,7 +990,7 @@ $('jl').onclick=()=>$('jf').click();
 $('jf').onchange=e=>{const f=e.target.files[0];if(f)leseDatei(f);e.target.value=''};
 addEventListener('dragover',e=>e.preventDefault());
 addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer.files&&e.dataTransfer.files[0];if(f)leseDatei(f)});
-function leseDatei(f){if(/\.zip$/i.test(f.name)){leseZip(f);return}const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);lauf=null;laden(j.daten&&j.daten.nodes?j.daten:j)}catch(e){meld('Datei ist kein gültiges JSON: '+e.message)}};r.readAsText(f)}
+function leseDatei(f){if(/\.zip$/i.test(f.name)){leseZip(f);return}const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);if(istMassnahmenDatei(j)){massnahmenLaden(j);return}lauf=null;laden(j.daten&&j.daten.nodes?j.daten:j)}catch(e){meld('Datei ist kein gültiges JSON: '+e.message)}};r.readAsText(f)}
 $('ds').onchange=e=>waehleRaum(e.target.value);
 // ---------- Version 19: CRM-Export (ZIP mit busses/… und rels/…) direkt laden, Umwandlung nur im Browser ----------
 async function zipLesen(buf){
@@ -1075,18 +1100,20 @@ function crmZuDaten(busse,rels,opt){opt=opt||{};
  const kopf={};edges.forEach(e=>{if(e.type==='position')kopf[e.from]=byId[e.to]});
  nodes.forEach(n=>{const k=kopf[n.id];if(k&&k.start&&(!n.start||/^t(SII|CTI|OFI)$/.test(n.type)))n.start=k.start});
  crmAngebotAuftrag(nodes,edges,byId,rt);
+ const vorher=crmFaktenVorher(nodes,edges,byId);   // Version 24: Batch-Daten vor dem Bündeln
  if(!opt.einzeln)crmBuendeln(nodes,edges,byId,rt,types);
  crmBillingSheets(nodes,edges,byId);
  crmProjekte(nodes,edges,byId);
  crmKennzahlen(nodes,edges,byId);
  const massnahmen=crmMassnahmen(nodes,edges,byId);
  const chronik=crmChronik(nodes,edges,byId);
+ const fakten=crmFakten(nodes,edges,byId,massnahmen,vorher);
  // Version 22: Größe nach Wert (Betrag bzw. Stunden) relativ zum Median des Typs, Volumen proportional zum Wert
  // (Darstellung: Radius ~ Wurzel aus size, daher size ~ Wert^(2/3) → Radius ~ Wert^(1/3)); doppelter Betrag = doppeltes Volumen
  const med={};nodes.forEach(n=>{if(isFinite(n.wert)&&n.wert>0)(med[n.type]=med[n.type]||[]).push(n.wert)});
  Object.keys(med).forEach(t=>{const L=med[t].sort((x,y)=>x-y);med[t]=L[L.length>>1]});
  nodes.forEach(n=>{const g=types[n.type].size||1;n.size=isFinite(n.wert)&&n.wert>0&&med[n.type]?g*Math.max(.3,Math.min(7,Math.pow(n.wert/med[n.type],2/3))):g;Object.keys(n).forEach(k=>{if(k==='wert'||k[0]==='_')delete n[k]})});
- return{titel:'CRM',crm:true,chronik,massnahmen,chronikOk:{Angebot:'beauftragt',Auftrag:'im Budget',Rechnung:'mit positiver Marge',Aufgabe:'erledigt'},warnungName:'über Budget',layout:'netz',types,relTypes,nodes,edges,betragName:'Umsatz (Rechnungen netto)',betragEinheit:'€',
+ return{titel:'CRM',crm:true,chronik,massnahmen,fakten,chronikOk:{Angebot:'beauftragt',Auftrag:'im Budget',Rechnung:'mit positiver Marge',Aufgabe:'erledigt'},warnungName:'über Budget',layout:'netz',types,relTypes,nodes,edges,betragName:'Umsatz (Rechnungen netto)',betragEinheit:'€',
   stufenNamen:{kristall:'abgeschlossen (Kristall)',roh:'offen / in Arbeit (matt)',alt:'inaktiv'},axes:CRM_ACHSEN}}
 // Version 20: Vorlagen für das Layout „Kennzahlen (Achsen)“ (Namen wie im kaufmännischen Datenraum von 3Deep)
 const CRM_ACHSEN=[
@@ -1162,7 +1189,7 @@ const CRM_PRESALES=/pre-?sales|vorbereitung\s+pr[äa]sentation/i,CRM_KUENDIGUNG=
  CRM_SCHLUESSEL=/leit|head|direct|chef|gesch[äa]ftsf|manager|\bit\b|cad|pdm|admin|einkauf|buyer|controller|finance/i;
 function crmMassnahmen(nodes,edges,byId){const R=CRM_REGELN,nb=crmNachbarn(edges),L=[],ms=n=>n&&n.start?Date.parse(n.start):NaN,nr=n=>n._nr||n.name,um=n=>(nb[n.id]||[]).map(i=>byId[i]).filter(Boolean);
  let ref=-Infinity;nodes.forEach(n=>{if(/^t(SI|BA|ZN|TA|CT)$/.test(n.type)&&isFinite(ms(n)))ref=Math.max(ref,ms(n))});if(!isFinite(ref))ref=Date.now();
- const add=(prio,rolle,signal,text,ids,beleg,t)=>L.push({prio,rolle,signal,text,ids:[...new Set(ids.filter(Boolean))],beleg,t:isFinite(t)?crmIso(t):undefined});
+ const add=(prio,rolle,signal,text,ids,beleg,t)=>L.push({quelle:'Regel',prio,rolle,signal,text,ids:[...new Set(ids.filter(Boolean))],beleg,t:isFinite(t)?crmIso(t):undefined});
  const maxT=L2=>Math.max(...L2.map(ms).filter(isFinite));
  // Auftrag über Budget
  nodes.filter(n=>n.type==='tCT'&&n.warnung).forEach(c=>add(2,'Projektleitung','über Budget','Projekt '+nr(c)+': Mehraufwand klären – Nachtrag anbieten oder Budget anpassen',[c.id],c.warnung,ms(c)));
@@ -1203,6 +1230,39 @@ function crmMassnahmen(nodes,edges,byId){const R=CRM_REGELN,nb=crmNachbarn(edges
   add(2,'Vertrieb',f.length?'Presales unbezahlt':'Presales ohne Auftrag',(b._presales?'Presales ':'Arbeitszeit ohne Abrechnung ')+nr(b)+': '+crmH(u)+' unbezahlt'+(f.length?' (Folgeauftrag '+f.map(nr).join(', ')+')':' ohne Folgeauftrag')+' – Presales-Budget vereinbaren, Aufwand begrenzen',[b.id,...f.map(c=>c.id)],
    'Arbeitszeit '+crmH(b._zaw)+', abrechenbar '+crmH(b._zh)+(isFinite(b._von)?', '+crmIso(b._von)+' bis '+crmIso(b._bis):''),b._bis)});
  return L.sort((a,b)=>a.prio-b.prio||(b.t||'').localeCompare(a.t||''))}
+// Version 24: Fakten für den KI-Agenten (docs/agent-kundenanalyse.md) – Zahlen rechnet 4Deep, der Agent deutet
+function crmFaktenVorher(nodes,edges,byId){const zuBS={},zuSII={},siiSI={};
+ edges.forEach(e=>{const f=byId[e.from];if(!f)return;if(e.type==='billing'&&f.type==='tBA')zuBS[e.from]=e.to;if(e.type==='abgerechnet')zuSII[e.from]=e.to;if(e.type==='position'&&f.type==='tSII')siiSI[e.from]=e.to});
+ const J={};nodes.filter(n=>n.type==='tBA').forEach(n=>{const bs=zuBS[n.id];if(!bs)return;const y=(n.start||'').slice(0,4)||'ohne Datum',k=bs+'|'+y,x=J[k]=J[k]||{bs,jahr:y,h:0,aw:0,n:0,si:new Set()};
+  x.h+=isFinite(n._h)?n._h:0;x.aw+=isFinite(n._aw)?n._aw:0;x.n++;const si=zuSII[n.id]&&siiSI[zuSII[n.id]];if(si)x.si.add(si)});
+ const F=[],ges=new Set(),txt=(n,feld,v,max)=>{if(typeof v!=='string')return;const t=v.replace(/\s+/g,' ').trim();if(t.length<4)return;const k=n.type+'|'+t;if(ges.has(k))return;ges.add(k);
+  F.push({nr:n._nr||n.id,typ:(CRM_TYPEN[n.type]||{}).label||n.type,datum:(n.start||'').slice(0,10)||undefined,feld,text:t.length>max?t.slice(0,max)+' …':t})};
+ nodes.forEach(n=>{const d=n._d||{};if(n.type==='tBA')return;if(n.type==='tTA')txt(n,'Titel',d.cTitle,300);if(n.type==='tPE')txt(n,'Grund',d.cArchReason,300);if(/^t(OF|OFI|CT|CTI|BS|TA|SI|CO)$/.test(n.type))txt(n,'Beschreibung',d.cDesc,800)});
+ let rest=CRM_FAKTEN_ZEICHEN;F.forEach(f=>rest-=f.text.length);
+ nodes.filter(n=>n.type==='tBA').sort((a,b)=>(a.start||'').localeCompare(b.start||'')).forEach(n=>{const d=n._d||{};['cDesc','cComment'].forEach(k=>{if(rest>0){const l=F.length;txt(n,k==='cDesc'?'Tätigkeit':'Kommentar',d[k],300);if(F.length>l)rest-=F[F.length-1].text.length}})});
+ return{J,F}}
+const CRM_FAKTEN_ZEICHEN=200000;
+function crmFakten(nodes,edges,byId,massnahmen,V){const nr=n=>n?n._nr||n.id:undefined,dt=n=>(n.start||'').slice(0,10)||undefined,z=x=>isFinite(x)?Math.round(x*100)/100:undefined,
+ hist=n=>n._states?n._states.map(x=>({status:CRM_STATUS[x.n]||x.n,datum:crmIso(x.t)})):undefined,tit=n=>String((n._d&&n._d.cTitle)||n.name).trim(),ms=n=>n.start?Date.parse(n.start):NaN,
+ nb=crmNachbarn(edges),um=n=>(nb[n.id]||[]).map(i=>byId[i]).filter(Boolean),typ=t=>nodes.filter(n=>n.type===t),nachDatum=(a,b)=>String(a.datum||'').localeCompare(String(b.datum||''));
+ const kopf={};edges.forEach(e=>{if(e.type==='position')(kopf[e.to]=kopf[e.to]||[]).push(byId[e.from])});
+ const co=typ('tCO'),ohne=/^(Nummer|Status|Angelegt|Zuletzt geändert|Beschreibung)$/;
+ const alerts=[];nodes.forEach(n=>{let a=n._d&&n._d.cAlerts;if(typeof a==='string'){try{a=JSON.parse(a)}catch(_){a=null}}if(Array.isArray(a))a.forEach(x=>x&&alerts.push({nr:nr(n),typ:(CRM_TYPEN[n.type]||{}).label,kopf:x.header,text:x.message,stufe:x.status}))});
+ return{schema:'4deep-fakten/1',erzeugt:new Date().toISOString().slice(0,10),stichtag:co[0]&&co[0].meta['Kennzahlen zum'],
+  hinweis:'Alle Zahlen hat 4Deep aus dem CRM-Export berechnet (netto, €, Stunden). Abrechenbare Stunden = cNetDeci, Arbeitszeit = cWorkingTime der Zeitnachweise. Verknüpfungen im Export können unvollständig sein (z. B. Zeitnachweis → Rechnung). signale = regelbasierte Handlungsliste von 4Deep.',
+  firmen:co.map(c=>({nr:nr(c),name:tit(c),kennzahlen:Object.fromEntries(Object.entries(c.meta).filter(([k])=>!ohne.test(k)))})),
+  rechnungen:typ('tSI').map(n=>({nr:nr(n),datum:dt(n),titel:tit(n),netto:z(n.betrag),ek:z(n._ek),marge:n.meta.Marge})).sort(nachDatum),
+  projekte:typ('tCT').map(c=>({nr:nr(c),titel:tit(c),status:c.meta.Status,datum:dt(c),angebot:c.meta.Angebot,billingSheets:c.meta['Billing Sheets'],budget_h:z(c._budget),geleistet_h:z(c._ist),arbeitszeit_h:z(c._aw),
+   ausschoepfung_prozent:z(c._q),umsatz:z(c._um),deckungsbeitrag:z(c._db),marge:c.meta.Marge,warnung:c.warnung,statusHistorie:hist(c),
+   positionen:(kopf[c.id]||[]).filter(p=>p&&p.type==='tCTI').map(p=>({nr:nr(p),titel:tit(p),menge:z(p._menge),betrag:z(p.betrag)}))})).sort(nachDatum),
+  billingSheets:typ('tBS').map(b=>{const satz=b._satz;return{nr:nr(b),titel:tit(b),status:b.meta.Status,stundensatz:z(satz),soll_h:z(crmZahl(b._d.cTargetHour)),presales:!!b._presales,auftraege:(b._ct||[]).map(nr),
+   abrechenbar_h:z(b._zh),arbeitszeit_h:z(b._zaw),jahre:Object.values(V.J).filter(x=>x.bs===b.id).sort((a,c)=>a.jahr.localeCompare(c.jahr)).map(x=>{const R=[...x.si].map(i=>byId[i]).filter(Boolean),e=R.reduce((a,r)=>a+(isFinite(r.betrag)?r.betrag:0),0);
+    return{jahr:x.jahr,abrechenbar_h:z(x.h),arbeitszeit_h:z(x.aw),zeitnachweise:x.n,verknuepfteRechnungen:R.map(nr),rechnungen_netto:z(e),bezahlt_h_rechnerisch:satz>0?z(e/satz):undefined}})}}),
+  angebote:typ('tOF').map(o=>({nr:nr(o),revision:o.meta.Revision,titel:tit(o),datum:dt(o),status:o.meta.Status,wert:z(o.betrag),auftrag:o.meta.Auftrag,tageBisAuftrag:o.meta['Tage bis Auftrag'],statusHistorie:hist(o)})).sort(nachDatum),
+  aufgaben:typ('tTA').map(t=>({nr:nr(t),titel:tit(t),status:t.meta.Status,start:dt(t),erledigt:t.meta['Erledigt am'],wichtigkeit:t.meta.Wichtigkeit})).sort((a,b)=>String(a.start||'').localeCompare(String(b.start||''))),
+  kontakte:typ('tPE').map(p=>{const U=um(p).filter(x=>/^t(TA|CT|OF|BA|ZN|SI)$/.test(x.type)),t=Math.max(...U.map(ms).filter(isFinite));const st=(p._states||[]).filter(x=>/inactive/i.test(x.n)).map(x=>x.t);
+   return{nr:nr(p),name:tit(p),position:String(p._d.cPos||'').trim()||undefined,status:p.meta.Status,inaktivSeit:st.length?crmIso(Math.max(...st)):undefined,grund:String(p._d.cArchReason||'').replace(/\s+/g,' ').trim()||undefined,vorgaenge:U.length,zuletzt:isFinite(t)?crmIso(t):undefined}}),
+  alerts,signale:massnahmen,freitexte:V.F}}
 // Kennzahlen je Firma: Rechnungen, Batches (über Billing Sheets) und Angebote, die mit der Firma verbunden sind; Stichtag = letztes Datum im Export
 function crmKennzahlen(nodes,edges,byId){const nb=crmNachbarn(edges);
  const ms=n=>n.start?Date.parse(n.start):NaN;let ref=-Infinity;nodes.forEach(n=>{if(/^t(SI|BA|ZN)$/.test(n.type)&&isFinite(ms(n)))ref=Math.max(ref,ms(n))});if(!isFinite(ref))return;
