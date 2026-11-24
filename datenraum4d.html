@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="25">
+<meta name="4deep-darstellung" content="26">
 <title>4Deep Machbarkeitsstudie</title>
 <!-- 4Deep, Stufe 1 (Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -87,6 +87,8 @@ html.stereo .pn,html.stereo #st,html.stereo #tip,html.stereo #prof,html.stereo #
  <div class="cb"><input type="checkbox" id="glanz" checked><span>Glanz und Reifegrade</span></div>
  <label>Farbschema</label><select id="fs" title="Hintergrund, Licht und Objektfarben"></select>
  <label>Oberfläche</label><select id="of" title="Materialwirkung der Objekte"><option value="satin">Satin (seidenmatt)</option><option value="metall">Metall (eloxiert)</option><option value="lack">Lack (glänzend, bisher)</option></select>
+ <label>Symbol Person</label><select id="syp" title="Form für Personen (Typen mit Form „bust“)"></select>
+ <label>Symbol Firma</label><select id="syf" title="Form für Firmen (Typen mit Form „gebaeude“)"></select>
  <button id="lt">Leistung messen (5 s Drehung)</button>
  <button id="st3" title="3D-Fernseher: Side-by-Side oder Top-and-Bottom, Vollbild · T Augen tauschen · B SBS/TB · + − Tiefe · Bild↑↓ Ebene · Esc Ende">3D-TV (Strg+Umschalt+3)</button>
  <details id="smd"><summary>SpaceMouse (3Dconnexion)</summary>
@@ -100,7 +102,7 @@ html.stereo .pn,html.stereo #st,html.stereo #tip,html.stereo #prof,html.stereo #
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 25 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 26 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="chr"></div><div class="pn" id="mas"></div><div class="pn" id="prof"></div><div id="profb"></div>
@@ -154,8 +156,75 @@ const heuteEbene=new T.Mesh(new T.PlaneGeometry(1,1),new T.MeshBasicMaterial({co
 let dirty=true;const neu=()=>{dirty=true};
 
 // ---------- Formen ----------
+// Version 26: figürliche Symbole aus mehreren Teilen; jedes Teil hat eine eigene Helligkeit (Vertexfarbe, wird mit der Objektfarbe multipliziert)
+// Auswahl im Menü „Darstellung“: Symbol Person (Form 'bust') und Symbol Firma (Form 'gebaeude'), Zustand bleibt im Browser
+const PERSON_FORMEN={figur:'Spielfigur',bueste:'Büste',puppe:'Gliederpuppe',avatar:'Avatar',pille:'Pille (bisher)'};
+const FIRMA_FORMEN={gehry:'Gebäude (Gehry-Stil)',wright:'Gebäude (Wright-Stil)',box:'Würfel (bisher)'};
+let SYM_PERSON='figur',SYM_FIRMA='gehry';try{const a=localStorage.getItem('4d_sym_person'),b=localStorage.getItem('4d_sym_firma');if(PERSON_FORMEN[a])SYM_PERSON=a;if(FIRMA_FORMEN[b])SYM_FIRMA=b}catch(_){}
+function teile(L){let n=0;const G=L.map(([g,h])=>{const x=g.index?g.toNonIndexed():g;if(x!==g)g.dispose();if(!x.attributes.normal)x.computeVertexNormals();n+=x.attributes.position.count;return[x,h]});
+ const P=new Float32Array(n*3),NO=new Float32Array(n*3),U=new Float32Array(n*2),C=new Float32Array(n*3);let o=0;
+ G.forEach(([g,h])=>{const p=g.attributes.position,u=g.attributes.uv,c=p.count;P.set(p.array,o*3);NO.set(g.attributes.normal.array,o*3);if(u)U.set(u.array,o*2);
+  for(let i=0;i<c;i+=3){let v=typeof h==='function'?h((p.getX(i)+p.getX(i+1)+p.getX(i+2))/3,(p.getY(i)+p.getY(i+1)+p.getY(i+2))/3,(p.getZ(i)+p.getZ(i+1)+p.getZ(i+2))/3):h;if(!Array.isArray(v))v=[v,v,v];
+   for(let k=0;k<3;k++)C.set(v,(o+i+k)*3)}o+=c;g.dispose()});
+ const r=new T.BufferGeometry();r.setAttribute('position',new T.BufferAttribute(P,3));r.setAttribute('normal',new T.BufferAttribute(NO,3));r.setAttribute('uv',new T.BufferAttribute(U,2));r.setAttribute('color',new T.BufferAttribute(C,3));return r}
+// Form in die Kugel mit Radius R um den Ursprung einpassen (wie die übrigen Formen, Kugel = 1)
+function einpassen(g,R){g.computeBoundingBox();const b=g.boundingBox,m=new T.Vector3();b.getCenter(m);g.translate(-m.x,-m.y,-m.z);g.computeBoundingSphere();const f=R/g.boundingSphere.radius;g.scale(f,f,f);g.computeBoundingSphere();return g}
+const Vy=new T.Vector3(0,1,0);
+function glied(a,b,r,seg){const A=new T.Vector3(...a),B=new T.Vector3(...b),d=B.clone().sub(A),l=d.length();const g=new T.CapsuleGeometry(r,Math.max(.001,l),2,seg);
+ g.applyQuaternion(new T.Quaternion().setFromUnitVectors(Vy,d.normalize()));const m=A.add(B).multiplyScalar(.5);g.translate(m.x,m.y,m.z);return g}
+function kugel(r,x,y,z,seg,sx,sy,sz){const g=new T.SphereGeometry(r,seg,Math.max(6,seg*.66|0));g.scale(sx||1,sy||1,sz||1);g.translate(x,y,z);return g}
+function drehteil(P,seg){return new T.LatheGeometry(P.map(p=>new T.Vector2(p[0],p[1])),seg)}
+function biege(g,f){const p=g.attributes.position,v=new T.Vector3();for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i);f(v);p.setXYZ(i,v.x,v.y,v.z)}g.computeVertexNormals();return g}
+function rundRechteck(w,h,r,kerbe){const s=new T.Shape(),x=-w/2,y=-h/2;s.moveTo(x+r,y);
+ if(kerbe){s.lineTo(-kerbe,y);s.quadraticCurveTo(0,y+kerbe*1.6,kerbe,y)}   // Nasenausschnitt
+ s.lineTo(x+w-r,y);s.quadraticCurveTo(x+w,y,x+w,y+r);s.lineTo(x+w,y+h-r);s.quadraticCurveTo(x+w,y+h,x+w-r,y+h);s.lineTo(x+r,y+h);s.quadraticCurveTo(x,y+h,x,y+h-r);s.lineTo(x,y+r);s.quadraticCurveTo(x,y,x+r,y);return s}
+function symbolGeo(form,grob){const q=grob?6:12;let L;
+ switch(form){
+  case'figur':   // Spielfigur: Sockel, Körper mit Schultern, Hals, Kopf
+   L=[[drehteil([[0,-1.05],[.62,-1.05],[.66,-.97],[.6,-.9],[.42,-.84],[.37,-.5],[.42,-.1],[.52,.1],[.55,.2],[.48,.3],[.3,.36],[.15,.38],[.14,.46],[0,.46]],q*2),1],[kugel(.34,0,.74,0,q*2),1]];break;
+  case'bueste':   // Büste auf Sockel: Schultern, Hals, Kopf mit Nase
+   L=[[drehteil([[0,-1],[.46,-1],[.46,-.9],[.36,-.84],[.3,-.66],[0,-.66]],q*2),.62],
+    [drehteil([[0,-.7],[.2,-.7],[.5,-.58],[.68,-.4],[.7,-.24],[.56,-.08],[.26,0],[0,.02]],q*2).scale(1,1,.6),1],[new T.CylinderGeometry(.15,.18,.36,q).translate(0,.12,0),1],
+    [kugel(.34,0,.48,0,q*2,.86,1.05,.96),1],[new T.ConeGeometry(.06,.14,6).rotateX(Math.PI/2).translate(0,.45,.36),1]];break;
+  case'puppe':{   // Gliederpuppe (Künstlerpuppe) in leichter Schrittstellung: Glieder hell, Gelenke etwas dunkler
+   const r=.075,J=.92,s=Math.max(5,q-2),G=[];const k=(x,y,z,rr)=>G.push([kugel(rr||r*1.25,x,y,z,s),J]);const l=(a,b,rr)=>G.push([glied(a,b,rr||r,s),1]);
+   G.push([kugel(.2,0,1.02,0,q,.9,1.12,.95),1]);l([0,.74,0],[0,.84,0],.055);
+   G.push([drehteil([[0,.22],[.15,.24],[.24,.42],[.27,.62],[.2,.72],[0,.74]],q),1]);G.push([kugel(.17,0,.12,0,s,1.15,.75,.8),1]);
+   k(-.29,.66,0);k(.29,.66,0);l([-.29,.66,0],[-.37,.34,.03]);l([.29,.66,0],[.39,.36,-.05]);k(-.37,.34,.03);k(.39,.36,-.05);
+   l([-.37,.34,.03],[-.34,.03,.12]);l([.39,.36,-.05],[.42,.06,-.08]);k(-.34,.03,.12,.06);k(.42,.06,-.08,.06);
+   k(-.12,.04,0);k(.12,.04,0);l([-.12,.04,0],[-.15,-.45,.1],.085);l([.12,.04,0],[.14,-.46,-.08],.085);k(-.15,-.45,.1,.095);k(.14,-.46,-.08,.095);
+   l([-.15,-.45,.1],[-.15,-.92,-.02],.075);l([.14,-.46,-.08],[.15,-.93,-.14],.075);
+   G.push([new T.BoxGeometry(.13,.07,.24).translate(-.15,-.98,.04),J]);G.push([new T.BoxGeometry(.13,.07,.24).translate(.15,-.99,-.08),J]);
+   G.push([new T.CylinderGeometry(.38,.44,.07,q*2).translate(0,-1.06,0),.6]);L=G;break}
+  case'avatar':   // Avatar wie das Benutzersymbol: Kopf über gerundeten Schultern
+   L=[[kugel(.4,0,.55,0,q*2),1],[drehteil([[0,-.75],[.78,-.75],[.86,-.68],[.88,-.5],[.82,-.25],[.66,-.05],[.42,.06],[0,.1]],q*3),1]];break;
+  case'pille':L=[[new T.CapsuleGeometry(.6,.8,6,14),1]];break;
+  case'gehry':{   // Gebäude im Stil von Frank Gehry: gedrehter Turm mit welliger Fassade, geschwungene Metallschalen, gläsernes Atrium
+   const fen=(x,y,z)=>Math.floor(y*10+20)%2?1:.45;
+   const turm=biege(new T.BoxGeometry(.9,2.4,.8,4,grob?12:24,4).translate(0,1.2,0),v=>{const a=v.y*.32,w=Math.sin(v.y*2.6+v.x*3)*.09,x=v.x+w,z=v.z;v.x=x*Math.cos(a)-z*Math.sin(a);v.z=x*Math.sin(a)+z*Math.cos(a);v.x*=1+.12*Math.sin(v.y*1.3)});
+   const schale=(b,h,r0,a0,y0,neig)=>biege(new T.BoxGeometry(b,h,.09,grob?10:22,grob?4:8,1),v=>{const a=a0+v.x/r0,r=r0+v.z+.25*Math.sin(v.y*3+v.x*2);v.y=y0+v.y*(1+.35*Math.cos(v.x*2.2))+neig*v.x;v.x=Math.sin(a)*r;v.z=Math.cos(a)*r});
+   L=[[turm,fen],[schale(2.2,.9,1.05,.6,.55,.18),1],[schale(1.6,.7,.8,-1.9,.42,-.22),.92],[schale(1.2,.6,1.3,2.6,.95,.3),.96],
+    [new T.CylinderGeometry(.42,.5,.8,q*2).translate(.55,.4,.62),.32],[new T.CylinderGeometry(1.3,1.3,.06,q*3).translate(.1,-.03,.1),.5]];break}
+  case'wright':{   // Gebäude im Stil von Frank Lloyd Wright (Haus über dem Wasserfall): gekreuzte Betonplatten, Steinkamin, Fensterbänder
+   const stein=(x,y,z)=>Math.floor(y*12+40)%2?.5:.6;const B=(w,h,d,x,y,z,c)=>[new T.BoxGeometry(w,h,d).translate(x,y,z),c];
+   L=[B(.9,.5,1.4,-.2,-.25,0,.38),B(2.6,.16,1.3,.2,.12,.15,1),B(2.2,.28,.06,.15,.34,.78,.22),B(1.3,.16,2.4,-.1,.56,.25,1),B(.06,.26,2.1,.52,.77,.25,.22),
+    B(1.9,.15,1.0,.35,.98,-.1,1),B(1.5,.24,.06,.35,1.18,.38,.22),B(.36,2.0,.36,-.62,.8,-.35,stein),B(.55,.1,.7,-.1,1.3,-.25,1),
+    [new T.BoxGeometry(2.8,.06,1.8).translate(.6,-.47,.6),.3]];break}
+  case'vrbrille':{   // eigenständige VR-Brille: Frontgehäuse mit dunklem Visier, Kameras, Gesichtspolster, Kopfband
+   const ex=(s,d,bv)=>{const g=new T.ExtrudeGeometry(s,{depth:d,bevelEnabled:true,bevelThickness:bv,bevelSize:bv,bevelSegments:grob?1:3,curveSegments:grob?4:8});return g};
+   const gh=ex(rundRechteck(1.9,1.05,.38),.5,.12).translate(0,0,-.25),vis=ex(rundRechteck(1.62,.78,.28),.04,.03).translate(0,0,.36);
+   const kam=(x,y)=>[new T.CylinderGeometry(.06,.06,.06,q).rotateX(Math.PI/2).translate(x,y,.42),.85];
+   const pol=ex(rundRechteck(1.7,.92,.36,.2),.25,.05).translate(0,0,-.62);
+   const band=new T.TorusGeometry(1,.07,6,grob?24:44);band.rotateX(Math.PI/2);band.scale(.95,2.4,1.12);band.translate(0,0,-1.62);
+   const oben=new T.TorusGeometry(1.15,.06,6,grob?12:24,Math.PI);oben.rotateY(Math.PI/2);oben.scale(1,.55,.98);oben.translate(0,.2,-1.62);
+   L=[[gh,1],[vis,.12],kam(-.68,.27),kam(.68,.27),kam(-.68,-.27),kam(.68,-.27),[pol,.14],[band,.28],[oben,.28]];break}
+  default:return null}
+ const g=einpassen(teile(L),{vrbrille:1.3,gehry:1.35,wright:1.35,puppe:1.45,pille:1}[form]||1.15);
+ if(form==='vrbrille'){g.rotateX(.18);g.rotateY(-.75)}else if(form==='gehry')g.rotateY(-.5);else if(form==='wright')g.rotateY(.6);else g.rotateY(-.2);
+ return g}
 const GEO={};
 function geo(form,grob){
+ if(form==='bust')form=SYM_PERSON;else if(form==='gebaeude')form=SYM_FIRMA;
  const key=form+(grob?'~':'');if(GEO[key])return GEO[key];let g;
  switch(form){
   case'box':g=new T.BoxGeometry(1.5,1.5,1.5);break;
@@ -173,7 +242,7 @@ function geo(form,grob){
   case'muenze':{const P=[[0,-.12],[.4,-.12],[.42,-.15],[.48,-.15],[.5,-.12],[.7,-.12],[.74,-.17],[.86,-.17],[.92,-.15],[.96,-.1],[.96,.1],[.92,.15],[.86,.17],[.74,.17],[.7,.12],[.5,.12],[.48,.15],[.42,.15],[.4,.12],[0,.12]].map(p=>new T.Vector2(p[0]*1.15,p[1]*1.15));
    g=new T.LatheGeometry(P,48);g.rotateX(Math.PI/2);g.rotateY(.5);g.rotateX(-.3);break}
   case'saphir':g=new T.LatheGeometry([[0,-.95],[1.05,.02],[1.05,.1],[.66,.45],[0,.45]].map(p=>new T.Vector2(p[0],p[1])),8);g=g.toNonIndexed();g.computeVertexNormals();g.rotateZ(.2);break;
-  default:g=grob?new T.IcosahedronGeometry(1,1):new T.SphereGeometry(1,24,16);
+  default:g=symbolGeo(form,grob)||(grob?new T.IcosahedronGeometry(1,1):new T.SphereGeometry(1,24,16));
  }
  return GEO[key]=g;
 }
@@ -305,8 +374,8 @@ function baueMeshes(){
  const nachForm={};N.forEach(n=>{const k=n.form+'|'+n.stufe;(nachForm[k]=nachForm[k]||[]).push(n)});glanzAn=$('glanz').checked&&N.length<=GLANZ_BIS;
  const schatten=$('schatten').checked&&N.length<=12000;
  Object.keys(nachForm).forEach(f=>{const liste=nachForm[f];
-  const [form,stufe]=f.split('|');const mat=material(stufe,form);
-  const mesh=new T.InstancedMesh(geo(form,N.length>5000),mat,liste.length);mesh.castShadow=schatten;mesh.receiveShadow=false;
+  const [form,stufe]=f.split('|');const mat=material(stufe,form),gg=geo(form,N.length>5000);if(gg.attributes.color)mat.vertexColors=true;
+  const mesh=new T.InstancedMesh(gg,mat,liste.length);mesh.castShadow=schatten;mesh.receiveShadow=false;
   mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);mesh.frustumCulled=false;   // r149: Hüllkugel nur der Grundform, daher nicht wegschneiden
   liste.forEach((n,k)=>{n.g=gruppen.length;n.k=k;mesh.setColorAt(k,n.col)});
   mesh.userData.liste=liste;scene.add(mesh);gruppen.push({mesh,liste});
@@ -334,13 +403,13 @@ const z=String(o.state||(o.meta&&(o.meta.Reifegrad||o.meta.Status||o.meta.Maturi
 // Eiskristall-Textur (Version 14): heller, leicht bläulicher Grund mit weißen sechsarmigen Kristallen; wird mit der Objektfarbe multipliziert
 let EIS=null;
 function eisTextur(){if(EIS)return EIS;const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d'),sAlt=s;s=777;
- g.fillStyle='#b2c6da';g.fillRect(0,0,256,256);
- for(let i=0;i<260;i++){g.fillStyle='rgba(255,255,255,'+(.05+rnd()*.12)+')';g.beginPath();g.arc(rnd()*256,rnd()*256,2+rnd()*10,0,7);g.fill()}   // Reif
+ g.fillStyle='#d3e2ef';g.fillRect(0,0,256,256);   // Version 26: deutlich heller (Reifschicht), Kristalle mit bläulichem Rand
+ for(let i=0;i<420;i++){g.fillStyle='rgba(255,255,255,'+(.12+rnd()*.25)+')';g.beginPath();g.arc(rnd()*256,rnd()*256,2+rnd()*10,0,7);g.fill()}   // Reif
  g.lineCap='round';
- const kristall=(x,y,R)=>{g.save();g.translate(x,y);g.rotate(rnd()*Math.PI);for(let k=0;k<6;k++){g.rotate(Math.PI/3);g.lineWidth=Math.max(1.2,R*.09);g.beginPath();g.moveTo(0,0);g.lineTo(R,0);
+ const kristall=(x,y,R)=>{g.save();g.translate(x,y);g.rotate(rnd()*Math.PI);for(let k=0;k<6;k++){g.rotate(Math.PI/3);g.lineWidth=Math.max(1.6,R*.13);g.beginPath();g.moveTo(0,0);g.lineTo(R,0);
    for(let a=1;a<=3;a++){const p=R*a/4,l=R*(.42-a*.08);g.moveTo(p,0);g.lineTo(p+l*.6,l*.8);g.moveTo(p,0);g.lineTo(p+l*.6,-l*.8)}g.stroke()}g.restore()};
- for(let i=0;i<18;i++){const x=rnd()*256,y=rnd()*256,R=10+rnd()*26;g.strokeStyle='rgba(255,255,255,'+(.75+rnd()*.25)+')';
-  for(const dx of[-256,0,256])for(const dy of[-256,0,256])if(x+dx>-R&&x+dx<256+R&&y+dy>-R&&y+dy<256+R){const s0=s;kristall(x+dx,y+dy,R);s=s0}rnd()}   // nahtlos kachelbar
+ for(let i=0;i<18;i++){const x=rnd()*256,y=rnd()*256,R=10+rnd()*26;rnd();
+  for(const dx of[-256,0,256])for(const dy of[-256,0,256])if(x+dx>-R&&x+dx<256+R&&y+dy>-R&&y+dy<256+R){const s0=s;g.strokeStyle='rgba(70,110,150,.55)';g.shadowColor='rgba(40,80,120,.6)';g.shadowBlur=3;kristall(x+dx,y+dy,R);s=s0;g.shadowBlur=0;g.strokeStyle='#fff';kristall(x+dx,y+dy,R*.97);s=s0}rnd()}   // nahtlos kachelbar
  EIS=new T.CanvasTexture(c);EIS.encoding=T.sRGBEncoding;EIS.wrapS=EIS.wrapT=T.RepeatWrapping;EIS.repeat.set(2,1);EIS.anisotropy=4;s=sAlt;return EIS}
 let OBERFLAECHE='satin';try{const v=localStorage.getItem('4d_oberflaeche');if(/^(satin|metall|lack)$/.test(v))OBERFLAECHE=v}catch(_){}
 // Körnung: feines Rauschen als Rauheitskarte (gegen den glatten Kunststoff-Eindruck)
@@ -356,13 +425,13 @@ function material(stufe,form){
  // Version 23: Oberfläche Satin (seidenmatt, deckend, feine Körnung) bzw. Metall (eloxiert); Lack = bisheriger Glanz
  if(OBERFLAECHE!=='lack'){const M=OBERFLAECHE==='metall',Q={color:0xffffff,roughnessMap:koernung(),metalness:M?.55:.04,roughness:M?.42:.62,envMapIntensity:M?.9:.5,clearcoat:0,sheen:M?0:.25,sheenRoughness:.8,sheenColor:0xffffff};
   if(stufe==='kristall')Object.assign(Q,{metalness:M?.7:.2,roughness:M?.22:.26,clearcoat:M?0:.25,clearcoatRoughness:.3,envMapIntensity:M?1.1:.8});
-  else if(stufe==='glanz')Object.assign(Q,{map:eisTextur(),roughness:M?.35:.45,envMapIntensity:.7});
+  else if(stufe==='glanz')Object.assign(Q,{map:eisTextur(),emissiveMap:eisTextur(),emissive:0x45535f,metalness:M?.3:0,roughness:M?.35:.45,envMapIntensity:.8,sheen:1,sheenRoughness:.35,sheenColor:0xeaf6ff});   // Version 26: Reifschicht
   else if(stufe==='roh')Object.assign(Q,{metalness:0,roughness:.95,sheen:0,envMapIntensity:.25});   // offen: stumpf und deckend (kein Gummibärchen-Effekt)
   else if(stufe==='alt')Object.assign(Q,{metalness:0,roughness:.8,sheen:0,envMapIntensity:.25,transparent:true,opacity:.5});
   return new T.MeshPhysicalMaterial(Q)}
  const P={color:0xffffff,metalness:.08,roughness:.32,clearcoat:.7,clearcoatRoughness:.18,envMapIntensity:.6};
  if(stufe==='kristall')Object.assign(P,{metalness:.15,roughness:.04,clearcoat:1,clearcoatRoughness:.03,iridescence:.9,iridescenceIOR:1.35,iridescenceThicknessRange:[150,600],envMapIntensity:1.5,transparent:true,opacity:.88,specularIntensity:1});
- else if(stufe==='glanz')Object.assign(P,{map:eisTextur(),metalness:.1,roughness:.3,clearcoat:1,clearcoatRoughness:.12,envMapIntensity:.9});   // Version 14: Eiskristalle statt reinem Glanz
+ else if(stufe==='glanz')Object.assign(P,{map:eisTextur(),emissiveMap:eisTextur(),emissive:0x45535f,metalness:.1,roughness:.3,clearcoat:1,clearcoatRoughness:.12,envMapIntensity:.9,sheen:1,sheenRoughness:.35,sheenColor:0xeaf6ff});   // Version 14: Eiskristalle statt reinem Glanz
  else if(stufe==='roh')Object.assign(P,{metalness:0,roughness:.9,clearcoat:0,envMapIntensity:.4,transparent:true,opacity:.78});
  else if(stufe==='alt')Object.assign(P,{metalness:0,roughness:.7,clearcoat:0,envMapIntensity:.3,transparent:true,opacity:.5});
  return new T.MeshPhysicalMaterial(P)}
@@ -719,7 +788,7 @@ function bezListe(n){const RT=(D&&D.relTypes)||{},kn=E.filter(k=>k.a===n||k.b===
  let h='';Object.keys(gr).sort((a,b)=>gr[b].length-gr[a].length).forEach(g=>{const L=gr[g];h+='<div class="bzg">'+esc(g)+' · '+L.length+'</div>'+L.slice(0,100).map(k=>{const o2=k.a===n?k.b:k.a;
   return'<div class="it" data-i="'+o2.i+'">'+(k.a===n?'→':'←')+' '+esc(o2.name)+' <span>'+esc((TY[o2.ty]||{}).label||o2.ty)+'</span></div>'}).join('')+(L.length>100?'<div class="bzg">… und '+(L.length-100)+' weitere</div>':'')});
  return'<details class="bz"'+(prof.auf?' open':'')+'><summary>Beziehungen ('+kn.length+')</summary><div class="bzl">'+h+'</div></details>'}
-const FORMNAME={sphere:'Kugel',box:'Würfel',torus:'Torus',dodecahedron:'Dodekaeder',diamond:'Raute',octagon:'Achteck',triangle:'Dreieck',book:'Buch',folder:'Ordner',bust:'Büste',bar:'Balken',linie:'Linie',muenze:'Goldmünze',saphir:'Saphir'};
+const FORMNAME={sphere:'Kugel',box:'Würfel',torus:'Torus',dodecahedron:'Dodekaeder',diamond:'Raute',octagon:'Achteck',triangle:'Dreieck',book:'Buch',folder:'Ordner',bust:'Person',gebaeude:'Firma',vrbrille:'VR-Brille',figur:'Spielfigur',bueste:'Büste',puppe:'Gliederpuppe',avatar:'Avatar',pille:'Pille',gehry:'Gebäude (Gehry-Stil)',wright:'Gebäude (Wright-Stil)',bar:'Balken',linie:'Linie',muenze:'Goldmünze',saphir:'Saphir'};
 const bildAdr=u=>{if(typeof u!=='string')return'';u=u.trim();return u&&(/^(https?:|data:image\/|blob:)/i.test(u)||!/^[a-z][a-z0-9+.-]*:/i.test(u))?u:''};
 function profilAttr(n){const o=n.o,RT=(D&&D.relTypes)||{},meta=o.meta||{};
  const A=[['Name',n.name],['Typ',(TY[n.ty]||{}).label||n.ty],['ID',String(o.id)]];if(o.state)A.push(['Reifegrad',o.state+(n.stufe!=='normal'?' ('+STUFEN[n.stufe].replace(/^[^(]*\(|\)$/g,'')+')':'')]);
@@ -826,7 +895,9 @@ function schemaAnwenden(k){if(!FARBSCHEMATA[k])k='himmel';SCHEMA=k;const F=FARBS
  const g2=new T.GridHelper(2,40,F.gitter[0],F.gitter[1]);g2.material.transparent=true;g2.material.opacity=.45;g2.position.copy(gitter.position);g2.scale.copy(gitter.scale);g2.visible=gitter.visible;scene.remove(gitter);gitter.geometry.dispose();gitter=g2;scene.add(gitter);
  boden.material.opacity=F.schatten;document.body.dataset.schema=k;$('fs').value=k;
  if(N.length){N.forEach(n=>{n.col=schemaFarbe(kraeftig(farbe(n._cq)))});baueMeshes();faerben()}neu()}
-$('fs').innerHTML=Object.keys(FARBSCHEMATA).map(k=>'<option value="'+k+'">'+FARBSCHEMATA[k].name+'</option>').join('');$('fs').onchange=e=>schemaAnwenden(e.target.value);$('of').value=OBERFLAECHE;$('of').onchange=e=>{OBERFLAECHE=e.target.value;try{localStorage.setItem('4d_oberflaeche',OBERFLAECHE)}catch(_){}schemaAnwenden(SCHEMA)};schemaAnwenden(SCHEMA);
+$('fs').innerHTML=Object.keys(FARBSCHEMATA).map(k=>'<option value="'+k+'">'+FARBSCHEMATA[k].name+'</option>').join('');$('fs').onchange=e=>schemaAnwenden(e.target.value);$('syp').innerHTML=Object.keys(PERSON_FORMEN).map(k=>'<option value="'+k+'">'+PERSON_FORMEN[k]+'</option>').join('');$('syf').innerHTML=Object.keys(FIRMA_FORMEN).map(k=>'<option value="'+k+'">'+FIRMA_FORMEN[k]+'</option>').join('');$('syp').value=SYM_PERSON;$('syf').value=SYM_FIRMA;
+[['syp','4d_sym_person'],['syf','4d_sym_firma']].forEach(([id,ls])=>$(id).onchange=e=>{if(id==='syp')SYM_PERSON=e.target.value;else SYM_FIRMA=e.target.value;try{localStorage.setItem(ls,e.target.value)}catch(_){}Object.keys(GEO).forEach(k=>{GEO[k].dispose();delete GEO[k]});if(N.length){baueMeshes();faerben()}neu()});
+$('of').value=OBERFLAECHE;$('of').onchange=e=>{OBERFLAECHE=e.target.value;try{localStorage.setItem('4d_oberflaeche',OBERFLAECHE)}catch(_){}schemaAnwenden(SCHEMA)};schemaAnwenden(SCHEMA);
 $('kanten').onchange=()=>{matAlle=true;neu()};$('vergangen').onchange=zeitAnwenden;
 {const dr=$('dichte'),dw=$('dichtew');dr.value=DICHTE;dw.textContent=DICHTE;
  dr.oninput=()=>{dw.textContent=dr.value};
@@ -1023,7 +1094,7 @@ async function leseZip(f){
 
 // Objekttypen des CRM (Kürzel → Darstellung); unbekannte Kürzel erscheinen mit ihrem Kürzel
 const CRM_TYPEN={
- tCO:{label:'Firma',color:'#f4c430',shape:'box',size:3},
+ tCO:{label:'Firma',color:'#f4c430',shape:'gebaeude',size:3},
  tPE:{label:'Person',color:'#7451b0',shape:'bust',size:1.1},
  tAD:{label:'Adresse',color:'#66788f',shape:'diamond',size:.7},
  tAS:{label:'Dokument',color:'#66788f',shape:'book',size:.8},
@@ -1323,7 +1394,7 @@ function demoDaten(){
  ['Konzeptfreigabe','Designfreeze','Prototyp A','Erprobung Prototyp A','Prototyp B','Zertifizierung','Serienfreigabe','Produktionsstart'].forEach((m,k)=>{const te=T0+(60+k*75)*tag;
   add('ms'+k,'termin',m,te-45*tag,te,{Termin:d(te),Verantwortlich:personen[k%6]});nodes[nodes.length-1].state=te<heute-120*tag?'erledigt':'offen';
   edges.push({from:'ms'+k,to:'p',type:'termin',start:d(te-45*tag)});if(k)edges.push({from:'ms'+k,to:'ms'+(k-1),type:'folgt',start:d(te-45*tag)})});
- return{layout:'netz',types:{produkt:{label:'Produkt',color:'#f4c430',size:3,shape:'box'},baugruppe:{label:'Baugruppe',color:'#4f8cff',size:2,shape:'dodecahedron'},bauteil:{label:'Bauteil',color:'#3fbf7f',size:1},
+ return{layout:'netz',types:{produkt:{label:'Produkt',color:'#f4c430',size:3,shape:'vrbrille'},baugruppe:{label:'Baugruppe',color:'#4f8cff',size:2,shape:'dodecahedron'},bauteil:{label:'Bauteil',color:'#3fbf7f',size:1},
   zeichnung:{label:'Zeichnung',color:'#9bb2d1',size:.8,shape:'book'},issue:{label:'Issue',color:'#e63946',size:1,shape:'torus'},aufgabe:{label:'Aufgabe',color:'#17a2a2',size:1,shape:'octagon'},termin:{label:'Meilenstein',color:'#f08c00',size:1.3,shape:'diamond'},person:{label:'Person',color:'#b07cff',size:1.2,shape:'bust'}},
   relTypes:{struktur:{label:'Struktur',color:'#4f8cff',hierarchy:true},revision:{label:'Revision',color:'#ff9f1c',directed:true},zeichnung:{label:'Zeichnung',color:'#9bb2d1'},betrifft:{label:'betrifft',color:'#e63946'},zuweisung:{label:'zugewiesen',color:'#b07cff'},termin:{label:'Termin',color:'#f08c00'},folgt:{label:'folgt auf',color:'#f0b060',directed:true}},nodes,edges};
 }
