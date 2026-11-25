@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="42">
+<meta name="4deep-darstellung" content="43">
 <title>4Deep Machbarkeitsstudie</title>
 <!-- 4Deep, Stufe 1 (Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -122,7 +122,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 42 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 43 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="chr"></div><div class="pn" id="mas"></div><div class="pn" id="prof"></div><div id="profb"></div>
@@ -886,7 +886,7 @@ function treffer(e){const r=cv.getBoundingClientRect();mausV.set((e.clientX-r.le
  return best}
 let hoverZeit=0;
 function hover(e){const jetzt=performance.now();if(jetzt-hoverZeit<40)return;hoverZeit=jetzt;const n=treffer(e);if(n!==hov){hov=n;faerben();neu()}
- const tip=$('tip');if(n>=0){const o=N[n];tip.textContent=o.name+' · '+((TY[o.ty]||{}).label||o.ty)+(isFinite(o.t0)?' · '+zeitText(o.t0)+(isFinite(o.t1)?' – '+zeitText(o.t1):''):'');tip.style.display='block';tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY+12)+'px'}else{const k=trefferK(e);if(k){tip.textContent=kLabel(k)+': '+k.a.name+(k.dir?' → ':' – ')+k.b.name+' · Rechtsklick = Details';tip.style.display='block';tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY+12)+'px'}else tip.style.display='none'}}
+ const tip=$('tip');if(n>=0){const o=N[n];tip.textContent=o.name+' · '+((TY[o.ty]||{}).label||o.ty)+(isFinite(o.t0)?' · '+zeitText(o.t0)+(isFinite(o.t1)?' – '+zeitText(o.t1):''):'');tip.style.display='block';tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY+12)+'px'}else{const sk=(layout==='reise'||layout==='skyline')&&SKY?skyKoerper(e):null;if(sk&&sk.warn){tip.textContent=sk.mas?'P'+sk.mas.prio+' · '+(sk.mas.signal?sk.mas.signal+' · ':'')+String(sk.mas.text||'').slice(0,90)+' · Klick = Details':'Hinweise der Handlungsliste · Klick = Lagebericht dieser Firma';tip.style.display='block';tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY+12)+'px';return}const k=trefferK(e);if(k){tip.textContent=kLabel(k)+': '+k.a.name+(k.dir?' → ':' – ')+k.b.name+' · Rechtsklick = Details';tip.style.display='block';tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY+12)+'px'}else tip.style.display='none'}}
 // Version 30 (Wunsch des Nutzers): Infos zu Beziehungen wie 3Deep: Maus über der Beziehung = Kurzinfo, Klick/Rechtsklick = Profilkarte der Beziehung
 const kLabel=k=>String(k.e.label||(((D&&D.relTypes)||{})[k.e.type]||{}).label||k.e.type||'Beziehung');
 function kSicht(k){return $('kanten').checked&&layout!=='reise'&&k.a.s>.05&&k.b.s>.05&&!k.revAus&&!(GEL&&k.dir)&&!(isFinite(k.t0)&&k.t0>tCur)}
@@ -1024,9 +1024,10 @@ function skyline(L){while(skyG.children.length){const c=skyG.children.pop();c.ge
   const g=kzv(f,c.pfeil);let tp=null;if(isFinite(g)&&Math.abs(g)>=1){const auf=g>0,s=L*(1.1+Math.min(.8,Math.abs(g)/60));tp=trendPfeil(auf,s,x+w*.25,h+s*.6,z+w*.2);/* auf dem Dach rechts, neben dem Turm verdeckte er Nachbarn */tp.txt=(auf?'+':'−')+Math.round(Math.abs(g))+' %'}
   // Version 42: Hinweise der Handlungsliste als Warnschild (Dreieck mit „!“ und Anzahl) statt Fähnchen; Klick = Lagebericht dieser Firma
   const mf=M.filter(m=>m._f===firmenName(f)),p1=mf.filter(m=>m.prio===1).length,p2=mf.filter(m=>m.prio===2).length;
-  if(p1||p2){const st=new T.Mesh(new T.CylinderGeometry(L*.05,L*.05,L*1.3,6),new T.MeshStandardMaterial({color:0x5a6472}));const fx=x-w*.5+L*.45,fz=z+w*.5-L*.45;st.position.set(fx,h+L*.65,fz);skyG.add(st);
-   const ws=warnSchild(p1?1:2,p1+p2,L*1.7);ws.position.set(fx,h+L*1.9,fz);skyG.add(ws);SKY.koerper.push({m:ws,f,warn:true})}
-  SKY.info.push({f,x,z,h,v,p1,p2,tp,txt:[c.titelHoehe||c.hoehe,eur(v)].join(' ')+' · '+(c.farbe||'')+' '+((f.o.meta||{})[c.farbe]||'–')+(isFinite(g)?' · '+(g>=0?'↗ +':'↘ −')+Math.round(Math.abs(g))+' %':'')+(p1||p2?' · ⚠ '+(p1+p2)+' Hinweis'+(p1+p2>1?'e':''):'')});
+  // Version 43 (Wunsch des Nutzers): dezent – ein Viertel so groß, ohne Anzahl
+  if(p1||p2){const st=new T.Mesh(new T.CylinderGeometry(L*.018,L*.018,L*.5,6),new T.MeshStandardMaterial({color:0x5a6472}));const fx=x-w*.5+L*.3,fz=z-w*.5+L*.3;st.position.set(fx,h+L*.25,fz);skyG.add(st);
+   const ws=warnSchild(p1?1:2,0,L*.45);ws.position.set(fx,h+L*.62,fz);skyG.add(ws);SKY.koerper.push({m:ws,f,warn:true})}
+  SKY.info.push({f,x,z,h,v,p1,p2,tp,txt:[c.titelHoehe||c.hoehe,eur(v)].join(' ')+' · '+(c.farbe||'')+' '+((f.o.meta||{})[c.farbe]||'–')+(isFinite(g)?' · '+(g>=0?'↗ +':'↘ −')+Math.round(Math.abs(g))+' %':'')+(p1||p2?' · ⚠ Hinweise im Lagebericht':'')});
   SKY.ecken.push(new T.Vector3(x-w,0,z-w),new T.Vector3(x+w,h+L*4.2,z+w),new T.Vector3(x-w*2.2,h+L*3.4,z),new T.Vector3(x+w*2.2,h+L*3.4,z))});
  if(SKY_AUF.f&&F.includes(SKY_AUF.f))skyBuehne(L,A,(rows-1)/2*A*1.15+A*.9);else SKY_AUF={f:null,offen:new Set()};
  skyG.visible=true}
@@ -1041,11 +1042,17 @@ function trendPfeil(auf,s,x,y,z){const mat=new T.MeshStandardMaterial({color:auf
 function warnSchild(prio,anz,gr){const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d'),col=prio===1?'#d0302a':'#e0a020';
  g.lineJoin='round';g.beginPath();g.moveTo(64,10);g.lineTo(120,112);g.lineTo(8,112);g.closePath();g.fillStyle='#ffffff';g.fill();g.lineWidth=14;g.strokeStyle=col;g.stroke();
  g.fillStyle='#1d2430';g.font='bold 62px system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText('!',64,76);
- if(anz>1){g.beginPath();g.arc(104,28,22,0,7);g.fillStyle=col;g.fill();g.lineWidth=4;g.strokeStyle='#fff';g.stroke();g.fillStyle='#fff';g.font='bold 28px system-ui,sans-serif';g.fillText(anz>99?'99':String(anz),104,29)}
  const t=new T.CanvasTexture(c);t.encoding=T.sRGBEncoding;const sp=new T.Sprite(new T.SpriteMaterial({map:t,transparent:true,depthWrite:false,fog:false}));sp.scale.set(gr,gr,1);sp.renderOrder=15;return sp}
 function fokusFirma(f,still){FOKUS=f;N.forEach(n=>n.fokAus=!gehoertZu(n,f));$('fokb').style.display='';$('fokb').textContent='◀ Alle Firmen (jetzt: '+firmenName(f)+')';
- setzeLayout('netz',!still);$('ly').value='netz';if($('mas').style.display==='block'&&$('mas').dataset.art==='mas')massnahmenZeigen();else if($('mas').style.display==='block')lageberichtZeigen()}
-function fokusAus(){FOKUS=null;N.forEach(n=>n.fokAus=false);$('fokb').style.display='none';if(D&&D.skyline){setzeLayout('skyline',true);$('ly').value='skyline'}else{zeitAnwenden();neu()}if($('mas').style.display==='block'){if($('mas').dataset.art==='mas')massnahmenZeigen();else lageberichtZeigen()}}
+ setzeLayout('netz',!still);$('ly').value='netz';if($('mas').style.display==='block'&&$('mas').dataset.art==='mas')massnahmenZeigen();else if($('mas').style.display==='block'&&$('mas').dataset.art==='lage')lageberichtZeigen()}
+function fokusAus(){FOKUS=null;N.forEach(n=>n.fokAus=false);$('fokb').style.display='none';if(D&&D.skyline){setzeLayout('skyline',true);$('ly').value='skyline'}else{zeitAnwenden();neu()}if($('mas').style.display==='block'){if($('mas').dataset.art==='mas')massnahmenZeigen();else if($('mas').dataset.art==='lage')lageberichtZeigen()}}
+// Version 43 (Frage des Nutzers: was sagt das Schild?): ein Hinweis der Handlungsliste mit Begründung (Beleg), Rolle, Datum und Sprung zum Beleg
+function hinweisZeigen(m){const el=$('mas'),PN=['','hoch','mittel','niedrig'];el.dataset.art='hin';
+ el.innerHTML='<span class="x" id="masx">✕</span><h2>Hinweis · '+esc(m._f||'')+'</h2><div class="ev"><span class="p p'+m.prio+'" title="Priorität '+PN[m.prio]+'">P'+m.prio+'</span><span>'+(m.signal?'<b>'+esc(m.signal)+'</b> · ':'')+esc(m.text||'')+'</span>'+
+  (m.beleg?'<span class="w">Begründung: '+esc(m.beleg)+'</span>':'')+'<span class="w">'+[m.rolle?'für '+m.rolle:'',m.t?'Datum '+m.t:'',m.quelle==='KI'?'Quelle KI-Agent':'regelbasiert aus den Daten, fachlich prüfen'].filter(Boolean).map(esc).join(' · ')+'</span></div>'+
+  ((m.ids||[]).some(id=>byId[id])?'<button id="hinb" style="margin-top:8px">Zum Beleg im Raum</button> ':'')+'<button id="hinl" style="margin-top:8px">Lagebericht der Firma</button>';
+ el.style.display='block';$('masx').onclick=()=>{el.style.display='none'};if($('hinb'))$('hinb').onclick=()=>masSpringen(m);
+ $('hinl').onclick=()=>{const f=SKY&&SKY.F.find(x=>firmenName(x)===m._f);lageberichtZeigen(f||null)}}
 function lageberichtZeigen(nur){const c=D.skyline,F=nur?[nur]:skyFirmen(),M=masListe(),PN=['','hoch','mittel','niedrig'],el=$('mas');el.dataset.art='lage';
  const sum=F.reduce((a,f)=>a+(kzv(f,c.hoehe)>0?kzv(f,c.hoehe):0),0),p1=M.filter(m=>m.prio===1).length,p2=M.filter(m=>m.prio===2).length;
  const R=F.map(f=>{const mf=M.filter(m=>m._f===firmenName(f)).sort((a,b)=>a.prio-b.prio||String(b.t||'').localeCompare(String(a.t||'')));return{f,mf,p1:mf.filter(m=>m.prio===1).length,p2:mf.filter(m=>m.prio===2).length}}).sort((a,b)=>b.p1-a.p1||b.p2-a.p2||(kzv(b.f,c.hoehe)||0)-(kzv(a.f,c.hoehe)||0));
@@ -1106,8 +1113,9 @@ function skyBuehneBeschriften(L,hh){const S=SKY.buehne;if(!S)return;marke('Aufge
  SKY.sammel.forEach(g=>{marke(g.txt,g.x,g.h+L*.9,g.z,hh*.8,'#10203c').center.set(.5,.5)});
  (SKY.bloecke||[]).forEach(K=>{marke(K.titel+' · '+Math.round(K.S).toLocaleString('de-DE')+' h',K.x,K.top+L*1.6,K.z,hh*1.0,'#10203c').center.set(.5,.5);
   K.teile.forEach(t=>marke(t.txt,K.x+K.w/2+L*1.0,t.y,K.z+K.w/2+L*.9,hh*.9,'#10203c').center.set(0,.5))})}
-function skyKoerper(e){if(!SKY||!SKY.koerper.length||!skyG.visible)return null;treffer(e);const hit=ray.intersectObjects(SKY.koerper.map(k=>k.m),false)[0];return hit?SKY.koerper.find(k=>k.m===hit.object):null}
-function skyKlick(e,i){if(layout!=='skyline'||!SKY)return false;const sk=i<0?skyKoerper(e):null;if(sk&&sk.warn){clearTimeout(SKY_KL);$('chr').style.display='none';lageberichtZeigen(sk.f);return true}const f=i>=0&&SKY.F.includes(N[i])?N[i]:sk&&!sk.typ?sk.f:null;
+function skyKoerper(e){if(!SKY||!SKY.koerper.length||!skyG.visible)return null;treffer(e);const hit=ray.intersectObjects(SKY.koerper.map(k=>k.m),false)[0];return hit?Object.assign({d:hit.distance},SKY.koerper.find(k=>k.m===hit.object)):null}
+function skyKlick(e,i){if(layout==='reise'&&SKY&&i<0){const sk=skyKoerper(e);if(sk&&sk.mas){$('chr').style.display='none';hinweisZeigen(sk.mas);return true}return false}
+ if(layout!=='skyline'||!SKY)return false;const sw=skyKoerper(e),sk=i<0||(sw&&sw.warn&&sw.d<ray.ray.origin.distanceTo(N[i].pos)-N[i].r*.5)?sw:null;if(sk&&sk.warn){clearTimeout(SKY_KL);$('chr').style.display='none';lageberichtZeigen(sk.f);return true}const f=i>=0&&SKY.F.includes(N[i])?N[i]:sk&&!sk.typ?sk.f:null;
  if(!f&&!(sk&&sk.typ))return false;clearTimeout(SKY_KL);
  SKY_KL=setTimeout(()=>{if(f){SKY_AUF=SKY_AUF.f===f?{f:null,offen:new Set()}:{f,offen:new Set()}}else{const o=SKY_AUF.offen;o.has(sk.typ)?o.delete(sk.typ):o.add(sk.typ)}
   setzeLayout('skyline',false);if(SKY_AUF.f&&SKY.buehne){const P=[];SKY.sammel.forEach(g=>P.push(new T.Vector3(g.x,g.h,g.z)));N.forEach(n=>{if(!n.skyAus&&!SKY.F.includes(n))P.push(n.ziel)});P.push(new T.Vector3(SKY.buehne.I.x,SKY.buehne.I.h,SKY.buehne.I.z));
@@ -1129,8 +1137,8 @@ function reise(L){while(skyG.children.length){const c=skyG.children.pop();c.geom
   const bo=new T.Mesh(new T.BoxGeometry(xe-xa+L*2,L*.06,Bz-L*.8),new T.MeshStandardMaterial({color:k%2?0xe9eef6:0xdde5f0,roughness:.9}));bo.position.set((xa+xe)/2,.03,zb);bo.receiveShadow=true;skyG.add(bo);
   umQ[k].forEach((v,j)=>{if(!(v>0))return;const h=Math.max(L*.15,v/umax*Hm),sm=new T.Mesh(new T.BoxGeometry(Q*.7,h,L*.7),new T.MeshStandardMaterial({color:0x2e9e4f,roughness:.4,transparent:true,opacity:.85}));sm.position.set(xa+(j+.5)*Q,h/2,zs-L*.9);sm.castShadow=true;skyG.add(sm);SKY.sammel.push({x:xa+(j+.5)*Q,z:zs-L*.9,h,txt:eur(v)})});
   const St={};(O.get(f)||[]).sort((a,b)=>a.t0-b.t0).forEach(n=>{if(n.r0==null)n.r0=n.r;n.r=Math.min(n.r0,L*.38);const r=typen.indexOf(n.ty),x=xT(n.t0),key=r+':'+Math.round(x/(L*.8)),hgt=St[key]=(St[key]||0)+1;n.skyAus=false;n.ziel.set(x,n.r+(hgt-1)*n.r*2.1,zs+L*.6+r*sp)});
-  M.filter(m=>m._f===firmenName(f)&&m.t&&m.prio<=2&&isFinite(Date.parse(m.t))).forEach(m=>{const x=Math.max(xa,Math.min(xe,xT(Date.parse(m.t)))),st=new T.Mesh(new T.CylinderGeometry(L*.04,L*.04,L*1.6,6),new T.MeshStandardMaterial({color:0x5a6472}));st.position.set(x,L*.8,zs-L*.2);skyG.add(st);
-   const ws=warnSchild(m.prio,1,L*1.1);ws.position.set(x,L*2,zs-L*.2);skyG.add(ws)});   // Version 42: Warnschild wie in der Skyline
+  M.filter(m=>m._f===firmenName(f)&&m.t&&m.prio<=2&&isFinite(Date.parse(m.t))).forEach(m=>{const x=Math.max(xa,Math.min(xe,xT(Date.parse(m.t)))),st=new T.Mesh(new T.CylinderGeometry(L*.02,L*.02,L*.7,6),new T.MeshStandardMaterial({color:0x5a6472}));st.position.set(x,L*.35,zs-L*.2);skyG.add(st);
+   const ws=warnSchild(m.prio,0,L*.5);ws.position.set(x,L*.95,zs-L*.2);skyG.add(ws);SKY.koerper.push({m:ws,f,warn:true,mas:m})});   // Version 43: Klick = Hinweis mit Begründung   // Version 42: Warnschild wie in der Skyline
   SKY.info.push({f,zb,zs,u:umQ[k].reduce((a,b)=>a+b,0)});SKY.ecken.push(new T.Vector3(xa-L*8,0,zb-Bz/2),new T.Vector3(xe+L,Hm,zb+Bz/2))});
  SKY.reise={q0,nq,Q,xa,xe,typen,sp,Bz};skyG.visible=true}
 function reiseBeschriften(){const R=SKY&&SKY.reise;if(!R)return;const L=abstand(),hh=L*.55,zl=(SKY.F.length-1)*R.Bz+R.Bz/2+L*.4,st=Math.max(1,Math.ceil(R.nq/24));
