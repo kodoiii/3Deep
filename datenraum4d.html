@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="34">
+<meta name="4deep-darstellung" content="35">
 <title>4Deep Machbarkeitsstudie</title>
 <!-- 4Deep, Stufe 1 (Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -91,7 +91,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  <div class="cb" id="baew" title="CRM: Zeitnachweise (Batches) einzeln statt je Rechnung bzw. je Billing Sheet und Monat gebündelt"><input type="checkbox" id="bae"><span>Batches einzeln</span></div>
  </details>
  <label>Layout</label>
- <select id="ly"><option value="netz">Netz</option><option value="schichten">Schichten nach Objekttyp</option><option value="skyline" id="lysky" hidden>Firmen-Skyline (Überblick)</option><option value="reife">Schichten nach Reifegrad</option><option value="baum">Baum</option>
+ <select id="ly"><option value="netz">Netz</option><option value="schichten">Schichten nach Objekttyp</option><option value="skyline" id="lysky" hidden>Firmen-Skyline (Überblick)</option><option value="reise" id="lyreise" hidden>Kundenreise (je Firma über die Zeit)</option><option value="reife">Schichten nach Reifegrad</option><option value="baum">Baum</option>
   <option value="zeit">Zeitachse (Zeit als Raumrichtung)</option><option value="achsen">Kennzahlen (Achsen)</option><option value="fest">Feste Positionen (aus Daten)</option></select>
  <div id="axui" style="display:none"><label>Kennzahlen-Vorlage</label><select id="axp"></select>
   <div class="axz"><span style="color:#e0352b" title="rechts">→</span><select id="axx" title="rechts"></select><span class="axl"><input type="checkbox" id="axlx">log</span></div>
@@ -120,7 +120,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 34 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 35 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="chr"></div><div class="pn" id="mas"></div><div class="pn" id="prof"></div><div id="profb"></div>
@@ -356,7 +356,7 @@ function laden(daten,opt){
   const a=alt[o.id];if(a){n.pos.copy(a.pos);n.s=a.s;n.alt=true}
   n.r0=n.r;byId[o.id]=n;N.push(n);
  });
- FZ=null;FOKUS=null;$('fokb').style.display='none';E=[];(daten.edges||[]).forEach(e=>{const a=byId[e.from],b=byId[e.to];if(!a||!b||a===b)return;const rt=RT[e.type]||{};if(rt.hidden)return;
+ FZ=null;FOKUS=null;SKY_AUF={f:null,offen:new Set()};$('fokb').style.display='none';E=[];(daten.edges||[]).forEach(e=>{const a=byId[e.from],b=byId[e.to];if(!a||!b||a===b)return;const rt=RT[e.type]||{};if(rt.hidden)return;
   const k={a,b,e,col:farbe(e.color||rt.color,'#6f86ab'),t0:zeit(e.start),t1:zeit(e.end),dir:!!rt.directed,hier:!!rt.hierarchy||/^(struktur|inhalt|teil|hierarchy)$/i.test(e.type||'')};E.push(k);a.nb.push(b);b.nb.push(a)});
  HEUTE=isFinite(zeit(daten.heute))?zeit(daten.heute):heuteTag();N.forEach(n=>n.fertig=fertig(n));revKetten();
  // Zeitspanne
@@ -369,7 +369,7 @@ function laden(daten,opt){
  else N.forEach(n=>{if(n.alt)return;const k=n.nb.find(m=>m.alt);if(k)n.pos.copy(k.pos).add(V.set(rnd()-.5,rnd()-.5,rnd()-.5).multiplyScalar(4));else n.pos.set((rnd()-.5)*20,(rnd()-.5)*20,(rnd()-.5)*20)});
  baueMeshes();legende();
  const hatPos=N.some(n=>n.fest);
- axVorbereiten();$('finb').style.display=daten.crm?'':'none';$('lysky').hidden=!daten.skyline;$('lgbb').style.display=daten.skyline?'':'none';$('crmd').style.display=daten.crm?'':'none';$('fkw').style.display=daten.fakten?'':'none';{const hm=Array.isArray(daten.massnahmen)&&daten.massnahmen.length;$('masb').style.display=hm?'':'none';if(!hm)$('mas').style.display='none';else if($('mas').style.display==='block')massnahmenZeigen()}$('chrb').style.display=Array.isArray(daten.chronik)&&daten.chronik.length?'':'none';if(!(Array.isArray(daten.chronik)&&daten.chronik.length))$('chr').style.display='none';else if($('chr').style.display==='block')chronikZeigen();
+ axVorbereiten();$('finb').style.display=daten.crm?'':'none';$('lysky').hidden=!daten.skyline;$('lyreise').hidden=!daten.skyline;$('lgbb').style.display=daten.skyline?'':'none';$('crmd').style.display=daten.crm?'':'none';$('fkw').style.display=daten.fakten?'':'none';{const hm=Array.isArray(daten.massnahmen)&&daten.massnahmen.length;$('masb').style.display=hm?'':'none';if(!hm)$('mas').style.display='none';else if($('mas').style.display==='block')massnahmenZeigen()}$('chrb').style.display=Array.isArray(daten.chronik)&&daten.chronik.length?'':'none';if(!(Array.isArray(daten.chronik)&&daten.chronik.length))$('chr').style.display='none';else if($('chr').style.display==='block')chronikZeigen();
  rvVorbereiten(daten);
  let ly=opt.behalten?layout:(daten.layout==='achsen'&&AXP.length?'achsen':daten.layout==='plan'||daten.zeitArt?'zeit':hatPos?'fest':'netz');
  if(!$('ly').querySelector('option[value="'+ly+'"]'))ly='netz';
@@ -544,6 +544,7 @@ function setzeLayout(ly,kamera){
  }else if(ly==='baum'){baum(L)}
  else if(ly==='zeit'){zeitachse(L)}
  else if(ly==='skyline'){skyline(L);if(kamera){K.gier=-.5;K.nick=.42}}
+ else if(ly==='reise'){reise(L);if(kamera){K.gier=-.35;K.nick=.5}}
  else if(ly==='achsen'){achsenLayout(L);if(kamera){K.gier=-.3;K.nick=.32}}
  else if(ly==='fest'){const b=new T.Box3();N.forEach((n,i)=>{const p=revPos(n.o,RV.akt)||n.fest;if(Array.isArray(p))n.ziel.set(+p[0]||0,+p[1]||0,+p[2]||0);else if(p)n.ziel.set(+p.x||0,+p.y||0,+p.z||0);else n.ziel.set(0,-L*3,i*.5);
    b.expandByPoint(n.ziel);if(n.o.posRev)Object.values(n.o.posRev).forEach(q=>{if(Array.isArray(q))b.expandByPoint(V2.set(+q[0]||0,+q[1]||0,+q[2]||0))})});
@@ -718,6 +719,7 @@ function achsenBeschriften(L){const I=AXINFO;if(!I)return;const A=I.LEN[0]/2,B=I
 function beschriften(){schrift.children.slice().forEach(c=>{schrift.remove(c);c.material.map.dispose();c.material.dispose()});const L=abstand();
  if(layout==='achsen'){achsenBeschriften(L);return}
  if(layout==='skyline'){skyBeschriften();return}
+ if(layout==='reise'){reiseBeschriften();return}
  if(layout!=='zeit'&&layout!=='schichten'&&layout!=='reife')return;const reihe=typReihe();const b=new T.Box3();N.forEach(n=>b.expandByPoint(n.ziel));if(b.isEmpty())return;
  const h=Math.max(L*.5,b.getSize(V).length()*.018);
  if(layout==='reife'){const rr=reifeReihe();rr.forEach((st,k)=>marke(reifeName(st),b.min.x-L*1.5,(rr.length-1-k)*reifeAbst(L),0,h,'#1d2b45').center.set(1,.5));return}
@@ -763,7 +765,7 @@ function bewegen(dt){
  for(const g of gruppen){const A=g.mesh.instanceMatrix.array,li=g.liste;let ge=false;
   for(let k=0;k<li.length;k++){const n=li[k];if(!n.m&&!alle)continue;const o=k*16,sc=n.fig?0:n.r*n.s;A[o]=A[o+5]=A[o+10]=sc;A[o+1]=A[o+2]=A[o+3]=A[o+4]=A[o+6]=A[o+7]=A[o+8]=A[o+9]=A[o+11]=0;A[o+12]=n.pos.x;A[o+13]=n.pos.y;A[o+14]=n.pos.z;A[o+15]=1;ge=true}
   if(ge)g.mesh.instanceMatrix.needsUpdate=true}
- if(kantenMesh){const zeig=$('kanten').checked;kantenMesh.visible=zeig;if(trompMesh)trompMesh.visible=zeig;if(zeig){let ge=false;
+ if(kantenMesh){const zeig=$('kanten').checked&&layout!=='reise';kantenMesh.visible=zeig;if(trompMesh)trompMesh.visible=zeig;if(zeig){let ge=false;
   const A=kantenLinien?kantenMesh.geometry.attributes.position.array:kantenMesh.instanceMatrix.array;
   for(let i=0;i<E.length;i++){const k=E[i],p=k.a.pos,q=k.b.pos;if(!alle&&!k.a.m&&!k.b.m)continue;ge=true;const vis=k.a.s>.05&&k.b.s>.05&&!k.revAus&&!(GEL&&k.dir)&&!(isFinite(k.t0)&&k.t0>tCur);
    if(kantenLinien){const o=i*6;A[o]=p.x;A[o+1]=p.y;A[o+2]=p.z;if(vis){A[o+3]=q.x;A[o+4]=q.y;A[o+5]=q.z}else{A[o+3]=p.x;A[o+4]=p.y;A[o+5]=p.z}continue}
@@ -805,7 +807,7 @@ function freieFlaeche(){const W=cv.clientWidth||innerWidth,H=cv.clientHeight||in
  return{W,H,x0,x1,y0,y1}}
 function heim(){if(sim){heimNachSim=true}const z=heimZiel(null);if(!z)return;K.zZiel.copy(z.c);K.zDist=z.d;K.flug=true;neu()}
 // Version 28: Ziel für eine Liste von Objekten (mit Radius) oder alle sichtbaren samt Punktwolke
-function heimZiel(Z){const P=[];if(!Z&&layout==='skyline'&&SKY)P.push(...SKY.ecken);if(Z){Z.forEach(n=>{const r=n.r*1.2;P.push(n.ziel);[[r,0,0],[-r,0,0],[0,r,0],[0,-r,0],[0,0,r],[0,0,-r]].forEach(d=>P.push(n.ziel.clone().add(V.set(...d))))})}else{N.forEach(n=>{if(n.sZiel>0)P.push(n.ziel)});if(WK.teile.length)P.push(...wkPunkte());if(GEL){const F=FEST_F,G=GEL,x1=(G.x0+(G.nx-1)*G.dx)*F,z1=(G.z0+(G.nz-1)*G.dz)*F;[[G.x0*F,G.z0*F],[x1,G.z0*F],[G.x0*F,z1],[x1,z1]].forEach(q=>P.push(new T.Vector3(q[0],gelH(q[0],q[1]),q[1])))}}if(!P.length)return null;
+function heimZiel(Z){const P=[];if(!Z&&(layout==='skyline'||layout==='reise')&&SKY)P.push(...SKY.ecken);if(Z){Z.forEach(n=>{const r=n.r*1.2;P.push(n.ziel);[[r,0,0],[-r,0,0],[0,r,0],[0,-r,0],[0,0,r],[0,0,-r]].forEach(d=>P.push(n.ziel.clone().add(V.set(...d))))})}else{N.forEach(n=>{if(n.sZiel>0)P.push(n.ziel)});if(WK.teile.length)P.push(...wkPunkte());if(GEL){const F=FEST_F,G=GEL,x1=(G.x0+(G.nx-1)*G.dx)*F,z1=(G.z0+(G.nz-1)*G.dz)*F;[[G.x0*F,G.z0*F],[x1,G.z0*F],[G.x0*F,z1],[x1,z1]].forEach(q=>P.push(new T.Vector3(q[0],gelH(q[0],q[1]),q[1])))}}if(!P.length)return null;
  const cp=Math.cos(K.nick),f=new T.Vector3(cp*Math.sin(K.gier),Math.sin(K.nick),cp*Math.cos(K.gier)),re=new T.Vector3(Math.cos(K.gier),0,-Math.sin(K.gier)),up=new T.Vector3().crossVectors(f,re);
  const st=Math.max(1,Math.floor(P.length/4000));let ax=1e9,bx=-1e9,ay=1e9,by=-1e9,az=1e9,bz=-1e9;
  for(let i=0;i<P.length;i+=st){const p=P[i],x=p.dot(re),y=p.dot(up),z=p.dot(f);if(x<ax)ax=x;if(x>bx)bx=x;if(y<ay)ay=y;if(y>by)by=y;if(z<az)az=z;if(z>bz)bz=z}
@@ -833,7 +835,7 @@ function tastenNeu(e){const m=e.buttons|0,alt=maske;maske=m;tasten[0]=!!(m&1);ta
  if(neu){if(!alt){bewegtMaus=0;zug={x:e.clientX,y:e.clientY}}if((neu&2)&&(m&4))zoomModus='bereit'}   // Mitte halten + Rechtsklick = Zoommodus (CATIA)
  if(los){
   if((los&2)&&zoomModus==='bereit'){zoomModus=bewegtMaus<4?true:false}
-  if(bewegtMaus<4&&(los&1)&&!(m&6)&&!(alt&6)){const i=treffer(e),k=i<0?trefferK(e):null;waehle(i);if(i!==prof.i)schliesseProfil();if(k)zeigeProfilE(k,e.clientX,e.clientY)}   // Klick links = Auswahl mit Detailfeld
+  if(bewegtMaus<4&&(los&1)&&!(m&6)&&!(alt&6)){const i=treffer(e),sk=skyKlick(e,i),k=i<0&&!sk?trefferK(e):null;waehle(i);if(i!==prof.i)schliesseProfil();if(k)zeigeProfilE(k,e.clientX,e.clientY)}   // Klick links = Auswahl mit Detailfeld
   if(bewegtMaus<4&&(los&2)&&!(alt&4)){const i=treffer(e);if(i>=0){waehle(i);zeigeProfil(i)}else{const k=trefferK(e);if(k)zeigeProfilE(k,e.clientX,e.clientY);else schliesseProfil()}}   // Rechtsklick = Profilkarte am Objekt (wie 3Deep)
   if(los&4)zoomModus=false;
   if(!m)zug=null}
@@ -855,7 +857,7 @@ cv.addEventListener('pointermove',e=>{
 cv.addEventListener('pointerup',e=>tastenNeu(e));
 cv.addEventListener('pointerleave',()=>{if(!zug){$('tip').style.display='none';if(hov>=0){hov=-1;faerben();neu()}}});
 cv.addEventListener('pointercancel',tastenLoesen);cv.addEventListener('lostpointercapture',e=>{if(!e.buttons)tastenLoesen()});addEventListener('blur',tastenLoesen);
-cv.addEventListener('dblclick',e=>{const n=treffer(e);if(layout==='skyline'&&n>=0&&SKY&&SKY.F.includes(N[n])){fokusFirma(N[n]);return}nutzerSteuert();if(n<0){heim();return}K.zZiel.copy(N[n].pos);K.zDist=Math.max(12,N[n].r*14);K.flug=true;neu()});
+cv.addEventListener('dblclick',e=>{const n=treffer(e);if(layout==='skyline'&&SKY){clearTimeout(SKY_KL);const sk=n<0?skyKoerper(e):null,f=n>=0&&SKY.F.includes(N[n])?N[n]:sk&&!sk.typ?sk.f:null;if(f){SKY_AUF={f:null,offen:new Set()};fokusFirma(f);return}}nutzerSteuert();if(n<0){heim();return}K.zZiel.copy(N[n].pos);K.zDist=Math.max(12,N[n].r*14);K.flug=true;neu()});
 cv.addEventListener('wheel',e=>{e.preventDefault();zoomen(Math.exp(e.deltaY*.0012))},{passive:false});
 const ray=new T.Raycaster(),mausV=new T.Vector2();
 function treffer(e){const r=cv.getBoundingClientRect();mausV.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(mausV,cam);
@@ -867,7 +869,7 @@ function hover(e){const jetzt=performance.now();if(jetzt-hoverZeit<40)return;hov
  const tip=$('tip');if(n>=0){const o=N[n];tip.textContent=o.name+' · '+((TY[o.ty]||{}).label||o.ty)+(isFinite(o.t0)?' · '+zeitText(o.t0)+(isFinite(o.t1)?' – '+zeitText(o.t1):''):'');tip.style.display='block';tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY+12)+'px'}else{const k=trefferK(e);if(k){tip.textContent=kLabel(k)+': '+k.a.name+(k.dir?' → ':' – ')+k.b.name+' · Rechtsklick = Details';tip.style.display='block';tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY+12)+'px'}else tip.style.display='none'}}
 // Version 30 (Wunsch des Nutzers): Infos zu Beziehungen wie 3Deep: Maus über der Beziehung = Kurzinfo, Klick/Rechtsklick = Profilkarte der Beziehung
 const kLabel=k=>String(k.e.label||(((D&&D.relTypes)||{})[k.e.type]||{}).label||k.e.type||'Beziehung');
-function kSicht(k){return $('kanten').checked&&k.a.s>.05&&k.b.s>.05&&!k.revAus&&!(GEL&&k.dir)&&!(isFinite(k.t0)&&k.t0>tCur)}
+function kSicht(k){return $('kanten').checked&&layout!=='reise'&&k.a.s>.05&&k.b.s>.05&&!k.revAus&&!(GEL&&k.dir)&&!(isFinite(k.t0)&&k.t0>tCur)}
 function trefferK(e){if(!E.length)return null;const r=cv.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top,W=r.width,H=r.height,va=new T.Vector3(),vb=new T.Vector3();let best=null,bd=36;   // 6 px Abstand
  for(let i=0;i<E.length;i++){const k=E[i];if(!kSicht(k))continue;va.copy(k.a.pos).project(cam);vb.copy(k.b.pos).project(cam);if(va.z>1||vb.z>1||va.z<-1||vb.z<-1)continue;
   const ax=(va.x+1)/2*W,ay=(1-va.y)/2*H,bx=(vb.x+1)/2*W,by=(1-vb.y)/2*H,dx=bx-ax,dy=by-ay,L=dx*dx+dy*dy;let t=L>0?((mx-ax)*dx+(my-ay)*dy)/L:0;t=Math.max(0,Math.min(1,t));const qx=ax+t*dx-mx,qy=ay+t*dy-my,d=qx*qx+qy*qy;if(d<bd){bd=d;best=k}}
@@ -989,11 +991,11 @@ function skyFirmen(){const c=D&&D.skyline;if(!c)return[];const zahl={};N.forEach
  return N.filter(n=>n.ty===c.typ&&!typAus[n.ty]&&((kzv(n,c.hoehe)>0)||(zahl[n.i]||0)>=3)).sort((a,b)=>(kzv(b,c.hoehe)||0)-(kzv(a,c.hoehe)||0)||(zahl[b.i]||0)-(zahl[a.i]||0))}
 function skyFarbe(v){const g=(D.skyline.farbeGrenzen)||[10,25];return!isFinite(v)?0x8a96a8:v<g[0]?0xd0402a:v<g[1]?0xe0a020:0x2e9e4f}
 function skyline(L){while(skyG.children.length){const c=skyG.children.pop();c.geometry&&c.geometry.dispose();c.material&&c.material.dispose()}
- const c=D.skyline,F=skyFirmen(),n=F.length;SKY={F,ecken:[],info:[]};if(!n){skyG.visible=false;return}
+ const c=D.skyline,F=skyFirmen(),n=F.length;SKY={F,ecken:[],info:[],koerper:[],sammel:[],buehne:null};if(!n){skyG.visible=false;return}
  const M=masListe(),cols=Math.max(1,Math.ceil(Math.sqrt(n*1.5))),rows=Math.ceil(n/cols),A=L*6,Hmax=L*14,vmax=Math.max(1e-9,...F.map(f=>kzv(f,c.hoehe)).filter(v=>v>0));
  N.forEach(x=>{if(!F.includes(x))x.skyAus=true;x.ziel.copy(x.pos)});
  F.forEach((f,i)=>{const x=(i%cols-(cols-1)/2)*A,z=(Math.floor(i/cols)-(rows-1)/2)*A*1.15,v=kzv(f,c.hoehe),h=Math.max(L*.4,(v>0?v/vmax:0)*Hmax),w=A*.42;
-  const tm=new T.Mesh(new T.BoxGeometry(1,1,1),new T.MeshStandardMaterial({color:skyFarbe(kzv(f,c.farbe)),roughness:.35,metalness:.1,transparent:true,opacity:.92}));tm.scale.set(w,h,w);tm.position.set(x,h/2,z);tm.castShadow=tm.receiveShadow=true;skyG.add(tm);
+  const tm=new T.Mesh(new T.BoxGeometry(1,1,1),new T.MeshStandardMaterial({color:skyFarbe(kzv(f,c.farbe)),roughness:.35,metalness:.1,transparent:true,opacity:.92}));tm.scale.set(w,h,w);tm.position.set(x,h/2,z);tm.castShadow=tm.receiveShadow=true;skyG.add(tm);SKY.koerper.push({m:tm,f});
   f.ziel.set(x,h+f.r*1.3,z);
   const g=kzv(f,c.pfeil);if(isFinite(g)&&Math.abs(g)>=1){const auf=g>0,s=L*(.7+Math.min(1.3,Math.abs(g)/60)),pm=new T.Mesh(new T.ConeGeometry(s*.45,s,16),new T.MeshStandardMaterial({color:auf?0x2e9e4f:0xd0402a,roughness:.4}));pm.position.set(x+w*.5+s*.55,h*.5+(auf?0:0),z);if(!auf)pm.rotation.z=Math.PI;skyG.add(pm)}
   const mf=M.filter(m=>m._f===firmenName(f)),p1=mf.filter(m=>m.prio===1).length,p2=mf.filter(m=>m.prio===2).length;
@@ -1001,9 +1003,10 @@ function skyline(L){while(skyG.children.length){const c=skyG.children.pop();c.ge
    const fl=new T.Mesh(new T.BoxGeometry(L*.55,L*.36,L*.05),new T.MeshStandardMaterial({color:col,roughness:.5}));fl.position.set(fx+L*.29,h+L*1.4,fz);skyG.add(fl)});
   SKY.info.push({f,x,z,h,v,p1,p2,txt:[c.titelHoehe||c.hoehe,eur(v)].join(' ')+' · '+(c.farbe||'')+' '+((f.o.meta||{})[c.farbe]||'–')+(isFinite(g)?' · '+(g>=0?'▲ +':'▼ ')+Math.round(g)+' %':'')+(p1||p2?' · ⚑ '+[p1?p1+' rot':'',p2?p2+' gelb':''].filter(Boolean).join(', '):'')});
   SKY.ecken.push(new T.Vector3(x-w,0,z-w),new T.Vector3(x+w,h+L*4.2,z+w),new T.Vector3(x-w*2.2,h+L*3.4,z),new T.Vector3(x+w*2.2,h+L*3.4,z))});
+ if(SKY_AUF.f&&F.includes(SKY_AUF.f))skyBuehne(L,A,(rows-1)/2*A*1.15+A*.9);else SKY_AUF={f:null,offen:new Set()};
  skyG.visible=true}
 function skyBeschriften(){if(!SKY)return;const L=abstand(),hh=L*.55;SKY.info.forEach(I=>{marke(firmenName(I.f),I.x,I.h+L*3.4,I.z,hh*1.25,'#10203c').center.set(.5,.5);marke(I.txt,I.x,I.h+L*2.6,I.z,hh*.8,'#2a3b5c').center.set(.5,.5)});
- const b=SKY.ecken;if(b.length)marke('Firmen-Skyline · Höhe = '+(D.skyline.titelHoehe||D.skyline.hoehe)+', Farbe = '+D.skyline.farbe+' (rot < '+((D.skyline.farbeGrenzen||[10,25])[0])+', gelb < '+((D.skyline.farbeGrenzen||[10,25])[1])+'), Pfeil = '+D.skyline.pfeil+', Fähnchen = Handlungsliste · Doppelklick = Firma öffnen',Math.min(...b.map(p=>p.x)),-L*.2,Math.max(...b.map(p=>p.z))+L*3,hh*.9,'#2a3b5c')}
+ skyBuehneBeschriften(L,hh);const b=SKY.ecken;if(b.length)marke('Firmen-Skyline · Höhe = '+(D.skyline.titelHoehe||D.skyline.hoehe)+', Farbe = '+D.skyline.farbe+' (rot < '+((D.skyline.farbeGrenzen||[10,25])[0])+', gelb < '+((D.skyline.farbeGrenzen||[10,25])[1])+'), Pfeil = '+D.skyline.pfeil+', Fähnchen = Handlungsliste · Klick = Firma aufklappen · Doppelklick = Firma öffnen',Math.min(...b.map(p=>p.x)),-L*.2,Math.max(...b.map(p=>p.z))+L*3,hh*.9,'#2a3b5c')}
 function fokusFirma(f,still){FOKUS=f;N.forEach(n=>n.fokAus=firmaVon(n)!==f);$('fokb').style.display='';$('fokb').textContent='◀ Alle Firmen (jetzt: '+firmenName(f)+')';
  setzeLayout('netz',!still);$('ly').value='netz';if($('mas').style.display==='block'&&$('mas').dataset.art==='mas')massnahmenZeigen();else if($('mas').style.display==='block')lageberichtZeigen()}
 function fokusAus(){FOKUS=null;N.forEach(n=>n.fokAus=false);$('fokb').style.display='none';if(D&&D.skyline){setzeLayout('skyline',true);$('ly').value='skyline'}else{zeitAnwenden();neu()}if($('mas').style.display==='block'){if($('mas').dataset.art==='mas')massnahmenZeigen();else lageberichtZeigen()}}
@@ -1018,6 +1021,62 @@ function lageberichtZeigen(){const c=D.skyline,F=skyFirmen(),M=masListe(),PN=[''
  el.querySelectorAll('.lf').forEach(d=>d.onclick=()=>fokusFirma(N[+d.dataset.f]));el.querySelectorAll('.ev').forEach(d=>d.onclick=()=>masSpringen(S[+d.dataset.k]))}
 $('lgbb').onclick=()=>{const el=$('mas');if(el.style.display==='block'&&el.dataset.art==='lage')el.style.display='none';else{$('chr').style.display='none';lageberichtZeigen()}};
 $('fokb').onclick=fokusAus;
+// ---------- Version 35 (Vorschlag B für den CEO): Firma aufklappen ----------
+// Klick auf eine Firma in der Skyline (Turm oder Symbol): vor der Skyline erscheint eine Bühne mit bis zu 6 Sammelkörpern (je Objekttyp der Firma, Höhe = Anzahl,
+// Beschriftung Anzahl und Summe „Betrag“). Klick auf einen Sammelkörper klappt ihn auf: seine Objekte liegen davor im Raster (älteste hinten), anklickbar wie sonst.
+// Allgemein über daten.skyline.sammel (Typen in Reihenfolge), sonst die 6 häufigsten Typen der Firma. Erneuter Klick klappt zu.
+let SKY_AUF={f:null,offen:new Set()},SKY_KL=null;
+function skyWert(n){const me=n.o.meta||{};for(const k of [].concat(D.skyline.wert||'Betrag')){const v=numv(me[k]);if(isFinite(v))return v}return NaN}
+function skySammelTypen(f){const c=D.skyline,zahl={};N.forEach(n=>{if(n!==f&&!typAus[n.ty]&&firmaVon(n)===f)zahl[n.ty]=(zahl[n.ty]||0)+1});
+ const L=Array.isArray(c.sammel)?c.sammel.filter(t=>zahl[t]):Object.keys(zahl).filter(t=>t!==c.typ).sort((a,b)=>zahl[b]-zahl[a]).slice(0,6);return L.map(t=>({t,anz:zahl[t]}))}
+function skyBuehne(L,A,z0){const f=SKY_AUF.f,I=SKY.info.find(x=>x.f===f);if(!I)return;const T6=skySammelTypen(f),B=L*5.2,cell=L*.95,cols=Math.max(1,Math.floor(B/cell)),mx=Math.max(1,...T6.map(x=>x.anz));
+ const x0=I.x-(T6.length-1)/2*B,feld=skyWert;SKY.buehne={f,x0,z0,B,T6,I};
+ // goldene Verbindung vom Turm zur Bühne
+ const lg=new T.BufferGeometry().setFromPoints([new T.Vector3(I.x,.05,I.z),new T.Vector3(I.x,.05,z0-L*.8),new T.Vector3(x0-B*.5,.05,z0-L*.8),new T.Vector3(x0+(T6.length-.5)*B,.05,z0-L*.8)]);
+ skyG.add(new T.Line(lg,new T.LineBasicMaterial({color:0xd4a017})));
+ T6.forEach((g,k)=>{const x=x0+k*B,h=L*(.5+2.5*Math.sqrt(g.anz/mx)),col=new T.Color((TY[g.t]||{}).color||'#8b94a3');
+  const cm=new T.Mesh(new T.CylinderGeometry(L*1.1,L*1.25,h,28),new T.MeshStandardMaterial({color:col,roughness:.35,metalness:.15,transparent:true,opacity:SKY_AUF.offen.has(g.t)?.55:.9}));cm.position.set(x,h/2,z0);cm.castShadow=cm.receiveShadow=true;skyG.add(cm);
+  const O=N.filter(n=>n!==f&&n.ty===g.t&&firmaVon(n)===f&&!typAus[n.ty]).sort((a,b)=>(isFinite(a.t0)?a.t0:0)-(isFinite(b.t0)?b.t0:0));
+  const sum=O.reduce((a,n)=>{const v=feld(n);return isFinite(v)?a+v:a},0),hatW=O.some(n=>isFinite(feld(n)));
+  SKY.sammel.push({m:cm,f,typ:g.t,anz:g.anz,x,z:z0,h,txt:((TY[g.t]||{}).label||g.t)+' '+g.anz+(hatW?' · '+eur(sum):'')});SKY.koerper.push({m:cm,f,typ:g.t});
+  SKY.ecken.push(new T.Vector3(x-B/2,0,z0-L),new T.Vector3(x+B/2,h+L*2,z0+L));
+  if(SKY_AUF.offen.has(g.t)){const zs=z0+L*2.4;O.forEach((n,j)=>{if(n.r0==null)n.r0=n.r;n.r=Math.min(n.r0,L*.42);n.skyAus=false;n.ziel.set(x+((j%cols)-(cols-1)/2)*cell,n.r,zs+Math.floor(j/cols)*cell)});
+   SKY.ecken.push(new T.Vector3(x,0,zs+Math.ceil(O.length/cols)*cell))}})}
+function skyBuehneBeschriften(L,hh){const S=SKY.buehne;if(!S)return;marke('Aufgeklappt: '+firmenName(S.f)+' · Klick auf einen Sammelkörper = Objekte zeigen/verbergen',S.x0-S.B*.5,Math.max(0,...SKY.sammel.map(g=>g.h))+L*3.4,S.z0-L*2,hh*.85,'#7a5a00').center.set(0,.5);
+ SKY.sammel.forEach(g=>{marke(g.txt,g.x,g.h+L*.9,g.z,hh*.8,'#10203c').center.set(.5,.5)})}
+function skyKoerper(e){if(!SKY||!SKY.koerper.length||!skyG.visible)return null;treffer(e);const hit=ray.intersectObjects(SKY.koerper.map(k=>k.m),false)[0];return hit?SKY.koerper.find(k=>k.m===hit.object):null}
+function skyKlick(e,i){if(layout!=='skyline'||!SKY)return false;const sk=i<0?skyKoerper(e):null,f=i>=0&&SKY.F.includes(N[i])?N[i]:sk&&!sk.typ?sk.f:null;
+ if(!f&&!(sk&&sk.typ))return false;clearTimeout(SKY_KL);
+ SKY_KL=setTimeout(()=>{if(f){SKY_AUF=SKY_AUF.f===f?{f:null,offen:new Set()}:{f,offen:new Set()}}else{const o=SKY_AUF.offen;o.has(sk.typ)?o.delete(sk.typ):o.add(sk.typ)}
+  setzeLayout('skyline',false);if(SKY_AUF.f&&SKY.buehne){const P=[];SKY.sammel.forEach(g=>P.push(new T.Vector3(g.x,g.h,g.z)));N.forEach(n=>{if(!n.skyAus&&!SKY.F.includes(n))P.push(n.ziel)});P.push(new T.Vector3(SKY.buehne.I.x,SKY.buehne.I.h,SKY.buehne.I.z));
+   const z=heimZiel(P.map(p=>({ziel:p,r:abstand()})));if(z){K.zZiel.copy(z.c);K.zDist=z.d;K.flug=true}}else heim();neu()},260);return true}
+// ---------- Version 35 (Vorschlag C für den CEO): Kundenreise ----------
+// Layout „Kundenreise“: je Firma eine Bahn über die Zeit (links alt, rechts neu, Quartale). Hinten Säulen = Umsatz je Quartal (Typ daten.skyline.umsatzTyp, Feld „Betrag“),
+// auf der Bahn die Objekte der Firma als Ereignisse an ihrem Datum (eine Spur je Typ), Fähnchen = Punkte der Handlungsliste mit Datum. Mit „Firma öffnen“ nur diese Firma.
+const quartal=t=>{const d=new Date(t);return d.getUTCFullYear()*4+Math.floor(d.getUTCMonth()/3)},qStart=q=>Date.UTC(Math.floor(q/4),(q%4)*3,1),qName=q=>'Q'+(q%4+1)+' '+Math.floor(q/4);
+function reise(L){while(skyG.children.length){const c=skyG.children.pop();c.geometry&&c.geometry.dispose();c.material&&c.material.dispose()}
+ const c=D.skyline,F=(FOKUS?[FOKUS]:skyFirmen()).filter(f=>!typAus[f.ty]),uT=c.umsatzTyp||'tSI',feld=skyWert;SKY={F,ecken:[],info:[],koerper:[],sammel:[],reise:null};
+ N.forEach(n=>{n.skyAus=true;n.ziel.copy(n.pos)});if(!F.length){skyG.visible=false;return}
+ const O=new Map();N.forEach(n=>{const f=firmaVon(n);if(f&&f!==n&&F.includes(f)&&isFinite(n.t0)&&!typAus[n.ty]){if(!O.has(f))O.set(f,[]);O.get(f).push(n)}});
+ let q0=Infinity,q1=-Infinity;O.forEach(L2=>L2.forEach(n=>{const q=quartal(n.t0);if(q<q0)q0=q;if(q>q1)q1=q}));if(!isFinite(q0)){q0=q1=quartal(Date.now())}
+ const nq=q1-q0+1,Q=L*Math.max(2.5,Math.min(5,40/nq)),xT=t=>((t-qStart(q0))/(qStart(q1+1)-qStart(q0))-.5)*nq*Q,M=masListe();
+ const typen=[];O.forEach(L2=>L2.forEach(n=>{if(!typen.includes(n.ty))typen.push(n.ty)}));const ord=Array.isArray(c.sammel)?c.sammel:[];typen.sort((a,b)=>((ord.indexOf(a)+1)||99)-((ord.indexOf(b)+1)||99));
+ const sp=L*1.3,Bz=Math.max(L*6,typen.length*sp+L*3),umQ=F.map(f=>{const u=new Array(nq).fill(0);(O.get(f)||[]).forEach(n=>{if(n.ty===uT){const v=feld(n);if(isFinite(v))u[quartal(n.t0)-q0]+=v}});return u}),umax=Math.max(1e-9,...umQ.flat()),Hm=L*7;
+ const xa=-nq*Q/2,xe=nq*Q/2;
+ F.forEach((f,k)=>{const zb=k*Bz,zs=zb-Bz/2+L*1.2;f.skyAus=false;f.ziel.set(xa-L*6,f.r,zb);
+  const bo=new T.Mesh(new T.BoxGeometry(xe-xa+L*2,L*.06,Bz-L*.8),new T.MeshStandardMaterial({color:k%2?0xe9eef6:0xdde5f0,roughness:.9}));bo.position.set((xa+xe)/2,.03,zb);bo.receiveShadow=true;skyG.add(bo);
+  umQ[k].forEach((v,j)=>{if(!(v>0))return;const h=Math.max(L*.15,v/umax*Hm),sm=new T.Mesh(new T.BoxGeometry(Q*.7,h,L*.7),new T.MeshStandardMaterial({color:0x2e9e4f,roughness:.4,transparent:true,opacity:.85}));sm.position.set(xa+(j+.5)*Q,h/2,zs-L*.9);sm.castShadow=true;skyG.add(sm);SKY.sammel.push({x:xa+(j+.5)*Q,z:zs-L*.9,h,txt:eur(v)})});
+  const St={};(O.get(f)||[]).sort((a,b)=>a.t0-b.t0).forEach(n=>{if(n.r0==null)n.r0=n.r;n.r=Math.min(n.r0,L*.38);const r=typen.indexOf(n.ty),x=xT(n.t0),key=r+':'+Math.round(x/(L*.8)),hgt=St[key]=(St[key]||0)+1;n.skyAus=false;n.ziel.set(x,n.r+(hgt-1)*n.r*2.1,zs+L*.6+r*sp)});
+  M.filter(m=>m._f===firmenName(f)&&m.t&&m.prio<=2&&isFinite(Date.parse(m.t))).forEach(m=>{const x=Math.max(xa,Math.min(xe,xT(Date.parse(m.t)))),col=m.prio===1?0xd0302a:0xe0a020,st=new T.Mesh(new T.CylinderGeometry(L*.04,L*.04,L*2,6),new T.MeshStandardMaterial({color:0x44505e}));st.position.set(x,L,zs-L*.2);skyG.add(st);
+   const fl=new T.Mesh(new T.BoxGeometry(L*.5,L*.32,L*.05),new T.MeshStandardMaterial({color:col}));fl.position.set(x+L*.27,L*1.8,zs-L*.2);skyG.add(fl)});
+  SKY.info.push({f,zb,zs,u:umQ[k].reduce((a,b)=>a+b,0)});SKY.ecken.push(new T.Vector3(xa-L*8,0,zb-Bz/2),new T.Vector3(xe+L,Hm,zb+Bz/2))});
+ SKY.reise={q0,nq,Q,xa,xe,typen,sp,Bz};skyG.visible=true}
+function reiseBeschriften(){const R=SKY&&SKY.reise;if(!R)return;const L=abstand(),hh=L*.55,zl=(SKY.F.length-1)*R.Bz+R.Bz/2+L*.4,st=Math.max(1,Math.ceil(R.nq/24));
+ for(let j=0;j<R.nq;j+=st){const x=R.xa+(j+.5)*R.Q;marke(qName(R.q0+j),x,L*.05,zl+L*.6,hh*.75,'#2a3b5c').center.set(.5,.5);if((R.q0+j)%4===0&&j){const g=new T.BufferGeometry().setFromPoints([new T.Vector3(R.xa+j*R.Q,.08,-R.Bz/2),new T.Vector3(R.xa+j*R.Q,.08,zl)]);skyG.add(new T.Line(g,new T.LineBasicMaterial({color:0x8a96a8})))}}
+ SKY.info.forEach(I=>{marke(firmenName(I.f),R.xa-L*6,I.f.r*2+L*1.2,I.zb,hh*1.2,'#10203c').center.set(.5,.5);marke('Umsatz '+eur(I.u),R.xa-L*6,I.f.r*2+L*.45,I.zb,hh*.75,'#2a3b5c').center.set(.5,.5);
+  R.typen.forEach((t,r)=>marke((TY[t]||{}).label||t,R.xa-L*.3,L*.05,I.zs+L*.6+r*R.sp,hh*.75,'#4a5a75').center.set(1,.5))});
+ SKY.sammel.forEach(g=>{marke(g.txt,g.x,g.h+L*.5,g.z,hh*.85,'#1f6b38').center.set(.5,.5)});
+ marke('Kundenreise · je Firma eine Bahn · Säulen = Umsatz je Quartal · Spuren = Objekte am Datum · Fähnchen = Handlungsliste',R.xa-L*8,L*.05,zl+L*2.6,hh*.9,'#2a3b5c').center.set(0,.5)}
 // Version 24: Maßnahmen-Datei des KI-Agenten laden ({massnahmen:[…]} oder Liste); ids dürfen CRM-Nummern sein (z. B. AU240749); ersetzt frühere KI-Maßnahmen, Regel-Maßnahmen bleiben
 function istMassnahmenDatei(j){const L=Array.isArray(j)?j:j&&!j.nodes&&!(j.daten&&j.daten.nodes)&&Array.isArray(j.massnahmen)?j.massnahmen:null;return!!L&&L.length>0&&L.every(m=>m&&typeof m==='object'&&(m.text||m.signal))}
 function massnahmenLaden(j){if(!D||!N.length){meld('Erst den Datenraum (CRM-ZIP) laden, dann die Maßnahmen-Datei.');return}
@@ -1038,7 +1097,7 @@ $('fkb').onclick=faktenExport;
 $('finb').onclick=()=>{$('ly').value='achsen';setzeLayout('achsen',true);const o=[...$('axp').options].findIndex(x=>/^Rechnungen/.test(x.text));if(o>=0&&$('axp').selectedIndex!==o){$('axp').selectedIndex=o;$('axp').dispatchEvent(new Event('change'))}};
 document.querySelectorAll('#pn details.grp').forEach(d=>{try{d.open=localStorage.getItem('4d_auf_'+d.id)==='1'}catch(_){}d.addEventListener('toggle',()=>{try{localStorage.setItem('4d_auf_'+d.id,d.open?'1':'0')}catch(_){}})});
 $('masb').onclick=()=>{const el=$('mas');if(el.style.display==='block'&&el.dataset.art==='mas')el.style.display='none';else{$('chr').style.display='none';massnahmenZeigen()}};
-$('bae').onchange=e=>{try{localStorage.setItem('4d_crm_einzeln',e.target.checked?'1':'0')}catch(_){}if(CRM_ROH){lauf=null;laden(crmZuDaten(CRM_ROH.b,CRM_ROH.r,{einzeln:e.target.checked,zuord:CRM_ROH.zuord}))}};
+$('bae').onchange=e=>{try{localStorage.setItem('4d_crm_einzeln',e.target.checked?'1':'0')}catch(_){}if(CRM_ROH){eigeneWahl();lauf=null;laden(crmZuDaten(CRM_ROH.b,CRM_ROH.r,{einzeln:e.target.checked,zuord:CRM_ROH.zuord}))}};
 try{$('bae').checked=localStorage.getItem('4d_crm_einzeln')==='1'}catch(_){}
 // Version 20: Kennzahlen-Achsen bedienen
 const axNeu=()=>{$('ly').value='achsen';setzeLayout('achsen',true)};
@@ -1217,7 +1276,7 @@ $('jl').onclick=()=>$('jf').click();
 $('jf').onchange=e=>{const f=e.target.files[0];if(f)leseDatei(f);e.target.value=''};
 addEventListener('dragover',e=>e.preventDefault());
 addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer.files&&e.dataTransfer.files[0];if(f)leseDatei(f)});
-function leseDatei(f){if(/\.zip$/i.test(f.name)){leseZip(f);return}const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);if(istMassnahmenDatei(j)){massnahmenLaden(j);return}lauf=null;laden(j.daten&&j.daten.nodes?j.daten:j)}catch(e){meld('Datei ist kein gültiges JSON: '+e.message)}};r.readAsText(f)}
+function leseDatei(f){if(/\.zip$/i.test(f.name)){leseZip(f);return}const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);if(istMassnahmenDatei(j)){massnahmenLaden(j);return}eigeneWahl();lauf=null;laden(j.daten&&j.daten.nodes?j.daten:j)}catch(e){meld('Datei ist kein gültiges JSON: '+e.message)}};r.readAsText(f)}
 $('ds').onchange=e=>waehleRaum(e.target.value);
 $('ubtn').onclick=()=>{if(U)uBeenden();else uStart(0)};$('wks').onchange=e=>wkWahl(e.target.value);$('fbs').onchange=e=>fbSetzen(e.target.value);
 $('rvr').oninput=e=>rvSetzen(RV.ids[+e.target.value]);$('rvz').onclick=()=>rvSetzen(RV.ids[Math.max(0,RV.ids.indexOf(RV.akt)-1)]);$('rvv').onclick=()=>rvSetzen(RV.ids[Math.min(RV.ids.length-1,RV.ids.indexOf(RV.akt)+1)]);
@@ -1255,9 +1314,9 @@ async function leseZip(f){
   if(busse.length){let zuord=null;
    if(ordner.length>1){const fn=id=>{const o=busse.find(b=>b&&String(b.id)===id),d=o&&o.data||{};return o?String(d.cTitle||o.name||'').trim():''};   // Ordner heißt nach der Firma (bus.sct.public.tCO.202_<Zeitstempel>) → Firmenname
     const kurz=ordner.map(x=>{const l=x.split('/').filter(Boolean).pop()||'(Wurzel)',m=/^(bus\.[^_]+)_\d+$/.exec(l);return m&&fn(m[1])||l});zuord={};Object.keys(bId).forEach(k=>zuord[k]=bId[k].ord.map(x=>kurz[ordner.indexOf(x)]).join(', '))}
-   CRM_ROH={b:busse,r:rels,zuord};const d=crmZuDaten(busse,rels,{einzeln:$('bae').checked,zuord});if(zuord)d.titel='CRM · '+ordner.length+' Export-Ordner';lauf=null;laden(d);
+   CRM_ROH={b:busse,r:rels,zuord};const d=crmZuDaten(busse,rels,{einzeln:$('bae').checked,zuord});if(zuord)d.titel='CRM · '+ordner.length+' Export-Ordner';eigeneWahl();lauf=null;laden(d);
    return}
-  if(json4d){lauf=null;laden(json4d.daten&&json4d.daten.nodes?json4d.daten:json4d);return}
+  if(json4d){eigeneWahl();lauf=null;laden(json4d.daten&&json4d.daten.nodes?json4d.daten:json4d);return}
   meld('Im ZIP wurden weder CRM-Daten (Ordner busses/ und rels/) noch ein 4Deep-JSON gefunden.')
  }catch(err){meld('ZIP konnte nicht gelesen werden: '+err.message)}}
 
@@ -1353,7 +1412,7 @@ function crmZuDaten(busse,rels,opt){opt=opt||{};
  const med={};nodes.forEach(n=>{if(isFinite(n.wert)&&n.wert>0)(med[n.type]=med[n.type]||[]).push(n.wert)});
  Object.keys(med).forEach(t=>{const L=med[t].sort((x,y)=>x-y);med[t]=L[L.length>>1]});
  nodes.forEach(n=>{const g=types[n.type].size||1;n.size=isFinite(n.wert)&&n.wert>0&&med[n.type]?g*Math.max(.3,Math.min(7,Math.pow(n.wert/med[n.type],2/3))):g;Object.keys(n).forEach(k=>{if(k==='wert'||k[0]==='_')delete n[k]})});
- return{titel:'CRM',crm:true,schichtReihe:['tCO','tOF','tCT'],skyline:{typ:'tCO',hoehe:'Umsatz 12 Monate',titelHoehe:'Umsatz 12 Monate',farbe:'Marge',pfeil:'Wachstum ggü. Vorjahr',farbeGrenzen:[10,25]},chronik,massnahmen,fakten,chronikOk:{Angebot:'beauftragt',Auftrag:'im Budget',Rechnung:'mit positiver Marge',Aufgabe:'erledigt'},warnungName:'über Budget',layout:'netz',types,relTypes,nodes,edges,betragName:'Umsatz (Rechnungen netto)',betragEinheit:'€',
+ return{titel:'CRM',crm:true,schichtReihe:['tCO','tOF','tCT'],skyline:{typ:'tCO',sammel:['tOF','tCT','tSI','tBS','tPE','tTA'],umsatzTyp:'tSI',wert:['Betrag','Netto'],hoehe:'Umsatz 12 Monate',titelHoehe:'Umsatz 12 Monate',farbe:'Marge',pfeil:'Wachstum ggü. Vorjahr',farbeGrenzen:[10,25]},chronik,massnahmen,fakten,chronikOk:{Angebot:'beauftragt',Auftrag:'im Budget',Rechnung:'mit positiver Marge',Aufgabe:'erledigt'},warnungName:'über Budget',layout:'netz',types,relTypes,nodes,edges,betragName:'Umsatz (Rechnungen netto)',betragEinheit:'€',
   stufenNamen:{kristall:'abgeschlossen (Kristall)',roh:'offen / in Arbeit (matt)',alt:'inaktiv'},axes:CRM_ACHSEN}}
 // Version 20: Vorlagen für das Layout „Kennzahlen (Achsen)“ (Namen wie im kaufmännischen Datenraum von 3Deep)
 const CRM_ACHSEN=[
@@ -1524,7 +1583,7 @@ function crmKennzahlen(nodes,edges,byId){const nb=crmNachbarn(edges);
   co._u12=u12;co._uv=uv;co.meta=Object.assign(K,co.meta)})}
 
 document.querySelectorAll('select,input[type=checkbox],input[type=range]').forEach(el=>el.addEventListener('change',()=>el.blur()));
-function waehleRaum(v){lauf=null;
+function waehleRaum(v){eigeneWahl();lauf=null;
  if(v==='demo')laden(demoDaten());
  else if(v.startsWith('stress:'))laden(stressDaten(+v.slice(7)));
  else if(v.startsWith('thema:')){const name=v.slice(6);const pfade=['themen/'+name+'.json','3deep-widget/themen/'+name+'.json'];
@@ -1793,7 +1852,16 @@ function strahlTick(t){const S=strahl,L=GEL?E.filter(k=>k.dir&&!k.revAus&&k.a.s>
    C[q*3]=k.col.r;C[q*3+1]=k.col.g;C[q*3+2]=k.col.b;A[q]=.9*Math.min(1,u*8,(1-u)*8);G[q]=.55*FEST_F}});
  S.p.material.uniforms.sk.value=renderer.domElement.height*(ST.on&&ST.tb?.5:1)/(2*Math.tan(cam.fov*Math.PI/360));['position','farbe','al'].forEach(a=>g.attributes[a].needsUpdate=true);S.p.visible=true;return true}
 // ---------- Datenquellen: Adapter (postMessage), Beispiele ----------
-addEventListener('message',e=>{const m=e.data;if(!m||m.quelle!=='3deep-adapter'||!m.daten)return;
+// Version 35 (Wunsch des Nutzers, wie 3Deep Darstellung 113): eigene Wahl (Datenraum, Datei, ZIP, Demo) sperrt das laufende Laden des Adapters.
+// Weitere Stände desselben Laufs (lauf <= gesperrter, auch ein noch ausstehender erster Stand nach laedt:true) werden verworfen.
+// Die Sperre endet mit dem nächsten neuen Laden (laedt:true bei Drop/„Laden“, sonst ein Stand mit höherer lauf-Kennung). Der Adapter selbst lädt im Hintergrund zu Ende.
+const AUF={hoch:null,laedtNeu:false,sperre:null};
+function eigeneWahl(){if(AUF.hoch==null&&!AUF.laedtNeu)return;AUF.sperre={lauf:AUF.hoch||0,offen:AUF.laedtNeu}}
+addEventListener('message',e=>{const m=e.data;if(!m||m.quelle!=='3deep-adapter')return;
+ if(m.laedt!=null){if(m.laedt){AUF.sperre=null;AUF.laedtNeu=true}return}
+ if(!m.daten)return;
+ if(AUF.sperre){const s=AUF.sperre,l=m.lauf;if(l!=null&&(l<=s.lauf||s.offen)){if(s.offen&&l>s.lauf){s.lauf=l;s.offen=false}AUF.hoch=Math.max(AUF.hoch||0,l);AUF.laedtNeu=false;return}AUF.sperre=null}
+ AUF.laedtNeu=false;if(m.lauf!=null)AUF.hoch=Math.max(AUF.hoch||0,m.lauf);
  const gleich=m.lauf!=null&&m.lauf===lauf&&N.length>0;lauf=m.lauf;$('ds').value='';laden(m.daten,{behalten:gleich})});
 function demoDaten(){
  // Produktentwicklung über 18 Monate: Baugruppen/Bauteile entstehen, Revisionen lösen einander ab, Issues öffnen und schließen sich
