@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="41">
+<meta name="4deep-darstellung" content="42">
 <title>4Deep Machbarkeitsstudie</title>
 <!-- 4Deep, Stufe 1 (Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -15,7 +15,7 @@ body[data-schema^=alien]{--pn:rgba(20,24,30,.9);--rand:#4a3526}
 *{box-sizing:border-box}
 #cv{background:var(--himmel,linear-gradient(#8fb2e0,#c4d8f1 45%,#d6e4f5 50%,#a9c1e4))}
 html,body{margin:0;height:100%;background:#c4d8f1;color:var(--tx);font:13px system-ui,Segoe UI,sans-serif;overflow:hidden}
-#cv,#nm{position:fixed;inset:0;display:block;width:100%;height:100%}#nm{pointer-events:none}
+#cv,#nm{position:fixed;inset:0;display:block;width:100%;height:100%}#nm{pointer-events:none}#cv,#nm{transition:opacity .5s ease}#kugel{position:fixed;z-index:5;pointer-events:none;opacity:0;transition:opacity .5s ease}
 .pn{position:fixed;background:var(--pn);border:1px solid var(--rand);border-radius:10px;padding:10px 12px;backdrop-filter:blur(6px)}
 #pn{left:10px;top:10px;width:250px;max-height:calc(100% - 110px);overflow:auto}
 #pn h1{font-size:16px;margin:0 0 2px}#pn .u{color:var(--mu);font-size:11px;margin-bottom:8px}
@@ -67,7 +67,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
 </style>
 </head>
 <body>
-<canvas id="cv"></canvas><canvas id="nm"></canvas>
+<canvas id="cv"></canvas><canvas id="nm"></canvas><canvas id="kugel" width="1" height="1"></canvas>
 <div id="leer">Datenraum wählen oder JSON-Datei hierher ziehen …</div>
 <div class="pn" id="pn">
  <h1>4Deep</h1><div class="u">Machbarkeitsstudie WebGL · Raum + Zeit</div>
@@ -106,6 +106,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  <div class="cb" title="Netz und Schichten: Abstände zwischen den Objekten (wird im Browser gespeichert)"><span style="min-width:44px">Dichte</span><input type="range" id="dichte" min="0" max="100" step="5" style="flex:1"><span id="dichtew" style="min-width:26px;text-align:right"></span></div>
  <div class="cb"><input type="checkbox" id="namen"><span>Namen am Objekt (N)</span></div>
  <div class="cb"><input type="checkbox" id="glanz" checked><span>Glanz und Reifegrade</span></div>
+ <div class="cb" title="Pulsierende Kugel während des Ladens (wird im Browser gespeichert)"><input type="checkbox" id="kugelan" checked><span>Ladekugel</span></div>
  <label>Farbschema</label><select id="fs" title="Hintergrund, Licht und Objektfarben"></select>
  <label>Oberfläche</label><select id="of" title="Materialwirkung der Objekte"><option value="satin">Satin (seidenmatt)</option><option value="metall">Metall (eloxiert)</option><option value="lack">Lack (glänzend, bisher)</option><option value="bio">Bio-Porzellan (Alien-Tech)</option></select>
  <button id="lt">Leistung messen (5 s Drehung)</button>
@@ -121,7 +122,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 41 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 42 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="chr"></div><div class="pn" id="mas"></div><div class="pn" id="prof"></div><div id="profb"></div>
@@ -263,11 +264,12 @@ function symbolGeo(form,grob){const q=grob?6:12;let L;
    [.3,-.05,-.4].forEach((y,i)=>{G.push([new T.BoxGeometry(.16,.16,.03).translate(-.28,y,.02),.3],[new T.BoxGeometry(.4,.05,.025).translate(.12,y,.02),.4]);
     if(i<2){G.push([glied([-.34,y+.01,.06],[-.29,y-.06,.06],.025,5),.15],[glied([-.29,y-.06,.06],[-.18,y+.12,.06],.025,5),.15])}});L=G;break}
   case'gehry':{   // Gebäude im Stil von Frank Gehry: gedrehter Turm mit welliger Fassade, geschwungene Metallschalen, gläsernes Atrium
-   const fen=(x,y,z)=>Math.floor(y*10+20)%2?1:.45;
+   // Version 42 (Wunsch des Nutzers): silbergraue Fassade mit bläulichen Fensterbändern, helle Metallschalen, Glas-Atrium (Firmenfarbe jetzt silber)
+   const fen=(x,y,z)=>Math.floor(y*10+20)%2?[1.2,1.2,1.2]:[.62,.8,1.12];
    const turm=biege(new T.BoxGeometry(.9,2.4,.8,4,grob?12:24,4).translate(0,1.2,0),v=>{const a=v.y*.32,w=Math.sin(v.y*2.6+v.x*3)*.09,x=v.x+w,z=v.z;v.x=x*Math.cos(a)-z*Math.sin(a);v.z=x*Math.sin(a)+z*Math.cos(a);v.x*=1+.12*Math.sin(v.y*1.3)});
    const schale=(b,h,r0,a0,y0,neig)=>biege(new T.BoxGeometry(b,h,.09,grob?10:22,grob?4:8,1),v=>{const a=a0+v.x/r0,r=r0+v.z+.25*Math.sin(v.y*3+v.x*2);v.y=y0+v.y*(1+.35*Math.cos(v.x*2.2))+neig*v.x;v.x=Math.sin(a)*r;v.z=Math.cos(a)*r});
-   L=[[turm,fen],[schale(2.2,.9,1.05,.6,.55,.18),1],[schale(1.6,.7,.8,-1.9,.42,-.22),.92],[schale(1.2,.6,1.3,2.6,.95,.3),.96],
-    [new T.CylinderGeometry(.42,.5,.8,q*2).translate(.55,.4,.62),.32],[new T.CylinderGeometry(1.3,1.3,.06,q*3).translate(.1,-.03,.1),.5]];break}
+   L=[[turm,fen],[schale(2.2,.9,1.05,.6,.55,.18),[1.15,1.16,1.18]],[schale(1.6,.7,.8,-1.9,.42,-.22),[1.02,1.04,1.08]],[schale(1.2,.6,1.3,2.6,.95,.3),[1.1,1.11,1.14]],
+    [new T.CylinderGeometry(.42,.5,.8,q*2).translate(.55,.4,.62),[.55,.78,1.15]],[new T.CylinderGeometry(1.3,1.3,.06,q*3).translate(.1,-.03,.1),.55]];break}
   case'wright':{   // Gebäude im Stil von Frank Lloyd Wright (Haus über dem Wasserfall): gekreuzte Betonplatten, Steinkamin, Fensterbänder
    const stein=(x,y,z)=>Math.floor(y*12+40)%2?.5:.6;const B=(w,h,d,x,y,z,c)=>[new T.BoxGeometry(w,h,d).translate(x,y,z),c];
    L=[B(.9,.5,1.4,-.2,-.25,0,.38),B(2.6,.16,1.3,.2,.12,.15,1),B(2.2,.28,.06,.15,.34,.78,.22),B(1.3,.16,2.4,-.1,.56,.25,1),B(.06,.26,2.1,.52,.77,.25,.22),
@@ -351,7 +353,7 @@ function farbe(c,ers){try{return new T.Color(c||ers||'#8aa0c0')}catch(e){return 
 // Version 37 (Wunsch des Nutzers): Typen ohne eigene Form bekommen am Namen erkennbare Symbole (Ticket = Zettel, Aufgabe/Task = Klemmbrett)
 function formNachName(t){t=String(t||'');return/ticket/i.test(t)?'zettel':/^(aufgabe|aufgaben|task|tasks)$/i.test(t.trim())?'klemmbrett':'sphere'}
 function laden(daten,opt){
- opt=opt||{};
+ opt=opt||{};if(KG.on||KG.timer)ladeKugel(false);   // Version 42: Ladekugel zerplatzt, der Raum blendet ein
  if(daten&&Array.isArray(daten.themen)&&!Array.isArray(daten.nodes)){sammlungLaden(daten);return}   // Version 28: Sammlung (Schüleransicht)
  if(!opt.unterricht&&U)uStop(true);if(!opt.sammlung&&!opt.unterricht){SCH=null;document.body.classList.remove('schueler');$('ustart').style.display='none'}
  if(!daten||!Array.isArray(daten.nodes)){meld('Keine Objekte in den Daten.');return}
@@ -1018,23 +1020,36 @@ function skyline(L){while(skyG.children.length){const c=skyG.children.pop();c.ge
  F.forEach((f,i)=>{const x=(i%cols-(cols-1)/2)*A,z=(Math.floor(i/cols)-(rows-1)/2)*A*1.15,v=kzv(f,c.hoehe),h=Math.max(L*.4,(v>0?v/vmax:0)*Hmax),w=A*.42;
   const tm=new T.Mesh(new T.BoxGeometry(1,1,1),new T.MeshStandardMaterial({color:skyFarbe(kzv(f,c.farbe)),roughness:.35,metalness:.1,transparent:true,opacity:.92}));tm.scale.set(w,h,w);tm.position.set(x,h/2,z);tm.castShadow=tm.receiveShadow=true;skyG.add(tm);SKY.koerper.push({m:tm,f});
   f.ziel.set(x,h+f.r*1.3,z);
-  const g=kzv(f,c.pfeil);if(isFinite(g)&&Math.abs(g)>=1){const auf=g>0,s=L*(.7+Math.min(1.3,Math.abs(g)/60)),pm=new T.Mesh(new T.ConeGeometry(s*.45,s,16),new T.MeshStandardMaterial({color:auf?0x2e9e4f:0xd0402a,roughness:.4}));pm.position.set(x+w*.5+s*.55,h*.5+(auf?0:0),z);if(!auf)pm.rotation.z=Math.PI;skyG.add(pm)}
+  // Version 42 (Wunsch des Nutzers): Trend als schräger Pfeil mit Schaft (↗ grün / ↘ rot, wie im Börsenchart) statt Kegel, Prozentzahl daneben
+  const g=kzv(f,c.pfeil);let tp=null;if(isFinite(g)&&Math.abs(g)>=1){const auf=g>0,s=L*(1.1+Math.min(.8,Math.abs(g)/60));tp=trendPfeil(auf,s,x+w*.25,h+s*.6,z+w*.2);/* auf dem Dach rechts, neben dem Turm verdeckte er Nachbarn */tp.txt=(auf?'+':'−')+Math.round(Math.abs(g))+' %'}
+  // Version 42: Hinweise der Handlungsliste als Warnschild (Dreieck mit „!“ und Anzahl) statt Fähnchen; Klick = Lagebericht dieser Firma
   const mf=M.filter(m=>m._f===firmenName(f)),p1=mf.filter(m=>m.prio===1).length,p2=mf.filter(m=>m.prio===2).length;
-  [[p1,0xd0302a],[p2,0xe0a020]].forEach(([k,col],j)=>{if(!k)return;const st=new T.Mesh(new T.CylinderGeometry(L*.04,L*.04,L*1.6,6),new T.MeshStandardMaterial({color:0x44505e}));const fx=x-w*.5+j*L*.7+L*.2,fz=z-w*.5+L*.2;st.position.set(fx,h+L*.8,fz);skyG.add(st);
-   const fl=new T.Mesh(new T.BoxGeometry(L*.55,L*.36,L*.05),new T.MeshStandardMaterial({color:col,roughness:.5}));fl.position.set(fx+L*.29,h+L*1.4,fz);skyG.add(fl)});
-  SKY.info.push({f,x,z,h,v,p1,p2,txt:[c.titelHoehe||c.hoehe,eur(v)].join(' ')+' · '+(c.farbe||'')+' '+((f.o.meta||{})[c.farbe]||'–')+(isFinite(g)?' · '+(g>=0?'▲ +':'▼ ')+Math.round(g)+' %':'')+(p1||p2?' · ⚑ '+[p1?p1+' rot':'',p2?p2+' gelb':''].filter(Boolean).join(', '):'')});
+  if(p1||p2){const st=new T.Mesh(new T.CylinderGeometry(L*.05,L*.05,L*1.3,6),new T.MeshStandardMaterial({color:0x5a6472}));const fx=x-w*.5+L*.45,fz=z+w*.5-L*.45;st.position.set(fx,h+L*.65,fz);skyG.add(st);
+   const ws=warnSchild(p1?1:2,p1+p2,L*1.7);ws.position.set(fx,h+L*1.9,fz);skyG.add(ws);SKY.koerper.push({m:ws,f,warn:true})}
+  SKY.info.push({f,x,z,h,v,p1,p2,tp,txt:[c.titelHoehe||c.hoehe,eur(v)].join(' ')+' · '+(c.farbe||'')+' '+((f.o.meta||{})[c.farbe]||'–')+(isFinite(g)?' · '+(g>=0?'↗ +':'↘ −')+Math.round(Math.abs(g))+' %':'')+(p1||p2?' · ⚠ '+(p1+p2)+' Hinweis'+(p1+p2>1?'e':''):'')});
   SKY.ecken.push(new T.Vector3(x-w,0,z-w),new T.Vector3(x+w,h+L*4.2,z+w),new T.Vector3(x-w*2.2,h+L*3.4,z),new T.Vector3(x+w*2.2,h+L*3.4,z))});
  if(SKY_AUF.f&&F.includes(SKY_AUF.f))skyBuehne(L,A,(rows-1)/2*A*1.15+A*.9);else SKY_AUF={f:null,offen:new Set()};
  skyG.visible=true}
-function skyBeschriften(){if(!SKY)return;const L=abstand(),hh=L*.55;SKY.info.forEach(I=>{marke(firmenName(I.f),I.x,I.h+L*3.4,I.z,hh*1.25,'#10203c').center.set(.5,.5);marke(I.txt,I.x,I.h+L*2.6,I.z,hh*.8,'#2a3b5c').center.set(.5,.5)});
- skyBuehneBeschriften(L,hh);const b=SKY.ecken;if(b.length)marke('Firmen-Skyline · Höhe = '+(D.skyline.titelHoehe||D.skyline.hoehe)+', Farbe = '+D.skyline.farbe+' (rot < '+((D.skyline.farbeGrenzen||[10,25])[0])+', gelb < '+((D.skyline.farbeGrenzen||[10,25])[1])+'), Pfeil = '+D.skyline.pfeil+', Fähnchen = Handlungsliste · Klick = Firma aufklappen · Doppelklick = Firma öffnen',Math.min(...b.map(p=>p.x)),-L*.2,Math.max(...b.map(p=>p.z))+L*3,hh*.9,'#2a3b5c')}
+// Version 42: Name und Kennzahlen der Firmen immer vor den Türmen (auch vor höheren Nachbarn), Trendzahl am Pfeil
+const vorne=sp=>{sp.material.depthTest=false;sp.renderOrder=20;return sp};
+function skyBeschriften(){if(!SKY)return;const L=abstand(),hh=L*.55;SKY.info.forEach(I=>{vorne(marke(firmenName(I.f),I.x,I.h+L*3.4,I.z,hh*1.25,'#10203c')).center.set(.5,.5);vorne(marke(I.txt,I.x,I.h+L*2.6,I.z,hh*.8,'#2a3b5c')).center.set(.5,.5);
+  if(I.tp)marke(I.tp.txt,I.tp.x+I.tp.s*.45,I.tp.y+I.tp.s*.1,I.tp.z,hh*1.05,I.tp.auf?'#1f7a3c':'#b02a1a').center.set(0,.5)});
+ skyBuehneBeschriften(L,hh);const b=SKY.ecken;if(b.length)marke('Firmen-Skyline · Höhe = '+(D.skyline.titelHoehe||D.skyline.hoehe)+', Farbe = '+D.skyline.farbe+' (rot < '+((D.skyline.farbeGrenzen||[10,25])[0])+', gelb < '+((D.skyline.farbeGrenzen||[10,25])[1])+'), Pfeil ↗/↘ = '+D.skyline.pfeil+', ⚠ = Hinweise der Handlungsliste (Klick = Lagebericht) · Klick = Firma aufklappen · Doppelklick = Firma öffnen',Math.min(...b.map(p=>p.x)),-L*.2,Math.max(...b.map(p=>p.z))+L*3,hh*.9,'#2a3b5c')}
+function trendPfeil(auf,s,x,y,z){const mat=new T.MeshStandardMaterial({color:auf?0x2e9e4f:0xd0402a,roughness:.35,metalness:.1}),a=auf?-Math.PI/4:-Math.PI*3/4;
+ [new T.CylinderGeometry(s*.07,s*.07,s*.62,14).translate(0,-.19*s,0),new T.ConeGeometry(s*.2,s*.38,20).translate(0,.31*s,0)].forEach(gm=>{gm.rotateZ(a);const m=new T.Mesh(gm,mat);m.position.set(x,y,z);m.castShadow=true;skyG.add(m)});
+ return{auf,s,x,y,z}}
+function warnSchild(prio,anz,gr){const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d'),col=prio===1?'#d0302a':'#e0a020';
+ g.lineJoin='round';g.beginPath();g.moveTo(64,10);g.lineTo(120,112);g.lineTo(8,112);g.closePath();g.fillStyle='#ffffff';g.fill();g.lineWidth=14;g.strokeStyle=col;g.stroke();
+ g.fillStyle='#1d2430';g.font='bold 62px system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText('!',64,76);
+ if(anz>1){g.beginPath();g.arc(104,28,22,0,7);g.fillStyle=col;g.fill();g.lineWidth=4;g.strokeStyle='#fff';g.stroke();g.fillStyle='#fff';g.font='bold 28px system-ui,sans-serif';g.fillText(anz>99?'99':String(anz),104,29)}
+ const t=new T.CanvasTexture(c);t.encoding=T.sRGBEncoding;const sp=new T.Sprite(new T.SpriteMaterial({map:t,transparent:true,depthWrite:false,fog:false}));sp.scale.set(gr,gr,1);sp.renderOrder=15;return sp}
 function fokusFirma(f,still){FOKUS=f;N.forEach(n=>n.fokAus=!gehoertZu(n,f));$('fokb').style.display='';$('fokb').textContent='◀ Alle Firmen (jetzt: '+firmenName(f)+')';
  setzeLayout('netz',!still);$('ly').value='netz';if($('mas').style.display==='block'&&$('mas').dataset.art==='mas')massnahmenZeigen();else if($('mas').style.display==='block')lageberichtZeigen()}
 function fokusAus(){FOKUS=null;N.forEach(n=>n.fokAus=false);$('fokb').style.display='none';if(D&&D.skyline){setzeLayout('skyline',true);$('ly').value='skyline'}else{zeitAnwenden();neu()}if($('mas').style.display==='block'){if($('mas').dataset.art==='mas')massnahmenZeigen();else lageberichtZeigen()}}
-function lageberichtZeigen(){const c=D.skyline,F=skyFirmen(),M=masListe(),PN=['','hoch','mittel','niedrig'],el=$('mas');el.dataset.art='lage';
+function lageberichtZeigen(nur){const c=D.skyline,F=nur?[nur]:skyFirmen(),M=masListe(),PN=['','hoch','mittel','niedrig'],el=$('mas');el.dataset.art='lage';
  const sum=F.reduce((a,f)=>a+(kzv(f,c.hoehe)>0?kzv(f,c.hoehe):0),0),p1=M.filter(m=>m.prio===1).length,p2=M.filter(m=>m.prio===2).length;
  const R=F.map(f=>{const mf=M.filter(m=>m._f===firmenName(f)).sort((a,b)=>a.prio-b.prio||String(b.t||'').localeCompare(String(a.t||'')));return{f,mf,p1:mf.filter(m=>m.prio===1).length,p2:mf.filter(m=>m.prio===2).length}}).sort((a,b)=>b.p1-a.p1||b.p2-a.p2||(kzv(b.f,c.hoehe)||0)-(kzv(a.f,c.hoehe)||0));
- const S=[];let h='<span class="x" id="masx">✕</span><h2>Lagebericht</h2><div class="sum"><b>'+F.length+' Firmen</b> · '+esc(c.titelHoehe||c.hoehe)+' gesamt '+eur(sum)+'<br><span class="p p1">P1</span> '+p1+' · <span class="p p2">P2</span> '+p2+' · Reihenfolge: dringendste Firma zuerst<br><span style="color:var(--mu)">'+esc(D.massnahmenHinweis||'Regelbasiert aus den Daten; vor dem Handeln fachlich prüfen.')+'</span></div>';
+ const S=[];let h='<span class="x" id="masx">✕</span><h2>Lagebericht'+(nur?' · '+esc(firmenName(nur)):'')+'</h2><div class="sum"><b>'+F.length+' Firmen</b> · '+esc(c.titelHoehe||c.hoehe)+' gesamt '+eur(sum)+'<br><span class="p p1">P1</span> '+p1+' · <span class="p p2">P2</span> '+p2+' · Reihenfolge: dringendste Firma zuerst<br><span style="color:var(--mu)">'+esc(D.massnahmenHinweis||'Regelbasiert aus den Daten; vor dem Handeln fachlich prüfen.')+'</span></div>';
  R.forEach((r,k)=>{const f=r.f,me=f.o.meta||{},g=kzv(f,c.pfeil);h+='<div class="lf" data-f="'+f.i+'" title="Klick: nur diese Firma zeigen"><b>'+esc(firmenName(f))+'</b><span class="k">'+esc(c.titelHoehe||c.hoehe)+' '+eur(kzv(f,c.hoehe))+' · '+esc(c.farbe)+' '+esc(me[c.farbe]||'–')+(isFinite(g)?' · Wachstum '+(g>=0?'+':'')+Math.round(g)+' %':'')+' · '+(r.p1||r.p2?[r.p1?r.p1+' × P1':'',r.p2?r.p2+' × P2':''].filter(Boolean).join(', '):'keine dringenden Signale')+'</span></div>';
   r.mf.slice(0,3).forEach(m=>{S.push(m);h+='<div class="ev" data-k="'+(S.length-1)+'"><span class="p p'+m.prio+'" title="Priorität '+PN[m.prio]+'">P'+m.prio+'</span><span>'+(m.signal?'<b>'+esc(m.signal)+'</b> · ':'')+esc(m.text||'')+'</span><span class="w">'+[m.rolle,m.t].filter(Boolean).map(esc).join(' · ')+(r.mf.length>3&&m===r.mf[2]?' · '+(r.mf.length-3)+' weitere in der Handlungsliste':'')+'</span></div>'})});
  if(!F.length)h+='<div class="m">keine Firmen mit Kennzahlen</div>';
@@ -1049,21 +1064,27 @@ $('fokb').onclick=fokusAus;
 let SKY_AUF={f:null,offen:new Set()},SKY_KL=null;
 function skyWert(n){const me=n.o.meta||{};for(const k of [].concat(D.skyline.wert||'Betrag')){const v=numv(me[k]);if(isFinite(v))return v}return NaN}
 function skySammelTypen(f){const c=D.skyline,zahl={};N.forEach(n=>{if(n!==f&&!typAus[n.ty]&&gehoertZu(n,f))zahl[n.ty]=(zahl[n.ty]||0)+1});
- const L=Array.isArray(c.sammel)?c.sammel.filter(t=>zahl[t]):Object.keys(zahl).filter(t=>t!==c.typ).sort((a,b)=>zahl[b]-zahl[a]).slice(0,7);return L.map(t=>({t,anz:zahl[t]}))}
+ // Version 42 (Wunsch des Nutzers): ein Eintrag in daten.skyline.sammel darf eine Gruppe sein {titel,typen,namen,farbe,anteile}: ein Sammelkörper für mehrere Typen
+ // (CRM: „Personen“ = Kontakte + Ressourcen); mit anteile:true erscheinen die Blöcke aus daten.skyline.anteile erst, wenn diese Gruppe aufgeklappt ist
+ const G=Array.isArray(c.sammel)?c.sammel.map(e=>typeof e==='string'?{t:e,typen:[e]}:{t:'grp:'+(e.titel||e.typen.join('+')),typen:e.typen||[],titel:e.titel,namen:e.namen,farbe:e.farbe,anteile:!!e.anteile}):Object.keys(zahl).filter(t=>t!==c.typ).sort((a,b)=>zahl[b]-zahl[a]).slice(0,7).map(t=>({t,typen:[t]}));
+ G.forEach(g=>{g.anz=g.typen.reduce((a,t)=>a+(zahl[t]||0),0);g.teile=g.typen.map((t,k)=>({t,anz:zahl[t]||0,name:(g.namen||[])[k]||((TY[t]||{}).label||t)}))});return G.filter(g=>g.anz>0)}
+function sammelTypen(){return(Array.isArray(D.skyline.sammel)?D.skyline.sammel:[]).flatMap(e=>typeof e==='string'?[e]:(e.typen||[]))}
 function skyBuehne(L,A,z0){const f=SKY_AUF.f,I=SKY.info.find(x=>x.f===f);if(!I)return;const T6=skySammelTypen(f),B=L*5.2,cell=L*.95,cols=Math.max(1,Math.floor(B/cell)),mx=Math.max(1,...T6.map(x=>x.anz));
  const x0=I.x-(T6.length-1)/2*B,feld=skyWert;SKY.buehne={f,x0,z0,B,T6,I};
  // goldene Verbindung vom Turm zur Bühne
  const lg=new T.BufferGeometry().setFromPoints([new T.Vector3(I.x,.05,I.z),new T.Vector3(I.x,.05,z0-L*.8),new T.Vector3(x0-B*.5,.05,z0-L*.8),new T.Vector3(x0+(T6.length-.5)*B,.05,z0-L*.8)]);
  skyG.add(new T.Line(lg,new T.LineBasicMaterial({color:0xd4a017})));
- T6.forEach((g,k)=>{const x=x0+k*B,h=L*(.5+2.5*Math.sqrt(g.anz/mx)),col=new T.Color((TY[g.t]||{}).color||'#8b94a3');
+ SKY.reihen=[];T6.forEach((g,k)=>{const x=x0+k*B,h=L*(.5+2.5*Math.sqrt(g.anz/mx)),col=new T.Color(g.farbe||(TY[g.typen[0]]||{}).color||'#8b94a3');
   const cm=new T.Mesh(new T.CylinderGeometry(L*1.1,L*1.25,h,28),new T.MeshStandardMaterial({color:col,roughness:.35,metalness:.15,transparent:true,opacity:SKY_AUF.offen.has(g.t)?.55:.9}));cm.position.set(x,h/2,z0);cm.castShadow=cm.receiveShadow=true;skyG.add(cm);
-  const O=N.filter(n=>n!==f&&n.ty===g.t&&gehoertZu(n,f)&&!typAus[n.ty]).sort((a,b)=>(isFinite(a.t0)?a.t0:0)-(isFinite(b.t0)?b.t0:0));
+  const O=N.filter(n=>n!==f&&g.typen.includes(n.ty)&&gehoertZu(n,f)&&!typAus[n.ty]).sort((a,b)=>g.typen.indexOf(a.ty)-g.typen.indexOf(b.ty)||(isFinite(a.t0)?a.t0:0)-(isFinite(b.t0)?b.t0:0));
   const sum=O.reduce((a,n)=>{const v=feld(n);return isFinite(v)?a+v:a},0),hatW=O.some(n=>isFinite(feld(n)));
-  SKY.sammel.push({m:cm,f,typ:g.t,anz:g.anz,x,z:z0,h,txt:((TY[g.t]||{}).label||g.t)+' '+g.anz+(hatW?' · '+eur(sum):'')});SKY.koerper.push({m:cm,f,typ:g.t});
+  SKY.sammel.push({m:cm,f,typ:g.t,anz:g.anz,x,z:z0,h,txt:(g.titel||(TY[g.t]||{}).label||g.t)+' '+g.anz+(g.teile.length>1?' · '+g.teile.filter(t=>t.anz).map(t=>t.name+' '+t.anz).join(' · '):'')+(hatW?' · '+eur(sum):'')});SKY.koerper.push({m:cm,f,typ:g.t});
   SKY.ecken.push(new T.Vector3(x-B/2,0,z0-L),new T.Vector3(x+B/2,h+L*2,z0+L));
-  if(SKY_AUF.offen.has(g.t)){const zs=z0+L*2.4;O.forEach((n,j)=>{if(n.r0==null)n.r0=n.r;n.r=Math.min(n.r0,L*.42);n.skyAus=false;n.ziel.set(x+((j%cols)-(cols-1)/2)*cell,n.r,zs+Math.floor(j/cols)*cell)});
-   SKY.ecken.push(new T.Vector3(x,0,zs+Math.ceil(O.length/cols)*cell))}});
- skyBlock(L,f,x0+T6.length*B+L*.5,z0)}
+  if(SKY_AUF.offen.has(g.t)){let zs=z0+L*2.4;g.typen.forEach(t=>{const O2=O.filter(n=>n.ty===t);if(!O2.length)return;   // je Typ eigene Reihen (bei Gruppen mit Überschrift)
+    if(g.typen.length>1){SKY.reihen.push({txt:g.teile.find(q=>q.t===t).name+' '+O2.length,x:x-(cols-1)/2*cell-L*.5,z:zs});zs+=L*.9}
+    O2.forEach((n,j)=>{if(n.r0==null)n.r0=n.r;n.r=Math.min(n.r0,L*.42);n.skyAus=false;n.ziel.set(x+((j%cols)-(cols-1)/2)*cell,n.r,zs+Math.floor(j/cols)*cell)});zs+=Math.ceil(O2.length/cols)*cell+L*.6});
+   SKY.ecken.push(new T.Vector3(x,0,zs))}});
+ const gA=T6.filter(g=>g.anteile);SKY.bloecke=[];SKY.block=null;if(!gA.length||gA.some(g=>SKY_AUF.offen.has(g.t)))skyBlock(L,f,x0+T6.length*B+L*.5,z0)}
 // Version 39 (C), Version 41 getrennt (Wunsch des Nutzers): je Feld in daten.skyline.anteile ein Block (CRM: grau „Wer hat gearbeitet“ = Ressourcen,
 // lila „Für wen beim Kunden“ = Kundenpersonen), Säule in Abschnitten je Person, Höhe = Anteil; die Person steht vorn rechts an ihrem Abschnitt,
 // Beschriftung „Name · Stunden · Prozent“. Kleinste Anteile ab Platz 7 als „weitere“.
@@ -1075,17 +1096,18 @@ function skyBlock(L,f,x,z){const C=Array.isArray(D.skyline.anteile)?D.skyline.an
   L2.forEach((t,j)=>{const h=Math.max(L*.12,t.h/S*Hb),col=new T.Color(c.farbe||(t.n?'#'+t.n.col.getHexString():'#9aa3ae'));if(j%2)col.offsetHSL(0,0,.12);if(!t.n)col.offsetHSL(0,-.2,.2);
    const m=new T.Mesh(new T.BoxGeometry(w,h*.96,w),new T.MeshStandardMaterial({color:col,roughness:.4,metalness:.05}));m.position.set(x,y+h/2,z);m.castShadow=m.receiveShadow=true;skyG.add(m);
    const ym=Math.max(y+h/2,yf+L*1.6);yf=ym;
-   if(t.n&&!typAus[t.n.ty]){const n=t.n;if(n.r0==null)n.r0=n.r;n.r=L*.7;n.skyAus=false;n.ziel.set(x+w/2,ym,z+w/2+L*.9)}
+   if(t.n&&!typAus[t.n.ty]&&t.n.skyAus){const n=t.n;if(n.r0==null)n.r0=n.r;n.r=L*.7;n.skyAus=false;n.ziel.set(x+w/2,ym,z+w/2+L*.9)}
    B.teile.push({y:ym,txt:(t.n?crmKurz(t.n):'weitere ('+t.anz+')')+' · '+t.h.toLocaleString('de-DE',{maximumFractionDigits:1})+' h · '+Math.round(t.h/S*100)+' %'});y+=h});
   B.top=Math.max(y,yf+L*.7);SKY.ecken.push(new T.Vector3(x-w,0,z-w),new T.Vector3(x+w+L*9,B.top+L*2.5,z+w));xa=x+w+L*15});
  SKY.block=SKY.bloecke[0]||null}
 function crmKurz(n){const t=String(n.name||'');return t.includes(' · ')?t.split(' · ').slice(1).join(' · '):t}
-function skyBuehneBeschriften(L,hh){const S=SKY.buehne;if(!S)return;marke('Aufgeklappt: '+firmenName(S.f)+' · Klick auf einen Sammelkörper = Objekte zeigen/verbergen',S.x0-S.B*.5,Math.max(0,...SKY.sammel.map(g=>g.h))+L*3.4,S.z0-L*2,hh*.85,'#7a5a00').center.set(0,.5);
+function skyBuehneBeschriften(L,hh){const S=SKY.buehne;if(!S)return;marke('Aufgeklappt: '+firmenName(S.f)+' · Klick auf einen Sammelkörper = Objekte zeigen/verbergen',S.x0-S.B*.5,Math.max(0,...SKY.sammel.map(g=>g.h))+L*4.4,S.z0-L*2,hh*.85,'#7a5a00').center.set(0,.5);
+ (SKY.reihen||[]).forEach(r=>marke(r.txt,r.x,L*.05,r.z,hh*.75,'#4a5a75').center.set(1,.5));
  SKY.sammel.forEach(g=>{marke(g.txt,g.x,g.h+L*.9,g.z,hh*.8,'#10203c').center.set(.5,.5)});
  (SKY.bloecke||[]).forEach(K=>{marke(K.titel+' · '+Math.round(K.S).toLocaleString('de-DE')+' h',K.x,K.top+L*1.6,K.z,hh*1.0,'#10203c').center.set(.5,.5);
   K.teile.forEach(t=>marke(t.txt,K.x+K.w/2+L*1.0,t.y,K.z+K.w/2+L*.9,hh*.9,'#10203c').center.set(0,.5))})}
 function skyKoerper(e){if(!SKY||!SKY.koerper.length||!skyG.visible)return null;treffer(e);const hit=ray.intersectObjects(SKY.koerper.map(k=>k.m),false)[0];return hit?SKY.koerper.find(k=>k.m===hit.object):null}
-function skyKlick(e,i){if(layout!=='skyline'||!SKY)return false;const sk=i<0?skyKoerper(e):null,f=i>=0&&SKY.F.includes(N[i])?N[i]:sk&&!sk.typ?sk.f:null;
+function skyKlick(e,i){if(layout!=='skyline'||!SKY)return false;const sk=i<0?skyKoerper(e):null;if(sk&&sk.warn){clearTimeout(SKY_KL);$('chr').style.display='none';lageberichtZeigen(sk.f);return true}const f=i>=0&&SKY.F.includes(N[i])?N[i]:sk&&!sk.typ?sk.f:null;
  if(!f&&!(sk&&sk.typ))return false;clearTimeout(SKY_KL);
  SKY_KL=setTimeout(()=>{if(f){SKY_AUF=SKY_AUF.f===f?{f:null,offen:new Set()}:{f,offen:new Set()}}else{const o=SKY_AUF.offen;o.has(sk.typ)?o.delete(sk.typ):o.add(sk.typ)}
   setzeLayout('skyline',false);if(SKY_AUF.f&&SKY.buehne){const P=[];SKY.sammel.forEach(g=>P.push(new T.Vector3(g.x,g.h,g.z)));N.forEach(n=>{if(!n.skyAus&&!SKY.F.includes(n))P.push(n.ziel)});P.push(new T.Vector3(SKY.buehne.I.x,SKY.buehne.I.h,SKY.buehne.I.z));
@@ -1097,18 +1119,18 @@ const quartal=t=>{const d=new Date(t);return d.getUTCFullYear()*4+Math.floor(d.g
 function reise(L){while(skyG.children.length){const c=skyG.children.pop();c.geometry&&c.geometry.dispose();c.material&&c.material.dispose()}
  const c=D.skyline,F=(FOKUS?[FOKUS]:skyFirmen()).filter(f=>!typAus[f.ty]),uT=c.umsatzTyp||'tSI',feld=skyWert;SKY={F,ecken:[],info:[],koerper:[],sammel:[],reise:null};
  N.forEach(n=>{n.skyAus=true;n.ziel.copy(n.pos)});if(!F.length){skyG.visible=false;return}
- const O=new Map();N.forEach(n=>{const f=firmaVon(n);if(f&&f!==n&&F.includes(f)&&isFinite(n.t0)&&!typAus[n.ty]){if(!O.has(f))O.set(f,[]);O.get(f).push(n)}});
+ const ohne=Array.isArray(c.reiseOhne)?c.reiseOhne:[],O=new Map();N.forEach(n=>{const f=firmaVon(n);if(f&&f!==n&&F.includes(f)&&isFinite(n.t0)&&!typAus[n.ty]&&!ohne.includes(n.ty)){if(!O.has(f))O.set(f,[]);O.get(f).push(n)}});
  let q0=Infinity,q1=-Infinity;O.forEach(L2=>L2.forEach(n=>{const q=quartal(n.t0);if(q<q0)q0=q;if(q>q1)q1=q}));if(!isFinite(q0)){q0=q1=quartal(Date.now())}
  const nq=q1-q0+1,Q=L*Math.max(2.5,Math.min(5,40/nq)),xT=t=>((t-qStart(q0))/(qStart(q1+1)-qStart(q0))-.5)*nq*Q,M=masListe();
- const typen=[];O.forEach(L2=>L2.forEach(n=>{if(!typen.includes(n.ty))typen.push(n.ty)}));const ord=Array.isArray(c.sammel)?c.sammel:[];typen.sort((a,b)=>((ord.indexOf(a)+1)||99)-((ord.indexOf(b)+1)||99));
+ const typen=[];O.forEach(L2=>L2.forEach(n=>{if(!typen.includes(n.ty))typen.push(n.ty)}));const ord=sammelTypen();typen.sort((a,b)=>((ord.indexOf(a)+1)||99)-((ord.indexOf(b)+1)||99));
  const sp=L*1.3,Bz=Math.max(L*6,typen.length*sp+L*3),umQ=F.map(f=>{const u=new Array(nq).fill(0);(O.get(f)||[]).forEach(n=>{if(n.ty===uT){const v=feld(n);if(isFinite(v))u[quartal(n.t0)-q0]+=v}});return u}),umax=Math.max(1e-9,...umQ.flat()),Hm=L*7;
  const xa=-nq*Q/2,xe=nq*Q/2;
  F.forEach((f,k)=>{const zb=k*Bz,zs=zb-Bz/2+L*1.2;f.skyAus=false;f.ziel.set(xa-L*6,f.r,zb);
   const bo=new T.Mesh(new T.BoxGeometry(xe-xa+L*2,L*.06,Bz-L*.8),new T.MeshStandardMaterial({color:k%2?0xe9eef6:0xdde5f0,roughness:.9}));bo.position.set((xa+xe)/2,.03,zb);bo.receiveShadow=true;skyG.add(bo);
   umQ[k].forEach((v,j)=>{if(!(v>0))return;const h=Math.max(L*.15,v/umax*Hm),sm=new T.Mesh(new T.BoxGeometry(Q*.7,h,L*.7),new T.MeshStandardMaterial({color:0x2e9e4f,roughness:.4,transparent:true,opacity:.85}));sm.position.set(xa+(j+.5)*Q,h/2,zs-L*.9);sm.castShadow=true;skyG.add(sm);SKY.sammel.push({x:xa+(j+.5)*Q,z:zs-L*.9,h,txt:eur(v)})});
   const St={};(O.get(f)||[]).sort((a,b)=>a.t0-b.t0).forEach(n=>{if(n.r0==null)n.r0=n.r;n.r=Math.min(n.r0,L*.38);const r=typen.indexOf(n.ty),x=xT(n.t0),key=r+':'+Math.round(x/(L*.8)),hgt=St[key]=(St[key]||0)+1;n.skyAus=false;n.ziel.set(x,n.r+(hgt-1)*n.r*2.1,zs+L*.6+r*sp)});
-  M.filter(m=>m._f===firmenName(f)&&m.t&&m.prio<=2&&isFinite(Date.parse(m.t))).forEach(m=>{const x=Math.max(xa,Math.min(xe,xT(Date.parse(m.t)))),col=m.prio===1?0xd0302a:0xe0a020,st=new T.Mesh(new T.CylinderGeometry(L*.04,L*.04,L*2,6),new T.MeshStandardMaterial({color:0x44505e}));st.position.set(x,L,zs-L*.2);skyG.add(st);
-   const fl=new T.Mesh(new T.BoxGeometry(L*.5,L*.32,L*.05),new T.MeshStandardMaterial({color:col}));fl.position.set(x+L*.27,L*1.8,zs-L*.2);skyG.add(fl)});
+  M.filter(m=>m._f===firmenName(f)&&m.t&&m.prio<=2&&isFinite(Date.parse(m.t))).forEach(m=>{const x=Math.max(xa,Math.min(xe,xT(Date.parse(m.t)))),st=new T.Mesh(new T.CylinderGeometry(L*.04,L*.04,L*1.6,6),new T.MeshStandardMaterial({color:0x5a6472}));st.position.set(x,L*.8,zs-L*.2);skyG.add(st);
+   const ws=warnSchild(m.prio,1,L*1.1);ws.position.set(x,L*2,zs-L*.2);skyG.add(ws)});   // Version 42: Warnschild wie in der Skyline
   SKY.info.push({f,zb,zs,u:umQ[k].reduce((a,b)=>a+b,0)});SKY.ecken.push(new T.Vector3(xa-L*8,0,zb-Bz/2),new T.Vector3(xe+L,Hm,zb+Bz/2))});
  SKY.reise={q0,nq,Q,xa,xe,typen,sp,Bz};skyG.visible=true}
 function reiseBeschriften(){const R=SKY&&SKY.reise;if(!R)return;const L=abstand(),hh=L*.55,zl=(SKY.F.length-1)*R.Bz+R.Bz/2+L*.4,st=Math.max(1,Math.ceil(R.nq/24));
@@ -1116,7 +1138,7 @@ function reiseBeschriften(){const R=SKY&&SKY.reise;if(!R)return;const L=abstand(
  SKY.info.forEach(I=>{marke(firmenName(I.f),R.xa-L*6,I.f.r*2+L*1.2,I.zb,hh*1.2,'#10203c').center.set(.5,.5);marke('Umsatz '+eur(I.u),R.xa-L*6,I.f.r*2+L*.45,I.zb,hh*.75,'#2a3b5c').center.set(.5,.5);
   R.typen.forEach((t,r)=>marke((TY[t]||{}).label||t,R.xa-L*.3,L*.05,I.zs+L*.6+r*R.sp,hh*.75,'#4a5a75').center.set(1,.5))});
  SKY.sammel.forEach(g=>{marke(g.txt,g.x,g.h+L*.5,g.z,hh*.85,'#1f6b38').center.set(.5,.5)});
- marke('Kundenreise · je Firma eine Bahn · Säulen = Umsatz je Quartal · Spuren = Objekte am Datum · Fähnchen = Handlungsliste',R.xa-L*8,L*.05,zl+L*2.6,hh*.9,'#2a3b5c').center.set(0,.5)}
+ marke('Kundenreise · je Firma eine Bahn · Säulen = Umsatz je Quartal · Spuren = Objekte am Datum'+((D.skyline.reiseOhne||[]).length?' (ohne '+D.skyline.reiseOhne.map(t=>(TY[t]||{}).label||t).join(', ')+')':'')+' · ⚠ = Hinweise der Handlungsliste',R.xa-L*8,L*.05,zl+L*2.6,hh*.9,'#2a3b5c').center.set(0,.5)}
 // Version 24: Maßnahmen-Datei des KI-Agenten laden ({massnahmen:[…]} oder Liste); ids dürfen CRM-Nummern sein (z. B. AU240749); ersetzt frühere KI-Maßnahmen, Regel-Maßnahmen bleiben
 function istMassnahmenDatei(j){const L=Array.isArray(j)?j:j&&!j.nodes&&!(j.daten&&j.daten.nodes)&&Array.isArray(j.massnahmen)?j.massnahmen:null;return!!L&&L.length>0&&L.every(m=>m&&typeof m==='object'&&(m.text||m.signal))}
 function massnahmenLaden(j){if(!D||!N.length){meld('Erst den Datenraum (CRM-ZIP) laden, dann die Maßnahmen-Datei.');return}
@@ -1340,7 +1362,7 @@ async function zipEntpacken(e){if(e.meth===0)return e.daten;if(e.meth!==8)throw 
  return new Uint8Array(await new Response(new Blob([e.daten]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer())}
 let CRM_ROH=null;   // Version 21: Rohdaten des zuletzt geladenen CRM-Exports (für „Batches einzeln“), nur im Speicher
 async function leseZip(f){
- meld('Lese '+f.name+' …');
+ meld('Lese '+f.name+' …');ladeKugel(true);
  try{const dec=new TextDecoder('utf-8'),busse=[],rels=[],bId={},rId={},ordner=[];let json4d=null;
   // Version 30: neues Exportformat mit Unterordnern je Firma (…/<Firma>/busses/…, …/<Firma>/rels/…), auch ZIP im ZIP; Objekte doppelt in mehreren Ordnern nur einmal, mit allen Ordnern im Feld „Export-Ordner“
   const lies=async(ein,vor,tiefe)=>{for(const e of ein){
@@ -1363,7 +1385,7 @@ async function leseZip(f){
 
 // Objekttypen des CRM (Kürzel → Darstellung); unbekannte Kürzel erscheinen mit ihrem Kürzel
 const CRM_TYPEN={
- tCO:{label:'Firma',color:'#f4c430',shape:'gebaeude',size:3},
+ tCO:{label:'Firma',color:'#c2c8d0',shape:'gebaeude',size:3},   // Version 42: silbergrau statt gelb
  tPE:{label:'Person',color:'#7451b0',shape:'bust',size:1.1},
  tRS:{label:'Ressource',color:'#8a9099',shape:'bust',size:1.1},   // Version 38 (Wunsch des Nutzers): Person in ihrer Funktion als ausführende Kraft (Ticket, Zeitnachweis), grau
  tAD:{label:'Adresse',color:'#66788f',shape:'diamond',size:.7},
@@ -1468,7 +1490,7 @@ function crmZuDaten(busse,rels,opt){opt=opt||{};
  const med={};nodes.forEach(n=>{if(isFinite(n.wert)&&n.wert>0)(med[n.type]=med[n.type]||[]).push(n.wert)});
  Object.keys(med).forEach(t=>{const L=med[t].sort((x,y)=>x-y);med[t]=L[L.length>>1]});
  nodes.forEach(n=>{const g=types[n.type].size||1;n.size=isFinite(n.wert)&&n.wert>0&&med[n.type]?g*Math.max(.3,Math.min(7,Math.pow(n.wert/med[n.type],2/3))):g;Object.keys(n).forEach(k=>{if(k==='wert'||k[0]==='_')delete n[k]})});
- return{titel:'CRM',crm:true,eigeneDomain:eigen.domain,eigeneAuto:eigen.auto,schichtReihe:['tCO','tOF','tCT'],skyline:{typ:'tCO',mehrfach:['tPE','tRS'],anteile:[{feld:'anteile',titel:'Wer hat gearbeitet (Ressourcen)',farbe:'#8a9099'},{feld:'anteileKunde',titel:'Für wen beim Kunden',farbe:'#7451b0',klein:true}],sammel:['tOF','tCT','tSI','tBS','tTI','tTA','tPE'],umsatzTyp:'tSI',wert:['Betrag','Netto'],hoehe:'Umsatz 12 Monate',titelHoehe:'Umsatz 12 Monate',farbe:'Marge',pfeil:'Wachstum ggü. Vorjahr',farbeGrenzen:[10,25]},chronik,massnahmen,fakten,chronikOk:{Angebot:'beauftragt',Auftrag:'im Budget',Rechnung:'mit positiver Marge',Aufgabe:'erledigt'},warnungName:'über Budget',layout:'netz',types,relTypes,nodes,edges,betragName:'Umsatz (Rechnungen netto)',betragEinheit:'€',
+ return{titel:'CRM',crm:true,eigeneDomain:eigen.domain,eigeneAuto:eigen.auto,schichtReihe:['tCO','tOF','tCT'],skyline:{typ:'tCO',mehrfach:['tPE','tRS'],anteile:[{feld:'anteile',titel:'Zeitaufwände (erfasst von)',farbe:'#8a9099'},{feld:'anteileKunde',titel:'Zeitaufwände (für Kontakt)',farbe:'#7451b0',klein:true}],sammel:['tOF','tCT','tSI','tBS','tTI','tTA',{titel:'Personen',typen:['tPE','tRS'],namen:['Kontakte','Ressourcen'],farbe:'#7f8ea3',anteile:true}],reiseOhne:['tOFI','tCTI','tSII'],umsatzTyp:'tSI',wert:['Betrag','Netto'],hoehe:'Umsatz 12 Monate',titelHoehe:'Umsatz 12 Monate',farbe:'Marge',pfeil:'Wachstum ggü. Vorjahr',farbeGrenzen:[10,25]},chronik,massnahmen,fakten,chronikOk:{Angebot:'beauftragt',Auftrag:'im Budget',Rechnung:'mit positiver Marge',Aufgabe:'erledigt'},warnungName:'über Budget',layout:'netz',types,relTypes,nodes,edges,betragName:'Umsatz (Rechnungen netto)',betragEinheit:'€',
   stufenNamen:{kristall:'abgeschlossen (Kristall)',roh:'offen / in Arbeit (matt)',alt:'inaktiv'},axes:CRM_ACHSEN}}
 // Version 20: Vorlagen für das Layout „Kennzahlen (Achsen)“ (Namen wie im kaufmännischen Datenraum von 3Deep)
 const CRM_ACHSEN=[
@@ -1655,9 +1677,9 @@ function waehleRaum(v){eigeneWahl();lauf=null;
  if(v==='demo')laden(demoDaten());
  else if(v.startsWith('stress:'))laden(stressDaten(+v.slice(7)));
  else if(v.startsWith('thema:')){const name=v.slice(6);const pfade=['themen/'+name+'.json','3deep-widget/themen/'+name+'.json'];
-  const versuch=i=>{if(i>=pfade.length){meld('Thema nicht erreichbar (nur über einen Webserver, nicht per Doppelklick).');return}
+  ladeKugel(true);const versuch=i=>{if(i>=pfade.length){meld('Thema nicht erreichbar (nur über einen Webserver, nicht per Doppelklick).');return}
    fetch(pfade[i]).then(r=>{if(!r.ok)throw 0;return r.json()}).then(j=>laden(j.daten||j),()=>versuch(i+1))};versuch(0)}}   // Version 29: Fehler beim Aufbau nicht mehr als „nicht erreichbar“ verschlucken
-function meld(t){$('leer').style.display='';$('leer').textContent=t}
+function meld(t){ladeKugel(false);$('leer').style.display='';$('leer').textContent=t}
 
 // ---------- Leistung ----------
 let fps=0,fz=0,fT=performance.now(),messung=null;
@@ -1920,13 +1942,83 @@ function strahlTick(t){const S=strahl,L=GEL?E.filter(k=>k.dir&&!k.revAus&&k.a.s>
    C[q*3]=k.col.r;C[q*3+1]=k.col.g;C[q*3+2]=k.col.b;A[q]=.9*Math.min(1,u*8,(1-u)*8);G[q]=.55*FEST_F}});
  S.p.material.uniforms.sk.value=renderer.domElement.height*(ST.on&&ST.tb?.5:1)/(2*Math.tan(cam.fov*Math.PI/360));['position','farbe','al'].forEach(a=>g.attributes[a].needsUpdate=true);S.p.visible=true;return true}
 // ---------- Datenquellen: Adapter (postMessage), Beispiele ----------
+// ---------- Version 42 (Wunsch des Nutzers): Ladekugel wie in 3Deep (Darstellung 100–122), mit Zeitring für 4D ----------
+// Gelernt in 3Deep: erst nach 300 ms sichtbar (kurzes Laden blinkt nicht), dreht sich nicht, wächst wie eine Morula (Zellen bleiben gleich groß, ihre Zahl wächst;
+// Teilung 1→4, neue Punkte wandern von der Kantenmitte nach außen), Kern fest, Puls 2,5 s, Größe 48–224 px; am Ende zerplatzt sie in 250 ms in Splitter,
+// die Uhr dafür startet erst mit dem ersten Bild nach dem Aufbau (der Aufbau blockiert den Browser kurz). Häkchen „Ladekugel“ (Standard an, gemerkt).
+// Neu in 4Deep: zarter Zeitring um die Kugel (fest, steht still), auf dem einmal je Puls ein Lichtpunkt mit Schweif umläuft. Steuerung allgemein über ladeKugel(an):
+// Adapter {quelle:'3deep-adapter',laedt:true|false}, CRM-ZIP, Themen per Webserver; laden() und Fehlermeldungen beenden sie.
+var KG={on:false,timer:0,raf:0,t0:0,aus:0};const KG_PULS=2.5,KG_R=80,KG_PLATZ=250,KG_RING=KG_R*1.55;
+const KGEO=(()=>{const p=(1+Math.sqrt(5))/2,V=[[-1,p,0],[1,p,0],[-1,-p,0],[1,-p,0],[0,-1,p],[0,1,p],[0,-1,-p],[0,1,-p],[p,0,-1],[p,0,1],[-p,0,-1],[-p,0,1]].map(v=>{const l=Math.hypot(...v);return v.map(x=>x/l)}),
+ F0=[[0,11,5],[0,5,1],[0,1,7],[0,7,10],[0,10,11],[1,5,9],[5,11,4],[11,10,2],[10,7,6],[7,1,8],[3,9,4],[3,4,2],[3,2,6],[3,6,8],[3,8,9],[4,9,5],[2,4,11],[6,2,10],[8,6,7],[9,8,1]],L=[{n:12,F:F0,par:[]}];let F=F0;
+ for(let s_=0;s_<4;s_++){const M=new Map(),G=[],par=L[s_].par.slice();
+  const mid=(a,b)=>{const k=a<b?a+'_'+b:b+'_'+a;if(M.has(k))return M.get(k);const v=[0,1,2].map(i=>(V[a][i]+V[b][i])/2),l=Math.hypot(...v);V.push(v.map(x=>x/l));par[V.length-1]=[a,b];M.set(k,V.length-1);return V.length-1};
+  F.forEach(([a,b,c])=>{const ab=mid(a,b),bc=mid(b,c),ca=mid(c,a);G.push([a,ab,ca],[b,bc,ab],[c,ca,bc],[ab,bc,ca])});F=G;L.push({n:V.length,F,par})}
+ return{V,L,F0}})();
+function kugelAn(){try{return localStorage.getItem('4d_ladekugel')!=='aus'}catch(_){return true}}
+function ladeKugel(an){if(an){if(!$('kugelan').checked)return;if(KG.on&&!KG.aus)return;if(KG.aus){clearTimeout(KG.aus);KG.aus=0;kugelZeigen();return}if(!KG.timer)KG.timer=setTimeout(()=>{KG.timer=0;kugelZeigen()},300);return}
+ if(KG.timer){clearTimeout(KG.timer);KG.timer=0}if(!KG.on||KG.aus)return;kugelSzene(1);kugelPlatzen()}
+function kugelSzene(o){['cv','nm'].forEach(id=>$(id).style.opacity=o);$('leer').style.visibility=o?'':'hidden'}
+function kugelMitte(){const r=$('pn').getBoundingClientRect(),l=r.width&&r.right<innerWidth*.6&&getComputedStyle($('pn')).display!=='none'?r.right:0;return[(l+innerWidth)/2,innerHeight/2]}
+function kugelZeigen(){const c=$('kugel');KG.on=true;KG.platzt=null;c.style.transition='';if(!KG.t0)KG.t0=performance.now();c.style.opacity=1;kugelSzene(0);cancelAnimationFrame(KG.raf);const tick=()=>{kugelMalen(c);if(KG.on&&!KG.platzt)KG.raf=requestAnimationFrame(tick)};tick()}
+const kugelRadius=ph=>KG_R*(1+.55*ph-.15*ph*ph);
+function kugelStufe(R){const lam=Math.max(0,1+Math.log2(R/(KG_R*.6))),lv=Math.min(3,Math.floor(lam)),f0=Math.min(1,lam-lv);return{lv,f:f0*f0*(3-2*f0),zellen:KGEO.L[lv].F.length}}
+// Zeitring: Kreis in der Äquatorebene (gleiche Neigung wie die Kugel), Lichtpunkt läuft in KG_PULS einmal um; hintere Hälfte vor der Kugel gezeichnet, vordere danach
+function kugelRing(g,rot,pr,t,vorn,al,k){const N2=96,u=((t/KG_PULS)%1)*Math.PI*2,P=[];for(let i=0;i<=N2;i++){const a=i/N2*Math.PI*2;P.push(rot([Math.cos(a),0,Math.sin(a)],KG_RING*k))}
+ g.lineCap='round';g.lineWidth=1.1;g.strokeStyle=`rgba(255,255,255,${(.38*al).toFixed(3)})`;g.beginPath();let auf=false;
+ for(let i=0;i<=N2;i++){const q=P[i],ok=(q[2]>=0)===vorn;if(ok){const s2=pr(q);auf?g.lineTo(s2[0],s2[1]):g.moveTo(s2[0],s2[1]);auf=true}else auf=false}g.stroke();
+ // Schweif (60°) und Lichtpunkt
+ for(let j=0;j<24;j++){const a0=u-j/24*Math.PI/3,a1=u-(j+1)/24*Math.PI/3,A=rot([Math.cos(a0),0,Math.sin(a0)],KG_RING*k),B=rot([Math.cos(a1),0,Math.sin(a1)],KG_RING*k);if((A[2]>=0)!==vorn)continue;
+  const a=pr(A),b=pr(B);g.strokeStyle=`rgba(255,255,255,${((1-j/24)*.8*al).toFixed(3)})`;g.lineWidth=2.4*(1-j/30);g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.stroke()}
+ const D3=rot([Math.cos(u),0,Math.sin(u)],KG_RING*k);if((D3[2]>=0)!==vorn)return;const d=pr(D3),gr=g.createRadialGradient(d[0],d[1],0,d[0],d[1],11);
+ gr.addColorStop(0,`rgba(255,255,255,${al.toFixed(3)})`);gr.addColorStop(.35,`rgba(214,236,255,${(.7*al).toFixed(3)})`);gr.addColorStop(1,'rgba(214,236,255,0)');g.fillStyle=gr;g.beginPath();g.arc(d[0],d[1],11,0,7);g.fill()}
+function kugelMalen(c){const S=440,dpr=Math.min(2,devicePixelRatio||1);if(c.width!==S*dpr){c.width=c.height=S*dpr;c.style.width=c.style.height=S+'px'}
+ const [mx,my]=kugelMitte();c.style.left=Math.round(mx-S/2)+'px';c.style.top=Math.round(my-S/2)+'px';
+ const g=c.getContext('2d'),t=(performance.now()-KG.t0)/1000,ph=Math.sin(t*2*Math.PI/KG_PULS),R=kugelRadius(ph),ya=.35,xa=.42;g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,S,S);
+ const {lv,f}=kugelStufe(R),Lv=KGEO.L[lv+1],n=KGEO.L[lv].n;
+ const cyw=Math.cos(ya),syw=Math.sin(ya),cx=Math.cos(xa),sx=Math.sin(xa),rot=(v,k)=>{let x=v[0]*cyw+v[2]*syw,z=-v[0]*syw+v[2]*cyw,y=v[1];return[x*k,(y*cx-z*sx)*k,(y*sx+z*cx)*k]},pr=v=>[S/2+v[0],S/2-v[1]];
+ const P=[];for(let i=0;i<Lv.n;i++){let v=KGEO.V[i];if(i>=n){const [a,b]=Lv.par[i],A=KGEO.V[a],B=KGEO.V[b],m=[(A[0]+B[0])/2,(A[1]+B[1])/2,(A[2]+B[2])/2];v=[m[0]+(v[0]-m[0])*f,m[1]+(v[1]-m[1])*f,m[2]+(v[2]-m[2])*f]}P.push(rot(v,R))}
+ const Lt=[-.45,.6,.65],ln=Math.hypot(...Lt);
+ let gr=g.createRadialGradient(S/2,S/2,R*.2,S/2,S/2,R*1.55);gr.addColorStop(0,'rgba(255,255,255,.32)');gr.addColorStop(.6,'rgba(226,239,255,.14)');gr.addColorStop(1,'rgba(226,239,255,0)');g.fillStyle=gr;g.fillRect(0,0,S,S);
+ kugelRing(g,rot,pr,t,false,.55,1);
+ const Fs=Lv.F.map(fc=>{const a=P[fc[0]],b=P[fc[1]],d=P[fc[2]],u=[b[0]-a[0],b[1]-a[1],b[2]-a[2]],w=[d[0]-a[0],d[1]-a[1],d[2]-a[2]];let nn=[u[1]*w[2]-u[2]*w[1],u[2]*w[0]-u[0]*w[2],u[0]*w[1]-u[1]*w[0]];const c3=[(a[0]+b[0]+d[0])/3,(a[1]+b[1]+d[1])/3,(a[2]+b[2]+d[2])/3];if(nn[0]*c3[0]+nn[1]*c3[1]+nn[2]*c3[2]<0)nn=nn.map(x=>-x);const l=Math.hypot(...nn)||1;return{fc,z:c3[2],n:nn.map(x=>x/l)}}).sort((u,v)=>u.z-v.z);
+ const flaeche=(F,front)=>{const Q=F.fc.map(i=>pr(P[i])),lt=Math.max(0,(F.n[0]*Lt[0]+F.n[1]*Lt[1]+F.n[2]*Lt[2])/ln);g.beginPath();Q.forEach((q,k)=>k?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1]));g.closePath();
+  F.lt=lt;g.fillStyle=front?`rgba(${(214+lt*41).toFixed(0)},${(232+lt*23).toFixed(0)},255,${(.05+lt*.2).toFixed(3)})`:'rgba(226,239,255,.04)';g.fill()};
+ const kanten=(liste,front)=>{const al=front?.3:.06;g.lineJoin='round';g.lineCap='round';g.strokeStyle=front?'#f4f9ff':'#2c4f80';g.lineWidth=front?.6:.5;
+  for(const neu of [false,true]){g.globalAlpha=neu?al*f:al;g.beginPath();liste.forEach(F=>{const fc=F.fc;for(let k=0;k<3;k++){const i=fc[k],j=fc[(k+1)%3];if((i>=n&&j>=n)!==neu)continue;const A=pr(P[i]),B=pr(P[j]);g.moveTo(A[0],A[1]);g.lineTo(B[0],B[1])}});g.stroke()}g.globalAlpha=1};
+ const hinten=Fs.filter(F=>F.n[2]<0),vorn=Fs.filter(F=>F.n[2]>=0);hinten.forEach(F=>flaeche(F,false));kanten(hinten,false);
+ const ki=KGEO.V.slice(0,12).map(v=>pr(rot(v,KG_R*.42)));g.globalAlpha=.22;g.strokeStyle='#ffffff';g.lineWidth=.5;g.beginPath();
+ KGEO.F0.forEach(([a,b,d])=>{g.moveTo(ki[a][0],ki[a][1]);g.lineTo(ki[b][0],ki[b][1]);g.lineTo(ki[d][0],ki[d][1]);g.closePath()});g.stroke();g.globalAlpha=1;
+ vorn.forEach(F=>flaeche(F,true));kanten(vorn,true);
+ gr=g.createRadialGradient(S/2-R*.38,S/2-R*.42,0,S/2-R*.38,S/2-R*.42,R*.5);gr.addColorStop(0,'rgba(255,255,255,.55)');gr.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=gr;g.beginPath();g.arc(S/2,S/2,R,0,7);g.fill();
+ g.strokeStyle='rgba(255,255,255,.28)';g.lineWidth=.8;g.beginPath();g.arc(S/2,S/2,R*1.005,0,7);g.stroke();
+ kugelRing(g,rot,pr,t,true,1,1);KG.letzt={P,Fs,R,S,x:parseFloat(c.style.left),y:parseFloat(c.style.top),rot,t}}
+function kugelPlatzen(){const c=$('kugel'),L=KG.letzt;cancelAnimationFrame(KG.raf);const ende=()=>{clearTimeout(KG.aus);KG.aus=0;KG.on=false;KG.platzt=null;cancelAnimationFrame(KG.raf);c.style.transition='none';c.style.opacity=0;const g=c.getContext('2d');g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,c.width,c.height)};
+ if(!L){KG.aus=setTimeout(ende,0);return}
+ const dpr=Math.min(2,devicePixelRatio||1),Wv=innerWidth,Hv=innerHeight,ox=L.x+L.S/2,oy=L.y+L.S/2,D2=Math.hypot(Wv,Hv);c.width=Math.round(Wv*dpr);c.height=Math.round(Hv*dpr);c.style.width=Wv+'px';c.style.height=Hv+'px';c.style.left='0px';c.style.top='0px';c.style.transition='none';c.style.opacity=1;
+ let s_=7;const zz=()=>{s_=(s_*16807)%2147483647;return s_/2147483647};const sp=[];
+ L.Fs.forEach(F=>{const Q=F.fc.map(i=>L.P[i]),m=[0,1,2].map(k=>[(Q[k][0]+Q[(k+1)%3][0])/2,(Q[k][1]+Q[(k+1)%3][1])/2,(Q[k][2]+Q[(k+1)%3][2])/2]),vorn=F.n[2]>=0;
+  [[Q[0],m[0],m[2]],[Q[1],m[1],m[0]],[Q[2],m[2],m[1]],[m[0],m[1],m[2]]].forEach(T3=>{const cx_=(T3[0][0]+T3[1][0]+T3[2][0])/3,cy_=(T3[0][1]+T3[1][1]+T3[2][1])/3,cz=(T3[0][2]+T3[1][2]+T3[2][2])/3,l=Math.hypot(cx_,cy_,cz)||1,d2=Math.hypot(cx_,cy_)||1;
+   sp.push({x:ox+cx_,y:oy-cy_,dx:cx_/d2,dy:-cy_/d2,w:D2*(.55+.6*zz())+L.R,rz:(zz()-.5)*9,z:cz/l,vorn,lt:F.lt||0,T:T3.map(p=>[p[0]-cx_,-(p[1]-cy_)])})})});
+ KG.platzt={t0:0,n:sp.length};const g=c.getContext('2d'),pr=v=>[ox+v[0],oy-v[1]];
+ const tick=start=>{if(!KG.platzt)return;if(!start&&!KG.platzt.t0){KG.platzt.t0=performance.now();KG.aus=setTimeout(ende,KG_PLATZ+120)}const u=start?0:Math.max(0,Math.min(1,(performance.now()-KG.platzt.t0)/KG_PLATZ));g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,Wv,Hv);if(u>=1){ende();return}
+  const e=u*(1.6-.6*u),al=1-u*u*u;
+  if(u<.4){const r=L.R*(1+u*2),gr=g.createRadialGradient(ox,oy,0,ox,oy,r);gr.addColorStop(0,`rgba(255,255,255,${(.5*(1-u/.4)).toFixed(3)})`);gr.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=gr;g.fillRect(ox-r,oy-r,2*r,2*r)}
+  // Zeitring weitet sich und verblasst
+  kugelRing(g,L.rot,pr,L.t,false,.55*al,1+e*1.8);kugelRing(g,L.rot,pr,L.t,true,al,1+e*1.8);
+  g.lineJoin='round';sp.forEach(q=>{const k=1.7+Math.max(0,q.z)*e*1.5,x=q.x+q.dx*q.w*e,y=q.y+q.dy*q.w*e,a=q.rz*e,ca=Math.cos(a),sa=Math.sin(a);g.beginPath();
+   q.T.forEach((p,i)=>{const px=x+(p[0]*ca-p[1]*sa)*k,py=y+(p[0]*sa+p[1]*ca)*k;i?g.lineTo(px,py):g.moveTo(px,py)});g.closePath();
+   g.fillStyle=q.vorn?`rgba(${(236+q.lt*19).toFixed(0)},${(244+q.lt*11).toFixed(0)},255,${((.42+q.lt*.4)*al).toFixed(3)})`:`rgba(240,247,255,${(.25*al).toFixed(3)})`;g.fill();
+   g.strokeStyle=`rgba(255,255,255,${((q.vorn?.85:.4)*al).toFixed(3)})`;g.lineWidth=.8;g.stroke()});
+  if(!start)KG.raf=requestAnimationFrame(()=>tick())};
+ KG.aus=-1;tick(true);KG.raf=requestAnimationFrame(()=>tick())}
 // Version 35 (Wunsch des Nutzers, wie 3Deep Darstellung 113): eigene Wahl (Datenraum, Datei, ZIP, Demo) sperrt das laufende Laden des Adapters.
 // Weitere Stände desselben Laufs (lauf <= gesperrter, auch ein noch ausstehender erster Stand nach laedt:true) werden verworfen.
 // Die Sperre endet mit dem nächsten neuen Laden (laedt:true bei Drop/„Laden“, sonst ein Stand mit höherer lauf-Kennung). Der Adapter selbst lädt im Hintergrund zu Ende.
 const AUF={hoch:null,laedtNeu:false,sperre:null};
 function eigeneWahl(){if(AUF.hoch==null&&!AUF.laedtNeu)return;AUF.sperre={lauf:AUF.hoch||0,offen:AUF.laedtNeu}}
 addEventListener('message',e=>{const m=e.data;if(!m||m.quelle!=='3deep-adapter')return;
- if(m.laedt!=null){if(m.laedt){AUF.sperre=null;AUF.laedtNeu=true}return}
+ if(m.laedt!=null){if(m.laedt){AUF.sperre=null;AUF.laedtNeu=true}ladeKugel(!!m.laedt);return}
  if(!m.daten)return;
  if(AUF.sperre){const s=AUF.sperre,l=m.lauf;if(l!=null&&(l<=s.lauf||s.offen)){if(s.offen&&l>s.lauf){s.lauf=l;s.offen=false}AUF.hoch=Math.max(AUF.hoch||0,l);AUF.laedtNeu=false;return}AUF.sperre=null}
  AUF.laedtNeu=false;if(m.lauf!=null)AUF.hoch=Math.max(AUF.hoch||0,m.lauf);
@@ -2017,6 +2109,7 @@ function schleife(jetzt){requestAnimationFrame(schleife);const dt=Math.min(.1,(j
 }
 requestAnimationFrame(schleife);
 // Version 31: eingebettete Daten wie datenraum3d.html (<script id="3deep-daten" type="application/json">, auch Sammlung {themen,ansicht}) beim Start laden, z. B. für eine Einzeldatei
+$('kugelan').checked=kugelAn();$('kugelan').onchange=e=>{try{localStorage.setItem('4d_ladekugel',e.target.checked?'an':'aus')}catch(_){}if(!e.target.checked&&(KG.on||KG.timer))ladeKugel(false)};
 {const el=document.getElementById('3deep-daten');if(el){try{const d=JSON.parse(el.textContent);lauf=null;laden(d.daten&&d.daten.nodes?d.daten:d)}catch(x){meld('Eingebettete Daten fehlerhaft: '+x.message)}}}
 // Meldung an den Adapter wie datenraum3d.html (Ausnahme (2) der Grundregel)
 if(window.parent!==window)parent.postMessage({quelle:'3deep',bereit:true},'*');
