@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="43">
+<meta name="4deep-darstellung" content="44">
 <title>4Deep Machbarkeitsstudie</title>
 <!-- 4Deep, Stufe 1 (Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -122,7 +122,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 43 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 44 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="chr"></div><div class="pn" id="mas"></div><div class="pn" id="prof"></div><div id="profb"></div>
@@ -1734,8 +1734,13 @@ function wkBauen(){wkGrp.children.slice().forEach(p=>{wkGrp.remove(p);p.geometry
   g.setAttribute('al',new T.BufferAttribute(A,1).setUsage(T.DynamicDrawUsage));g.setAttribute('gr',new T.BufferAttribute(G,1));
   const mat=new T.ShaderMaterial({transparent:true,depthWrite:false,blending:STERNE?T.AdditiveBlending:T.NormalBlending,uniforms:{sk:{value:1}},vertexShader:WK_VS,fragmentShader:WK_FS});
   const p=new T.Points(g,mat);p.frustumCulled=false;p.renderOrder=4;wkGrp.add(p);
+  // Version 44 (Rückmeldung des Nutzers: Sterne in der Supernova überbelichtet): im Sternenhimmel addieren sich dichte Wolken zu reinem Weiß. Ruhende/drehende Wolken
+  // werden nach ihrer Dichte gedämpft (Punkte × Größe² / Radius², Radius = 80 % der Punkte um den Schwerpunkt); Explosionen (ausdehnen) und Ströme bleiben hell.
+  let dm=1;if(STERNE&&!w.ausdehnen&&!st){let cx=0,cy=0,cz=0;for(let i=0;i<n0;i++){cx+=+w.punkte[i*4]||0;cy+=+w.punkte[i*4+1]||0;cz+=+w.punkte[i*4+2]||0}cx/=n0;cy/=n0;cz/=n0;
+   const d=[];for(let i=0;i<n0;i++)d.push(Math.hypot((+w.punkte[i*4]||0)-cx,(+w.punkte[i*4+1]||0)-cy,(+w.punkte[i*4+2]||0)-cz));d.sort((a,b)=>a-b);
+   const R=Math.max(.05,d[Math.floor(n0*.8)]||0),dichte=n0*gs*gs/(R*R);dm=Math.max(.25,Math.min(1,8/dichte))}
   const dr=Array.isArray(w.drehen)?w.drehen:w.drehen?[w.drehen]:[];
-  WK.teile.push({w,st,pfadL,B,PH,n,p,mn,mx,F:(w.farben||[]).map(c=>new T.Color(c)),al:isFinite(+w.alpha)?+w.alpha:.7,zi:+w.zittern||0,fl:Math.min(1,+w.flackern||0),fLauf:+w.farbLauf||0,ad:w.ausdehnen||null,
+  WK.teile.push({w,st,pfadL,B,PH,n,p,mn,mx,dm,F:(w.farben||[]).map(c=>new T.Color(c)),al:isFinite(+w.alpha)?+w.alpha:.7,zi:+w.zittern||0,fl:Math.min(1,+w.flackern||0),fLauf:+w.farbLauf||0,ad:w.ausdehnen||null,
    dr:dr.filter(x=>x&&Array.isArray(x.achse)).map(x=>{const a=new T.Vector3(...x.achse).normalize();return{a,c:new T.Vector3(...(x.zentrum||[0,0,0])),u:+x.umlauf||0,ke:+x.kepler||0}})})});
  $('wkt').innerHTML=texte.map(esc).join('<br>');$('wkt').style.display=texte.length?'':'none';
  N.forEach(n=>{n.wkAus=WK.aus.has(n.ty)});wkTick(performance.now()/1000)}
@@ -1755,7 +1760,7 @@ function wkTick(t){if(!WK.teile.length)return false;const sk=renderer.domElement
     x=D_.c.x+WV.x*c+WA.x*sn+ax.x*al*(1-c);y=D_.c.y+WV.y*c+WA.y*sn+ax.y*al*(1-c);z=D_.c.z+WV.z*c+WA.z*sn+ax.z*al*(1-c)}
    P[q*3]=x*FEST_F;P[q*3+1]=y*FEST_F;P[q*3+2]=z*FEST_F;
    let xf=(v-T_.mn)/((T_.mx-T_.mn)||1);if(T_.fLauf)xf=((xf+t*T_.fLauf)%1+1)%1;wkFarbe(T_,xf,WC);C[q*3]=WC.r;C[q*3+1]=WC.g;C[q*3+2]=WC.b;
-   A[q]=T_.al*fad*(fl?1-fl*(.5+.5*Math.sin(t*2.7+ph*5.3)):1)*(STERNE?.3:1)}
+   A[q]=T_.al*fad*(fl?1-fl*(.5+.5*Math.sin(t*2.7+ph*5.3)):1)*(STERNE?.3*T_.dm:1)}
   const g=T_.p.geometry;g.attributes.position.needsUpdate=g.attributes.farbe.needsUpdate=g.attributes.al.needsUpdate=true}
  return true}
 function wkPunkte(){const R=[];WK.teile.forEach(T_=>{const P=T_.p.geometry.attributes.position.array,st=Math.max(1,Math.floor(T_.n/300));for(let q=0;q<T_.n;q+=st)R.push(new T.Vector3(P[q*3],P[q*3+1],P[q*3+2]))});return R}
