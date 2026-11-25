@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="36">
+<meta name="4deep-darstellung" content="37">
 <title>4Deep Machbarkeitsstudie</title>
 <!-- 4Deep, Stufe 1 (Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -88,6 +88,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  <button id="masb" style="display:none" title="Handlungsliste: Signale mit Priorität, Rolle und Beleg; Klick springt zu den betroffenen Objekten">Handlungsliste (Maßnahmen) …</button>
  <details id="crmd" class="grp" style="display:none"><summary>CRM: Export und Optionen</summary>
  <div id="fkw"><button id="fkb" title="JSON mit allen berechneten Fakten und Freitexten für den KI-Agenten (docs/agent-kundenanalyse.md)">Fakten exportieren (für KI-Agent) …</button><div class="cb" title="Ohne Haken: Personen nur mit Nummer und Position, ihre Namen werden in allen Texten durch die Nummer ersetzt"><input type="checkbox" id="fkn"><span>mit Personennamen</span></div></div>
+ <div class="cb" title="Personen mit dieser E-Mail-Domain sind Mitarbeiter des eigenen Unternehmens (dunkelgrün). Leer = automatisch: häufigste Domain der Bearbeiter, Prüfer, Verantwortlichen und des Vertriebs"><span>Eigene E-Mail-Domain</span> <input id="crmdom" placeholder="automatisch" style="width:120px"></div>
  <div class="cb" id="baew" title="CRM: Zeitnachweise (Batches) einzeln statt je Rechnung bzw. je Billing Sheet und Monat gebündelt"><input type="checkbox" id="bae"><span>Batches einzeln</span></div>
  </details>
  <label>Layout</label>
@@ -120,7 +121,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 36 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 37 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="chr"></div><div class="pn" id="mas"></div><div class="pn" id="prof"></div><div id="profb"></div>
@@ -248,6 +249,19 @@ function symbolGeo(form,grob){const q=grob?6:12;let L;
    [-1,1].forEach(sx=>{G.push([glied([sx*.16,.92,-.32],[sx*.2,.5,-.3],.035,6),.45]);G.push([glied([sx*.2,.5,-.3],[sx*.34,.08,-.12],.035,6),.45])});
    G.push([kugel(.07,0,.06,.24,q,1.6,1,.5),.55]);L=G;break}
   case'pille':L=[[new T.CapsuleGeometry(.6,.8,6,14),1]];break;
+  case'zettel':{   // Version 37 (Wunsch des Nutzers): Ticket als beschriebener Zettel – leicht gewölbtes Blatt, Eselsohr, Schreibzeilen, Heftzwecke
+   const bl=new T.Shape();bl.moveTo(-.55,-.75);bl.lineTo(.55,-.75);bl.lineTo(.55,.5);bl.lineTo(.3,.75);bl.lineTo(-.55,.75);bl.lineTo(-.55,-.75);
+   const blatt=biege(new T.ExtrudeGeometry(bl,{depth:.05,bevelEnabled:false,curveSegments:2}).translate(0,0,-.025),v=>{v.z+=.12*Math.sin((v.y+.75)*1.6)-.06*v.x*v.x});
+   const ohr=new T.Shape();ohr.moveTo(.3,.75);ohr.lineTo(.3,.5);ohr.lineTo(.55,.5);ohr.lineTo(.3,.75);
+   const G=[[blatt,1],[new T.ExtrudeGeometry(ohr,{depth:.02,bevelEnabled:false}).translate(0,0,.09),.7]];
+   [.42,.24,.06,-.12,-.3,-.48].forEach((y,i)=>{const w=i===0?.55:i===5?.5:.82;G.push([new T.BoxGeometry(w,.055,.03).translate(-.55+.12+w/2,y,.035+.12*Math.sin((y+.75)*1.6)),.28])});
+   G.push([kugel(.09,-.25,.62,.2,q),.55],[new T.CylinderGeometry(.02,.02,.16,6).rotateX(Math.PI/2).translate(-.25,.62,.11),.4]);L=G;break}
+  case'klemmbrett':{   // Version 37: Aufgabe/Task als Klemmbrett mit Checkliste (zwei Häkchen, ein offenes Kästchen)
+   const ex=(sh,d)=>new T.ExtrudeGeometry(sh,{depth:d,bevelEnabled:true,bevelThickness:.02,bevelSize:.02,bevelSegments:1,curveSegments:4});
+   const G=[[ex(rundRechteck(1.15,1.5,.08),.06).translate(0,-.05,-.08),.45],[new T.BoxGeometry(.95,1.18,.02).translate(0,-.12,.0),1],
+    [ex(rundRechteck(.5,.2,.06),.08).translate(0,.68,-.01),.8],[new T.TorusGeometry(.09,.025,6,q,Math.PI).translate(0,.78,.03),.8]];
+   [.3,-.05,-.4].forEach((y,i)=>{G.push([new T.BoxGeometry(.16,.16,.03).translate(-.28,y,.02),.3],[new T.BoxGeometry(.4,.05,.025).translate(.12,y,.02),.4]);
+    if(i<2){G.push([glied([-.34,y+.01,.06],[-.29,y-.06,.06],.025,5),.15],[glied([-.29,y-.06,.06],[-.18,y+.12,.06],.025,5),.15])}});L=G;break}
   case'gehry':{   // Gebäude im Stil von Frank Gehry: gedrehter Turm mit welliger Fassade, geschwungene Metallschalen, gläsernes Atrium
    const fen=(x,y,z)=>Math.floor(y*10+20)%2?1:.45;
    const turm=biege(new T.BoxGeometry(.9,2.4,.8,4,grob?12:24,4).translate(0,1.2,0),v=>{const a=v.y*.32,w=Math.sin(v.y*2.6+v.x*3)*.09,x=v.x+w,z=v.z;v.x=x*Math.cos(a)-z*Math.sin(a);v.z=x*Math.sin(a)+z*Math.cos(a);v.x*=1+.12*Math.sin(v.y*1.3)});
@@ -268,8 +282,8 @@ function symbolGeo(form,grob){const q=grob?6:12;let L;
    const oben=new T.TorusGeometry(1.15,.06,6,grob?12:24,Math.PI);oben.rotateY(Math.PI/2);oben.scale(1,.55,.98);oben.translate(0,.2,-1.62);
    L=[[gh,1],[vis,.12],kam(-.68,.27),kam(.68,.27),kam(-.68,-.27),kam(.68,-.27),[pol,.14],[band,.28],[oben,.28]];break}
   default:return null}
- const g=einpassen(teile(L),{vrbrille:1.3,gehry:1.35,wright:1.35,puppe:1.45,pille:1}[form]||1.15);
- if(form==='vrbrille'){g.rotateX(.18);g.rotateY(-.75)}else if(form==='gehry')g.rotateY(-.5);else if(form==='wright')g.rotateY(.6);else g.rotateY(-.2);
+ const g=einpassen(teile(L),{zettel:1.25,klemmbrett:1.3,vrbrille:1.3,gehry:1.35,wright:1.35,puppe:1.45,pille:1}[form]||1.15);
+ if(form==='zettel'||form==='klemmbrett'){g.rotateX(-.15);g.rotateY(-.35)}else if(form==='vrbrille'){g.rotateX(.18);g.rotateY(-.75)}else if(form==='gehry')g.rotateY(-.5);else if(form==='wright')g.rotateY(.6);else g.rotateY(-.2);
  return g}
 const GEO={};
 function geo(form,grob){
@@ -334,6 +348,8 @@ function zeitText(t){if(!isFinite(t))return'';const d=new Date(t),y=d.getUTCFull
 // kräftiger für den hellen Himmel (Version 12): Sättigung etwas höher, Helligkeit gedeckelt; Grau bleibt Grau, nur dunkler
 const HSL={h:0,s:0,l:0};function kraeftig(c){c.getHSL(HSL);const s=HSL.s>.08?Math.min(1,HSL.s*1.2+.08):HSL.s,l=Math.max(Math.min(HSL.l,.16),Math.min(HSL.l*.84,.47));c.setHSL(HSL.h,s,l);return c}
 function farbe(c,ers){try{return new T.Color(c||ers||'#8aa0c0')}catch(e){return new T.Color('#8aa0c0')}}
+// Version 37 (Wunsch des Nutzers): Typen ohne eigene Form bekommen am Namen erkennbare Symbole (Ticket = Zettel, Aufgabe/Task = Klemmbrett)
+function formNachName(t){t=String(t||'');return/ticket/i.test(t)?'zettel':/^(aufgabe|aufgaben|task|tasks)$/i.test(t.trim())?'klemmbrett':'sphere'}
 function laden(daten,opt){
  opt=opt||{};
  if(daten&&Array.isArray(daten.themen)&&!Array.isArray(daten.nodes)){sammlungLaden(daten);return}   // Version 28: Sammlung (Schüleransicht)
@@ -351,7 +367,7 @@ function laden(daten,opt){
   let t0=zeit(o.start);if(!isFinite(t0))t0=zeit(meta.Erstellt);if(!isFinite(t0))t0=zeit(meta['Geändert']);
   const t1=zeit(o.end);let tg=zeit(meta['Geändert']!=null?meta['Geändert']:meta.Modified);if(!(tg>t0+864e5))tg=NaN;   // Änderung (Widget-Daten) leuchtet beim Zeitraffer auf
   const sz=(+o.size||+ty.size||med)/med;
-  const n={id:o.id,o,ty:o.type,stufe:reifeStufe(o),name:o.name||String(o.id),form:ty.shape||'sphere',col:schemaFarbe(kraeftig(farbe(o.color||ty.color))),_cq:o.color||ty.color,r:1.7*Math.max(.35,Math.min(3.2,Math.sqrt(sz))),
+  const n={id:o.id,o,ty:o.type,stufe:reifeStufe(o),name:o.name||String(o.id),form:ty.shape||formNachName(ty.label||o.type),col:schemaFarbe(kraeftig(farbe(o.color||ty.color))),_cq:o.color||ty.color,r:1.7*Math.max(.35,Math.min(3.2,Math.sqrt(sz))),
    t0,t1,tg,pos:new T.Vector3(),ziel:new T.Vector3(),s:0,sZiel:1,i:N.length,nb:[],fest:o.pos,warn:o.warnung?String(o.warnung):''};
   const a=alt[o.id];if(a){n.pos.copy(a.pos);n.s=a.s;n.alt=true}
   n.r0=n.r;byId[o.id]=n;N.push(n);
@@ -369,7 +385,7 @@ function laden(daten,opt){
  else N.forEach(n=>{if(n.alt)return;const k=n.nb.find(m=>m.alt);if(k)n.pos.copy(k.pos).add(V.set(rnd()-.5,rnd()-.5,rnd()-.5).multiplyScalar(4));else n.pos.set((rnd()-.5)*20,(rnd()-.5)*20,(rnd()-.5)*20)});
  baueMeshes();legende();
  const hatPos=N.some(n=>n.fest);
- axVorbereiten();$('finb').style.display=daten.crm?'':'none';$('lysky').hidden=!daten.skyline;$('lyreise').hidden=!daten.skyline;$('lgbb').style.display=daten.skyline?'':'none';$('crmd').style.display=daten.crm?'':'none';$('fkw').style.display=daten.fakten?'':'none';{const hm=Array.isArray(daten.massnahmen)&&daten.massnahmen.length;$('masb').style.display=hm?'':'none';if(!hm)$('mas').style.display='none';else if($('mas').style.display==='block')massnahmenZeigen()}$('chrb').style.display=Array.isArray(daten.chronik)&&daten.chronik.length?'':'none';if(!(Array.isArray(daten.chronik)&&daten.chronik.length))$('chr').style.display='none';else if($('chr').style.display==='block')chronikZeigen();
+ axVorbereiten();$('finb').style.display=daten.crm?'':'none';$('lysky').hidden=!daten.skyline;$('lyreise').hidden=!daten.skyline;$('lgbb').style.display=daten.skyline?'':'none';$('crmd').style.display=daten.crm?'':'none';if(daten.crm)$('crmdom').placeholder=daten.eigeneDomain?(daten.eigeneAuto?'automatisch: ':'')+daten.eigeneDomain:'automatisch (keine erkannt)';$('fkw').style.display=daten.fakten?'':'none';{const hm=Array.isArray(daten.massnahmen)&&daten.massnahmen.length;$('masb').style.display=hm?'':'none';if(!hm)$('mas').style.display='none';else if($('mas').style.display==='block')massnahmenZeigen()}$('chrb').style.display=Array.isArray(daten.chronik)&&daten.chronik.length?'':'none';if(!(Array.isArray(daten.chronik)&&daten.chronik.length))$('chr').style.display='none';else if($('chr').style.display==='block')chronikZeigen();
  rvVorbereiten(daten);
  let ly=opt.behalten?layout:(daten.layout==='achsen'&&AXP.length?'achsen':daten.layout==='plan'||daten.zeitArt?'zeit':hatPos?'fest':'netz');
  if(!opt.behalten&&daten.skyline&&skyFirmen().length)ly='skyline';   // Version 36 (Wunsch des Nutzers): mit Firmen-Kennzahlen immer zuerst die Skyline
@@ -899,7 +915,7 @@ function bezListe(n){const RT=(D&&D.relTypes)||{},kn=E.filter(k=>k.a===n||k.b===
  let h='';Object.keys(gr).sort((a,b)=>gr[b].length-gr[a].length).forEach(g=>{const L=gr[g];h+='<div class="bzg">'+esc(g)+' · '+L.length+'</div>'+L.slice(0,100).map(k=>{const o2=k.a===n?k.b:k.a;
   return'<div class="it" data-i="'+o2.i+'">'+(k.a===n?'→':'←')+' '+esc(o2.name)+' <span>'+esc((TY[o2.ty]||{}).label||o2.ty)+'</span></div>'}).join('')+(L.length>100?'<div class="bzg">… und '+(L.length-100)+' weitere</div>':'')});
  return'<details class="bz"'+(prof.auf?' open':'')+'><summary>Beziehungen ('+kn.length+')</summary><div class="bzl">'+h+'</div></details>'}
-const FORMNAME={sphere:'Kugel',box:'Würfel',torus:'Torus',dodecahedron:'Dodekaeder',diamond:'Raute',octagon:'Achteck',triangle:'Dreieck',book:'Buch',folder:'Ordner',bust:'Person',gebaeude:'Firma',vrbrille:'VR-Brille',alien:'Alien',figur:'Spielfigur',bueste:'Büste',puppe:'Gliederpuppe',avatar:'Avatar',pille:'Pille',gehry:'Gebäude (Gehry-Stil)',wright:'Gebäude (Wright-Stil)',bar:'Balken',linie:'Linie',muenze:'Goldmünze',saphir:'Saphir'};
+const FORMNAME={sphere:'Kugel',box:'Würfel',torus:'Torus',dodecahedron:'Dodekaeder',diamond:'Raute',octagon:'Achteck',triangle:'Dreieck',book:'Buch',folder:'Ordner',bust:'Person',gebaeude:'Firma',zettel:'Zettel',klemmbrett:'Klemmbrett',vrbrille:'VR-Brille',alien:'Alien',figur:'Spielfigur',bueste:'Büste',puppe:'Gliederpuppe',avatar:'Avatar',pille:'Pille',gehry:'Gebäude (Gehry-Stil)',wright:'Gebäude (Wright-Stil)',bar:'Balken',linie:'Linie',muenze:'Goldmünze',saphir:'Saphir'};
 const bildAdr=u=>{if(typeof u!=='string')return'';u=u.trim();return u&&(/^(https?:|data:image\/|blob:)/i.test(u)||!/^[a-z][a-z0-9+.-]*:/i.test(u))?u:''};
 function profilAttr(n){const o=n.o,RT=(D&&D.relTypes)||{},meta=o.meta||{};
  const A=[['Name',n.name],['Typ',(TY[n.ty]||{}).label||n.ty],['ID',String(o.id)]];if(o.state)A.push(['Reifegrad',o.state+(n.stufe!=='normal'?' ('+STUFEN[n.stufe].replace(/^[^(]*\(|\)$/g,'')+')':'')]);
@@ -1098,8 +1114,9 @@ $('fkb').onclick=faktenExport;
 $('finb').onclick=()=>{$('ly').value='achsen';setzeLayout('achsen',true);const o=[...$('axp').options].findIndex(x=>/^Rechnungen/.test(x.text));if(o>=0&&$('axp').selectedIndex!==o){$('axp').selectedIndex=o;$('axp').dispatchEvent(new Event('change'))}};
 document.querySelectorAll('#pn details.grp').forEach(d=>{try{d.open=localStorage.getItem('4d_auf_'+d.id)==='1'}catch(_){}d.addEventListener('toggle',()=>{try{localStorage.setItem('4d_auf_'+d.id,d.open?'1':'0')}catch(_){}})});
 $('masb').onclick=()=>{const el=$('mas');if(el.style.display==='block'&&el.dataset.art==='mas')el.style.display='none';else{$('chr').style.display='none';massnahmenZeigen()}};
-$('bae').onchange=e=>{try{localStorage.setItem('4d_crm_einzeln',e.target.checked?'1':'0')}catch(_){}if(CRM_ROH){eigeneWahl();lauf=null;laden(crmZuDaten(CRM_ROH.b,CRM_ROH.r,{einzeln:e.target.checked,zuord:CRM_ROH.zuord}))}};
-try{$('bae').checked=localStorage.getItem('4d_crm_einzeln')==='1'}catch(_){}
+$('bae').onchange=e=>{try{localStorage.setItem('4d_crm_einzeln',e.target.checked?'1':'0')}catch(_){}if(CRM_ROH){eigeneWahl();lauf=null;laden(crmZuDaten(CRM_ROH.b,CRM_ROH.r,{einzeln:e.target.checked,zuord:CRM_ROH.zuord,domain:$('crmdom').value}))}};
+try{$('bae').checked=localStorage.getItem('4d_crm_einzeln')==='1';$('crmdom').value=localStorage.getItem('4d_crm_domain')||''}catch(_){}
+$('crmdom').onchange=e=>{try{localStorage.setItem('4d_crm_domain',e.target.value.trim())}catch(_){}if(CRM_ROH){eigeneWahl();lauf=null;laden(crmZuDaten(CRM_ROH.b,CRM_ROH.r,{einzeln:$('bae').checked,zuord:CRM_ROH.zuord,domain:e.target.value}))}};
 // Version 20: Kennzahlen-Achsen bedienen
 const axNeu=()=>{$('ly').value='achsen';setzeLayout('achsen',true)};
 $('axp').onchange=e=>{const v=e.target.value;if(v==='eigen'){AXS.p='eigen';axZeigen()}else{axVorlage(+v);axNeu()}};
@@ -1315,7 +1332,7 @@ async function leseZip(f){
   if(busse.length){let zuord=null;
    if(ordner.length>1){const fn=id=>{const o=busse.find(b=>b&&String(b.id)===id),d=o&&o.data||{};return o?String(d.cTitle||o.name||'').trim():''};   // Ordner heißt nach der Firma (bus.sct.public.tCO.202_<Zeitstempel>) → Firmenname
     const kurz=ordner.map(x=>{const l=x.split('/').filter(Boolean).pop()||'(Wurzel)',m=/^(bus\.[^_]+)_\d+$/.exec(l);return m&&fn(m[1])||l});zuord={};Object.keys(bId).forEach(k=>zuord[k]=bId[k].ord.map(x=>kurz[ordner.indexOf(x)]).join(', '))}
-   CRM_ROH={b:busse,r:rels,zuord};const d=crmZuDaten(busse,rels,{einzeln:$('bae').checked,zuord});if(zuord)d.titel='CRM · '+ordner.length+' Export-Ordner';eigeneWahl();lauf=null;laden(d);
+   CRM_ROH={b:busse,r:rels,zuord};const d=crmZuDaten(busse,rels,{einzeln:$('bae').checked,zuord,domain:$('crmdom').value});if(zuord)d.titel='CRM · '+ordner.length+' Export-Ordner';eigeneWahl();lauf=null;laden(d);
    return}
   if(json4d){eigeneWahl();lauf=null;laden(json4d.daten&&json4d.daten.nodes?json4d.daten:json4d);return}
   meld('Im ZIP wurden weder CRM-Daten (Ordner busses/ und rels/) noch ein 4Deep-JSON gefunden.')
@@ -1335,7 +1352,8 @@ const CRM_TYPEN={
  tSII:{label:'Rechnungsposition',color:'#3b8a64',size:.5},
  tBS:{label:'Billing Sheet',color:'#127f86',shape:'triangle',size:1.4},
  tBA:{label:'Batch',color:'#5d7593',size:.2},
- tTA:{label:'Aufgabe',color:'#c3283a',shape:'torus',size:1},
+ tTA:{label:'Aufgabe',color:'#c3283a',shape:'klemmbrett',size:1.2},   // Version 37: Klemmbrett statt Torus
+ tTK:{label:'Ticket',color:'#e0a526',shape:'zettel',size:1.2},tTI:{label:'Ticket',color:'#e0a526',shape:'zettel',size:1.2},   // Version 37: Typkennung des Tickets vermutet
  tZN:{label:'Zeitnachweise (gebündelt)',color:'#5d7593',size:.6}};
 const CRM_STATUS={pending:'offen',work:'in Arbeit',review:'in Prüfung',approved:'freigegeben',billing:'in Abrechnung',finished:'abgeschlossen',onHold:'zurückgestellt',inactive:'inaktiv',active:'aktiv',shipped:'versendet',closed:'geschlossen',canceled:'storniert',cancelled:'storniert'};
 const CRM_ROLLEN={Person:'Bearbeiter',Reviewer:'Prüfer',Responsible:'Verantwortlich',BillingSheet:'Billing Sheet',CustomerCompany:'Kunde',Customer:'Kunde',Contact:'Kontakt',CustomerContact:'Kontakt',SalesPerson:'Vertrieb',Company:'Firma',Contract:'Auftrag',Project:'Projekt'};
@@ -1347,6 +1365,18 @@ function crmDatum(v){const t=crmMs(v);return isFinite(t)?new Date(t).toISOString
 function crmBetragArt(d,art){const q=d.cPriceDetails;if(!Array.isArray(q))return NaN;const x=q.find(y=>y&&y.name===art);const t=x&&Array.isArray(x.total)&&x.total[0];return t&&t.result?crmZahl(t.result.key):NaN}
 function crmBetrag(d){for(const q of [d.cPriceDetails,d.cPrice]){if(!Array.isArray(q))continue;const vk=q.find(x=>x&&x.name==='VK')||q[0];
   const t=vk&&Array.isArray(vk.total)&&vk.total[0];const b=t&&t.result?crmZahl(t.result.key):NaN;if(isFinite(b))return b}return NaN}
+// Version 37 (Wunsch des Nutzers): eigene Mitarbeiter von Kundenpersonen unterscheiden. Eigene E-Mail-Domain aus dem Feld im Menü oder automatisch:
+// Domains der Personen in internen Rollen (Bearbeiter, Prüfer, Verantwortlich, Vertrieb) und der E-Mail-Adressen in Zeitnachweisen (Prüfer, Verantwortlich), abzüglich Kontakt-/Kundenrollen.
+// Eigene Personen: dunkelgrün (Knotenfarbe), Attribut „Unternehmen: eigenes“; Kundenpersonen „Unternehmen: Kunde“. Keine feste Domain im Code.
+const CRM_INTERN=/^ctx:(Bearbeiter|Prüfer|Verantwortlich|Vertrieb)$/,CRM_EIGEN_FARBE='#1d6b3a';
+function crmDomain(t){const m=String(t||'').toLowerCase().match(/@([a-z0-9.-]+\.[a-z]{2,})/);return m?m[1]:''}
+function crmEigene(nodes,edges,byId,feld){const P=nodes.filter(n=>n.type==='tPE'),dom=n=>crmDomain(n.meta['E-Mail']);let domain=String(feld||'').trim().toLowerCase().replace(/^.*@/,''),auto=false;
+ if(!domain){const z={},rolle={};edges.forEach(e=>{const t=String(e.type||'');if(!/^ctx:/.test(t))return;[e.from,e.to].forEach(id=>{const n=byId[id];if(n&&n.type==='tPE'){(rolle[id]=rolle[id]||new Set()).add(t)}})});
+  P.forEach(p=>{const d=dom(p);if(!d||!rolle[p.id])return;rolle[p.id].forEach(t=>{z[d]=(z[d]||0)+(CRM_INTERN.test(t)?1:/^ctx:(Kontakt|Kunde)$/.test(t)?-1:0)})});
+  nodes.forEach(n=>{if(n.type==='tBA')['Prüfer','Verantwortlich'].forEach(k=>{const d=crmDomain(n.meta[k]);if(d)z[d]=(z[d]||0)+1})});
+  const best=Object.keys(z).sort((a,b)=>z[b]-z[a])[0];if(best&&z[best]>0){domain=best;auto=true}}
+ if(domain)P.forEach(p=>{const d=dom(p);if(!d)return;if(d===domain||d.endsWith('.'+domain)){p.color=CRM_EIGEN_FARBE;p.meta.Unternehmen='eigenes'}else p.meta.Unternehmen='Kunde'});
+ return{domain,auto}}
 function crmZuDaten(busse,rels,opt){opt=opt||{};
  const byId={},nodes=[],edges=[],types={},relTypes={};
  const ty=t=>{if(!types[t])types[t]=Object.assign({},CRM_TYPEN[t]||{label:t,color:'#8b94a3',size:1});return t};
@@ -1405,6 +1435,7 @@ function crmZuDaten(busse,rels,opt){opt=opt||{};
  crmBillingSheets(nodes,edges,byId);
  crmProjekte(nodes,edges,byId);
  crmKennzahlen(nodes,edges,byId);
+ const eigen=crmEigene(nodes,edges,byId,opt.domain);
  const massnahmen=crmMassnahmen(nodes,edges,byId);
  const chronik=crmChronik(nodes,edges,byId);
  const fakten=crmFakten(nodes,edges,byId,massnahmen,vorher);
@@ -1413,7 +1444,7 @@ function crmZuDaten(busse,rels,opt){opt=opt||{};
  const med={};nodes.forEach(n=>{if(isFinite(n.wert)&&n.wert>0)(med[n.type]=med[n.type]||[]).push(n.wert)});
  Object.keys(med).forEach(t=>{const L=med[t].sort((x,y)=>x-y);med[t]=L[L.length>>1]});
  nodes.forEach(n=>{const g=types[n.type].size||1;n.size=isFinite(n.wert)&&n.wert>0&&med[n.type]?g*Math.max(.3,Math.min(7,Math.pow(n.wert/med[n.type],2/3))):g;Object.keys(n).forEach(k=>{if(k==='wert'||k[0]==='_')delete n[k]})});
- return{titel:'CRM',crm:true,schichtReihe:['tCO','tOF','tCT'],skyline:{typ:'tCO',sammel:['tOF','tCT','tSI','tBS','tPE','tTA'],umsatzTyp:'tSI',wert:['Betrag','Netto'],hoehe:'Umsatz 12 Monate',titelHoehe:'Umsatz 12 Monate',farbe:'Marge',pfeil:'Wachstum ggü. Vorjahr',farbeGrenzen:[10,25]},chronik,massnahmen,fakten,chronikOk:{Angebot:'beauftragt',Auftrag:'im Budget',Rechnung:'mit positiver Marge',Aufgabe:'erledigt'},warnungName:'über Budget',layout:'netz',types,relTypes,nodes,edges,betragName:'Umsatz (Rechnungen netto)',betragEinheit:'€',
+ return{titel:'CRM',crm:true,eigeneDomain:eigen.domain,eigeneAuto:eigen.auto,schichtReihe:['tCO','tOF','tCT'],skyline:{typ:'tCO',sammel:['tOF','tCT','tSI','tBS','tPE','tTA'],umsatzTyp:'tSI',wert:['Betrag','Netto'],hoehe:'Umsatz 12 Monate',titelHoehe:'Umsatz 12 Monate',farbe:'Marge',pfeil:'Wachstum ggü. Vorjahr',farbeGrenzen:[10,25]},chronik,massnahmen,fakten,chronikOk:{Angebot:'beauftragt',Auftrag:'im Budget',Rechnung:'mit positiver Marge',Aufgabe:'erledigt'},warnungName:'über Budget',layout:'netz',types,relTypes,nodes,edges,betragName:'Umsatz (Rechnungen netto)',betragEinheit:'€',
   stufenNamen:{kristall:'abgeschlossen (Kristall)',roh:'offen / in Arbeit (matt)',alt:'inaktiv'},axes:CRM_ACHSEN}}
 // Version 20: Vorlagen für das Layout „Kennzahlen (Achsen)“ (Namen wie im kaufmännischen Datenraum von 3Deep)
 const CRM_ACHSEN=[
