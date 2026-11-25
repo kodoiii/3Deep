@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="44">
+<meta name="4deep-darstellung" content="45">
 <title>4Deep Machbarkeitsstudie</title>
 <!-- 4Deep, Stufe 1 (Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -122,7 +122,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 44 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 45 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="chr"></div><div class="pn" id="mas"></div><div class="pn" id="prof"></div><div id="profb"></div>
@@ -132,6 +132,10 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
 
 <script src="three.min.js"></script>
 <script>
+// Version 45: Fehler beim Start sichtbar machen (sonst wirkt die Seite stumm: kein Laden, ZIP wird heruntergeladen); gilt nur bis zum Ende des Starts
+window.__4dStart=true;addEventListener('error',e=>{if(!window.__4dStart)return;const l=document.getElementById('leer');if(l){l.style.display='';l.style.color='#b00020';l.style.padding='0 40px';l.style.textAlign='center';l.textContent='4Deep konnte nicht starten: '+(e.message||e.error||'unbekannter Fehler')+(e.lineno?' (Zeile '+e.lineno+')':'')+(/WebGL/i.test(String(e.message))?' – 3D-Grafik (WebGL) ist im Browser nicht verfügbar. Browser ganz schließen und neu starten; in chrome://gpu bzw. edge://gpu prüfen, ob „WebGL“ „Hardware accelerated“ ist.':'')}});
+</script>
+<script>
 'use strict';
 const $=id=>document.getElementById(id);
 const VERSION='1';
@@ -140,7 +144,7 @@ const T=THREE;
 
 // ---------- Grundgerüst ----------
 const cv=$('cv');
-const renderer=new T.WebGLRenderer({canvas:cv,antialias:true,powerPreference:'high-performance'});
+let renderer;try{renderer=new T.WebGLRenderer({canvas:cv,antialias:true,powerPreference:'high-performance'})}catch(x){throw new Error('WebGL nicht verfügbar ('+(x&&x.message||x)+')')}
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.outputEncoding=T.sRGBEncoding;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=.95;
 renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;
@@ -2126,6 +2130,7 @@ $('kugelan').checked=kugelAn();$('kugelan').onchange=e=>{try{localStorage.setIte
 {const el=document.getElementById('3deep-daten');if(el){try{const d=JSON.parse(el.textContent);lauf=null;laden(d.daten&&d.daten.nodes?d.daten:d)}catch(x){meld('Eingebettete Daten fehlerhaft: '+x.message)}}}
 // Meldung an den Adapter wie datenraum3d.html (Ausnahme (2) der Grundregel)
 if(window.parent!==window)parent.postMessage({quelle:'3deep',bereit:true},'*');
+window.__4dStart=false;
 window.__4deep={stereo:{ST,stereoEin,stereoAus},sm:{SM,smReport,smTick,smErlaubt},laden,setzeLayout,zustand:()=>({ketten:KET.length,verzug:verzugN,gueltig:N.filter(n=>n.gueltig&&n.kette).length,heute:HEUTE,layoutMs:letzteSimDauer,worker:!!(sim&&sim.w),n:N.length,e:E.length,layout,sim:!!sim,hatZeit,tCur,tMin,tMax,sicht:N.filter(n=>n.sZiel>0).length,fps,messung}),setzeZeit:t=>{tCur=t;zeitAnwenden()},waehle,heim,VERSION};
 </script>
 </body>
