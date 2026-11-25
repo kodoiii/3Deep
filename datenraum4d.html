@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="37">
+<meta name="4deep-darstellung" content="40">
 <title>4Deep Machbarkeitsstudie</title>
 <!-- 4Deep, Stufe 1 (Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -121,7 +121,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 37 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 40 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="chr"></div><div class="pn" id="mas"></div><div class="pn" id="prof"></div><div id="profb"></div>
@@ -373,7 +373,8 @@ function laden(daten,opt){
   n.r0=n.r;byId[o.id]=n;N.push(n);
  });
  FZ=null;FOKUS=null;SKY_AUF={f:null,offen:new Set()};$('fokb').style.display='none';E=[];(daten.edges||[]).forEach(e=>{const a=byId[e.from],b=byId[e.to];if(!a||!b||a===b)return;const rt=RT[e.type]||{};if(rt.hidden)return;
-  const k={a,b,e,col:farbe(e.color||rt.color,'#6f86ab'),t0:zeit(e.start),t1:zeit(e.end),dir:!!rt.directed,hier:!!rt.hierarchy||/^(struktur|inhalt|teil|hierarchy)$/i.test(e.type||'')};E.push(k);a.nb.push(b);b.nb.push(a)});
+  const k={a,b,e,col:farbe(e.color||rt.color,'#6f86ab'),t0:zeit(e.start),t1:zeit(e.end),dir:!!rt.directed,hier:!!rt.hierarchy||/^(struktur|inhalt|teil|hierarchy)$/i.test(e.type||''),dk:+e.dicke>0?Math.min(4,+e.dicke):1};E.push(k);   // Version 39: Kantenfeld dicke (Faktor)
+ a.nb.push(b);b.nb.push(a)});
  HEUTE=isFinite(zeit(daten.heute))?zeit(daten.heute):heuteTag();N.forEach(n=>n.fertig=fertig(n));revKetten();
  // Zeitspanne
  let lo=Infinity,hi=-Infinity;N.forEach(n=>{[n.t0,n.t1].forEach(t=>{if(isFinite(t)){lo=Math.min(lo,t);hi=Math.max(hi,t)}})});
@@ -788,7 +789,7 @@ function bewegen(dt){
    if(kantenLinien){const o=i*6;A[o]=p.x;A[o+1]=p.y;A[o+2]=p.z;if(vis){A[o+3]=q.x;A[o+4]=q.y;A[o+5]=q.z}else{A[o+3]=p.x;A[o+4]=p.y;A[o+5]=p.z}continue}
    const o=i*16;let ux=q.x-p.x,uy=q.y-p.y,uz=q.z-p.z;const len=Math.sqrt(ux*ux+uy*uy+uz*uz);
    if(!vis||len<1e-3){for(let j=0;j<16;j++)A[o+j]=0;A[o+15]=1;if(k.tj!=null){const B=trompMesh.instanceMatrix.array,ob=k.tj*16;for(let j=0;j<16;j++)B[ob+j]=0;B[ob+15]=1;trompMesh.instanceMatrix.needsUpdate=true}continue}
-   ux/=len;uy/=len;uz/=len;const r=.09*Math.min(k.a.s,k.b.s)*(k.hier?1.6:1);
+   ux/=len;uy/=len;uz/=len;const r=.09*Math.min(k.a.s,k.b.s)*(k.hier?1.6:1)*k.dk;
    // Querachse x = u × (0,1,0) bzw. u × (1,0,0), z = x × u
    let xx,xy,xz;if(Math.abs(uy)<.99){xx=-uz;xy=0;xz=ux}else{xx=0;xy=uz;xz=-uy}const xl=Math.sqrt(xx*xx+xy*xy+xz*xz);xx/=xl;xy/=xl;xz/=xl;
    const zx=xy*uz-xz*uy,zy=xz*ux-xx*uz,zz=xx*uy-xy*ux;
@@ -999,6 +1000,9 @@ function firmenTyp(){return D&&D.skyline?D.skyline.typ:D&&D.crm?'tCO':null}
 function firmaVon(n){const ft=firmenTyp();if(!ft||!n)return null;if(!FZ){FZ=new Array(N.length).fill(null);const Q=[];N.forEach(x=>{if(x.ty===ft){FZ[x.i]=x;Q.push(x)}});
   for(let h=0;h<Q.length;h++){const x=Q[h],f=FZ[x.i];for(const m of x.nb){if(FZ[m.i]||m.ty===ft)continue;FZ[m.i]=f;Q.push(m)}}}
  return FZ[n.i]||null}
+// Version 39 (B): Typen in daten.skyline.mehrfach (CRM: Personen, Ressourcen) gehören zu jeder Firma, mit deren Objekten sie verbunden sind
+function gehoertZu(n,f){if(firmaVon(n)===f)return true;const M=D&&D.skyline&&D.skyline.mehrfach;if(!Array.isArray(M)||!M.includes(n.ty))return false;
+ if(!n._fm){n._fm=new Set();n.nb.forEach(m=>{if(M.includes(m.ty))return;const g=firmaVon(m);if(g)n._fm.add(g)})}return n._fm.has(f)}
 function masFirma(m){if(m.firma)return String(m.firma);if(m._fn!==undefined)return m._fn;const ft=firmenTyp();let f=null;
  for(const id of (m.ids||[])){const n=byId[id];if(n){f=firmaVon(n);if(f)break}}if(!f&&ft){const F=N.filter(n=>n.ty===ft);if(F.length===1)f=F[0]}
  const L=(D.massnahmen||[]).find(x=>x===m);const r=f?firmenName(f):'';if(L)L._fn=r;return r}
@@ -1008,7 +1012,7 @@ function skyFirmen(){const c=D&&D.skyline;if(!c)return[];const zahl={};N.forEach
  return N.filter(n=>n.ty===c.typ&&!typAus[n.ty]&&((kzv(n,c.hoehe)>0)||(zahl[n.i]||0)>=3)).sort((a,b)=>(kzv(b,c.hoehe)||0)-(kzv(a,c.hoehe)||0)||(zahl[b.i]||0)-(zahl[a.i]||0))}
 function skyFarbe(v){const g=(D.skyline.farbeGrenzen)||[10,25];return!isFinite(v)?0x8a96a8:v<g[0]?0xd0402a:v<g[1]?0xe0a020:0x2e9e4f}
 function skyline(L){while(skyG.children.length){const c=skyG.children.pop();c.geometry&&c.geometry.dispose();c.material&&c.material.dispose()}
- const c=D.skyline,F=skyFirmen(),n=F.length;SKY={F,ecken:[],info:[],koerper:[],sammel:[],buehne:null};if(!n){skyG.visible=false;return}
+ const c=D.skyline,F=skyFirmen(),n=F.length;SKY={F,ecken:[],info:[],koerper:[],sammel:[],buehne:null,block:null};if(!n){skyG.visible=false;return}
  const M=masListe(),cols=Math.max(1,Math.ceil(Math.sqrt(n*1.5))),rows=Math.ceil(n/cols),A=L*6,Hmax=L*14,vmax=Math.max(1e-9,...F.map(f=>kzv(f,c.hoehe)).filter(v=>v>0));
  N.forEach(x=>{if(!F.includes(x))x.skyAus=true;x.ziel.copy(x.pos)});
  F.forEach((f,i)=>{const x=(i%cols-(cols-1)/2)*A,z=(Math.floor(i/cols)-(rows-1)/2)*A*1.15,v=kzv(f,c.hoehe),h=Math.max(L*.4,(v>0?v/vmax:0)*Hmax),w=A*.42;
@@ -1024,7 +1028,7 @@ function skyline(L){while(skyG.children.length){const c=skyG.children.pop();c.ge
  skyG.visible=true}
 function skyBeschriften(){if(!SKY)return;const L=abstand(),hh=L*.55;SKY.info.forEach(I=>{marke(firmenName(I.f),I.x,I.h+L*3.4,I.z,hh*1.25,'#10203c').center.set(.5,.5);marke(I.txt,I.x,I.h+L*2.6,I.z,hh*.8,'#2a3b5c').center.set(.5,.5)});
  skyBuehneBeschriften(L,hh);const b=SKY.ecken;if(b.length)marke('Firmen-Skyline · Höhe = '+(D.skyline.titelHoehe||D.skyline.hoehe)+', Farbe = '+D.skyline.farbe+' (rot < '+((D.skyline.farbeGrenzen||[10,25])[0])+', gelb < '+((D.skyline.farbeGrenzen||[10,25])[1])+'), Pfeil = '+D.skyline.pfeil+', Fähnchen = Handlungsliste · Klick = Firma aufklappen · Doppelklick = Firma öffnen',Math.min(...b.map(p=>p.x)),-L*.2,Math.max(...b.map(p=>p.z))+L*3,hh*.9,'#2a3b5c')}
-function fokusFirma(f,still){FOKUS=f;N.forEach(n=>n.fokAus=firmaVon(n)!==f);$('fokb').style.display='';$('fokb').textContent='◀ Alle Firmen (jetzt: '+firmenName(f)+')';
+function fokusFirma(f,still){FOKUS=f;N.forEach(n=>n.fokAus=!gehoertZu(n,f));$('fokb').style.display='';$('fokb').textContent='◀ Alle Firmen (jetzt: '+firmenName(f)+')';
  setzeLayout('netz',!still);$('ly').value='netz';if($('mas').style.display==='block'&&$('mas').dataset.art==='mas')massnahmenZeigen();else if($('mas').style.display==='block')lageberichtZeigen()}
 function fokusAus(){FOKUS=null;N.forEach(n=>n.fokAus=false);$('fokb').style.display='none';if(D&&D.skyline){setzeLayout('skyline',true);$('ly').value='skyline'}else{zeitAnwenden();neu()}if($('mas').style.display==='block'){if($('mas').dataset.art==='mas')massnahmenZeigen();else lageberichtZeigen()}}
 function lageberichtZeigen(){const c=D.skyline,F=skyFirmen(),M=masListe(),PN=['','hoch','mittel','niedrig'],el=$('mas');el.dataset.art='lage';
@@ -1044,8 +1048,8 @@ $('fokb').onclick=fokusAus;
 // Allgemein über daten.skyline.sammel (Typen in Reihenfolge), sonst die 6 häufigsten Typen der Firma. Erneuter Klick klappt zu.
 let SKY_AUF={f:null,offen:new Set()},SKY_KL=null;
 function skyWert(n){const me=n.o.meta||{};for(const k of [].concat(D.skyline.wert||'Betrag')){const v=numv(me[k]);if(isFinite(v))return v}return NaN}
-function skySammelTypen(f){const c=D.skyline,zahl={};N.forEach(n=>{if(n!==f&&!typAus[n.ty]&&firmaVon(n)===f)zahl[n.ty]=(zahl[n.ty]||0)+1});
- const L=Array.isArray(c.sammel)?c.sammel.filter(t=>zahl[t]):Object.keys(zahl).filter(t=>t!==c.typ).sort((a,b)=>zahl[b]-zahl[a]).slice(0,6);return L.map(t=>({t,anz:zahl[t]}))}
+function skySammelTypen(f){const c=D.skyline,zahl={};N.forEach(n=>{if(n!==f&&!typAus[n.ty]&&gehoertZu(n,f))zahl[n.ty]=(zahl[n.ty]||0)+1});
+ const L=Array.isArray(c.sammel)?c.sammel.filter(t=>zahl[t]):Object.keys(zahl).filter(t=>t!==c.typ).sort((a,b)=>zahl[b]-zahl[a]).slice(0,7);return L.map(t=>({t,anz:zahl[t]}))}
 function skyBuehne(L,A,z0){const f=SKY_AUF.f,I=SKY.info.find(x=>x.f===f);if(!I)return;const T6=skySammelTypen(f),B=L*5.2,cell=L*.95,cols=Math.max(1,Math.floor(B/cell)),mx=Math.max(1,...T6.map(x=>x.anz));
  const x0=I.x-(T6.length-1)/2*B,feld=skyWert;SKY.buehne={f,x0,z0,B,T6,I};
  // goldene Verbindung vom Turm zur Bühne
@@ -1053,14 +1057,29 @@ function skyBuehne(L,A,z0){const f=SKY_AUF.f,I=SKY.info.find(x=>x.f===f);if(!I)r
  skyG.add(new T.Line(lg,new T.LineBasicMaterial({color:0xd4a017})));
  T6.forEach((g,k)=>{const x=x0+k*B,h=L*(.5+2.5*Math.sqrt(g.anz/mx)),col=new T.Color((TY[g.t]||{}).color||'#8b94a3');
   const cm=new T.Mesh(new T.CylinderGeometry(L*1.1,L*1.25,h,28),new T.MeshStandardMaterial({color:col,roughness:.35,metalness:.15,transparent:true,opacity:SKY_AUF.offen.has(g.t)?.55:.9}));cm.position.set(x,h/2,z0);cm.castShadow=cm.receiveShadow=true;skyG.add(cm);
-  const O=N.filter(n=>n!==f&&n.ty===g.t&&firmaVon(n)===f&&!typAus[n.ty]).sort((a,b)=>(isFinite(a.t0)?a.t0:0)-(isFinite(b.t0)?b.t0:0));
+  const O=N.filter(n=>n!==f&&n.ty===g.t&&gehoertZu(n,f)&&!typAus[n.ty]).sort((a,b)=>(isFinite(a.t0)?a.t0:0)-(isFinite(b.t0)?b.t0:0));
   const sum=O.reduce((a,n)=>{const v=feld(n);return isFinite(v)?a+v:a},0),hatW=O.some(n=>isFinite(feld(n)));
   SKY.sammel.push({m:cm,f,typ:g.t,anz:g.anz,x,z:z0,h,txt:((TY[g.t]||{}).label||g.t)+' '+g.anz+(hatW?' · '+eur(sum):'')});SKY.koerper.push({m:cm,f,typ:g.t});
   SKY.ecken.push(new T.Vector3(x-B/2,0,z0-L),new T.Vector3(x+B/2,h+L*2,z0+L));
   if(SKY_AUF.offen.has(g.t)){const zs=z0+L*2.4;O.forEach((n,j)=>{if(n.r0==null)n.r0=n.r;n.r=Math.min(n.r0,L*.42);n.skyAus=false;n.ziel.set(x+((j%cols)-(cols-1)/2)*cell,n.r,zs+Math.floor(j/cols)*cell)});
-   SKY.ecken.push(new T.Vector3(x,0,zs+Math.ceil(O.length/cols)*cell))}})}
+   SKY.ecken.push(new T.Vector3(x,0,zs+Math.ceil(O.length/cols)*cell))}});
+ skyBlock(L,f,x0+T6.length*B+L*.5,z0)}
+// Version 39 (C): Stundenblock „Arbeit (Stunden)“ – Säule in Abschnitten je Person/Ressource (Feld anteile der Objekte dieser Firma), Höhe = Anteil;
+// die Person selbst steht vorn rechts an ihrem Abschnitt, Beschriftung „Name · Stunden · Prozent“. Kleinste Anteile ab Platz 7 als „weitere“.
+function skyBlock(L,f,x,z){const A={};N.forEach(n=>{const a=n.o.anteile;if(a&&firmaVon(n)===f)Object.entries(a).forEach(([id,h])=>{if(isFinite(+h))A[id]=(A[id]||0)+(+h)})});
+ const S=Object.values(A).reduce((a,b)=>a+b,0);if(!(S>0))return;let L2=Object.keys(A).sort((a,b)=>A[b]-A[a]).map(id=>({id,h:A[id],n:byId[id]}));
+ if(L2.length>7){const r=L2.slice(6);L2=L2.slice(0,6).concat([{id:'',h:r.reduce((a,b)=>a+b.h,0),n:null,anz:r.length}])}
+ const Hb=L*7,w=L*2.2;let y=0,yf=-1e9;const B=SKY.block={x,z,Hb,S,teile:[]};
+ L2.forEach(t=>{const h=Math.max(L*.12,t.h/S*Hb),col=t.n?t.n.col.clone():new T.Color(0x9aa3ae),m=new T.Mesh(new T.BoxGeometry(w,h*.96,w),new T.MeshStandardMaterial({color:col,roughness:.4,metalness:.05}));
+  m.position.set(x,y+h/2,z);m.castShadow=m.receiveShadow=true;skyG.add(m);const ym=Math.max(y+h/2,yf+L*1.6);yf=ym;
+  if(t.n&&!typAus[t.n.ty]){const n=t.n;if(n.r0==null)n.r0=n.r;n.r=L*.7;n.skyAus=false;n.ziel.set(x+w/2,ym,z+w/2+L*.9)}
+  B.teile.push({y:ym,txt:(t.n?crmKurz(t.n):'weitere ('+t.anz+')')+' · '+t.h.toLocaleString('de-DE',{maximumFractionDigits:1})+' h · '+Math.round(t.h/S*100)+' %'});y+=h});
+ SKY.ecken.push(new T.Vector3(x-w,0,z-w),new T.Vector3(x+w*4,Math.max(y,yf)+L*2,z+w))}
+function crmKurz(n){const t=String(n.name||'');return t.includes(' · ')?t.split(' · ').slice(1).join(' · '):t}
 function skyBuehneBeschriften(L,hh){const S=SKY.buehne;if(!S)return;marke('Aufgeklappt: '+firmenName(S.f)+' · Klick auf einen Sammelkörper = Objekte zeigen/verbergen',S.x0-S.B*.5,Math.max(0,...SKY.sammel.map(g=>g.h))+L*3.4,S.z0-L*2,hh*.85,'#7a5a00').center.set(0,.5);
- SKY.sammel.forEach(g=>{marke(g.txt,g.x,g.h+L*.9,g.z,hh*.8,'#10203c').center.set(.5,.5)})}
+ SKY.sammel.forEach(g=>{marke(g.txt,g.x,g.h+L*.9,g.z,hh*.8,'#10203c').center.set(.5,.5)});
+ const K=SKY.block;if(K){marke((D.skyline.anteileTitel||'Anteile')+' · '+Math.round(K.S).toLocaleString('de-DE')+' h',K.x,K.Hb+L*1.1,K.z,hh*.85,'#10203c').center.set(.5,.5);
+  K.teile.forEach(t=>marke(t.txt,K.x+L*1.1+L*1.0,t.y,K.z+L*1.1+L*.9,hh*.9,'#10203c').center.set(0,.5))}}
 function skyKoerper(e){if(!SKY||!SKY.koerper.length||!skyG.visible)return null;treffer(e);const hit=ray.intersectObjects(SKY.koerper.map(k=>k.m),false)[0];return hit?SKY.koerper.find(k=>k.m===hit.object):null}
 function skyKlick(e,i){if(layout!=='skyline'||!SKY)return false;const sk=i<0?skyKoerper(e):null,f=i>=0&&SKY.F.includes(N[i])?N[i]:sk&&!sk.typ?sk.f:null;
  if(!f&&!(sk&&sk.typ))return false;clearTimeout(SKY_KL);
@@ -1342,6 +1361,7 @@ async function leseZip(f){
 const CRM_TYPEN={
  tCO:{label:'Firma',color:'#f4c430',shape:'gebaeude',size:3},
  tPE:{label:'Person',color:'#7451b0',shape:'bust',size:1.1},
+ tRS:{label:'Ressource',color:'#8a9099',shape:'bust',size:1.1},   // Version 38 (Wunsch des Nutzers): Person in ihrer Funktion als ausführende Kraft (Ticket, Zeitnachweis), grau
  tAD:{label:'Adresse',color:'#66788f',shape:'diamond',size:.7},
  tAS:{label:'Dokument',color:'#66788f',shape:'book',size:.8},
  tOF:{label:'Angebot',color:'#d9730d',shape:'octagon',size:1.5},
@@ -1356,7 +1376,7 @@ const CRM_TYPEN={
  tTK:{label:'Ticket',color:'#e0a526',shape:'zettel',size:1.2},tTI:{label:'Ticket',color:'#e0a526',shape:'zettel',size:1.2},   // Version 37: Typkennung des Tickets vermutet
  tZN:{label:'Zeitnachweise (gebündelt)',color:'#5d7593',size:.6}};
 const CRM_STATUS={pending:'offen',work:'in Arbeit',review:'in Prüfung',approved:'freigegeben',billing:'in Abrechnung',finished:'abgeschlossen',onHold:'zurückgestellt',inactive:'inaktiv',active:'aktiv',shipped:'versendet',closed:'geschlossen',canceled:'storniert',cancelled:'storniert'};
-const CRM_ROLLEN={Person:'Bearbeiter',Reviewer:'Prüfer',Responsible:'Verantwortlich',BillingSheet:'Billing Sheet',CustomerCompany:'Kunde',Customer:'Kunde',Contact:'Kontakt',CustomerContact:'Kontakt',SalesPerson:'Vertrieb',Company:'Firma',Contract:'Auftrag',Project:'Projekt'};
+const CRM_ROLLEN={Person:'Bearbeiter',Reviewer:'Prüfer',Responsible:'Verantwortlich',BillingSheet:'Billing Sheet',CustomerCompany:'Kunde',Customer:'Kunde',Contact:'Kontakt',CustomerContact:'Kontakt',SalesPerson:'Vertrieb',Company:'Firma',Contract:'Auftrag',Project:'Projekt',Resource:'Ressource'};
 function crmZahl(v){if(typeof v==='number')return v;if(v==null)return NaN;const t=String(v).trim();if(!/^-?[\d.]*,?\d+$|^-?\d+(\.\d+)?$/.test(t))return NaN;
  return /,/.test(t)?parseFloat(t.replace(/\./g,'').replace(',','.')):parseFloat(t)}
 function crmMs(v){const x=crmZahl(v);return isFinite(x)&&x>1e11?x:NaN}
@@ -1396,7 +1416,7 @@ function crmZuDaten(busse,rels,opt){opt=opt||{};
    case'tTA':t0=crmMs(d.cStartDate);m.Wichtigkeit=d.cImportance||'';if(d.cCompletedPct)m.Fortschritt=d.cCompletedPct+' %';m['Erledigt am']=crmDatum(d.cCompletedDate);if(crmMs(d.cDueDate))n.end=crmDatum(d.cDueDate);break;
    case'tOF':t0=crmMs(d.cOfferingDate);break;
    case'tCTI':case'tOFI':case'tSII':m.Menge=d.cQuantity||'';m['Fällig']=crmDatum(d.cDueDate);break;
-   case'tPE':if(d.cEmail)m['E-Mail']=d.cEmail;break;
+   case'tPE':case'tRS':if(d.cEmail)m['E-Mail']=d.cEmail;break;
   }
   if(isFinite(b)&&o.type!=='tSI'){m.Betrag=fmt(b)+' €'}if(o.type==='tBA'){n._h=crmZahl(d.cNetDeci);n._aw=crmZahl(d.cWorkingTime);if(!isFinite(n._aw))n._aw=n._h;   // ohne Arbeitszeit: wie abrechenbar
   const nb=n._aw-(isFinite(n._h)?n._h:0);if(nb>.005)m['Nicht abrechenbar']=crmH(nb).replace(' h','')}n._st=st
@@ -1431,7 +1451,7 @@ function crmZuDaten(busse,rels,opt){opt=opt||{};
  nodes.forEach(n=>{const k=kopf[n.id];if(k&&k.start&&(!n.start||/^t(SII|CTI|OFI)$/.test(n.type)))n.start=k.start});
  crmAngebotAuftrag(nodes,edges,byId,rt);
  const vorher=crmFaktenVorher(nodes,edges,byId);   // Version 24: Batch-Daten vor dem Bündeln
- if(!opt.einzeln)crmBuendeln(nodes,edges,byId,rt,types);
+ if(!opt.einzeln)crmBuendeln(nodes,edges,byId,rt,types);else{crmAnteile(nodes,edges,byId);nodes.forEach(n=>{if(n.anteile)n.meta.Ressourcen=crmAnteilText(n.anteile,byId)})}
  crmBillingSheets(nodes,edges,byId);
  crmProjekte(nodes,edges,byId);
  crmKennzahlen(nodes,edges,byId);
@@ -1444,7 +1464,7 @@ function crmZuDaten(busse,rels,opt){opt=opt||{};
  const med={};nodes.forEach(n=>{if(isFinite(n.wert)&&n.wert>0)(med[n.type]=med[n.type]||[]).push(n.wert)});
  Object.keys(med).forEach(t=>{const L=med[t].sort((x,y)=>x-y);med[t]=L[L.length>>1]});
  nodes.forEach(n=>{const g=types[n.type].size||1;n.size=isFinite(n.wert)&&n.wert>0&&med[n.type]?g*Math.max(.3,Math.min(7,Math.pow(n.wert/med[n.type],2/3))):g;Object.keys(n).forEach(k=>{if(k==='wert'||k[0]==='_')delete n[k]})});
- return{titel:'CRM',crm:true,eigeneDomain:eigen.domain,eigeneAuto:eigen.auto,schichtReihe:['tCO','tOF','tCT'],skyline:{typ:'tCO',sammel:['tOF','tCT','tSI','tBS','tPE','tTA'],umsatzTyp:'tSI',wert:['Betrag','Netto'],hoehe:'Umsatz 12 Monate',titelHoehe:'Umsatz 12 Monate',farbe:'Marge',pfeil:'Wachstum ggü. Vorjahr',farbeGrenzen:[10,25]},chronik,massnahmen,fakten,chronikOk:{Angebot:'beauftragt',Auftrag:'im Budget',Rechnung:'mit positiver Marge',Aufgabe:'erledigt'},warnungName:'über Budget',layout:'netz',types,relTypes,nodes,edges,betragName:'Umsatz (Rechnungen netto)',betragEinheit:'€',
+ return{titel:'CRM',crm:true,eigeneDomain:eigen.domain,eigeneAuto:eigen.auto,schichtReihe:['tCO','tOF','tCT'],skyline:{typ:'tCO',mehrfach:['tPE','tRS'],anteileTitel:'Arbeit (Stunden)',sammel:['tOF','tCT','tSI','tBS','tTI','tTA','tPE'],umsatzTyp:'tSI',wert:['Betrag','Netto'],hoehe:'Umsatz 12 Monate',titelHoehe:'Umsatz 12 Monate',farbe:'Marge',pfeil:'Wachstum ggü. Vorjahr',farbeGrenzen:[10,25]},chronik,massnahmen,fakten,chronikOk:{Angebot:'beauftragt',Auftrag:'im Budget',Rechnung:'mit positiver Marge',Aufgabe:'erledigt'},warnungName:'über Budget',layout:'netz',types,relTypes,nodes,edges,betragName:'Umsatz (Rechnungen netto)',betragEinheit:'€',
   stufenNamen:{kristall:'abgeschlossen (Kristall)',roh:'offen / in Arbeit (matt)',alt:'inaktiv'},axes:CRM_ACHSEN}}
 // Version 20: Vorlagen für das Layout „Kennzahlen (Achsen)“ (Namen wie im kaufmännischen Datenraum von 3Deep)
 const CRM_ACHSEN=[
@@ -1464,7 +1484,15 @@ function crmAngebotAuftrag(nodes,edges,byId,rt){nodes.forEach(n=>{if(n.type!=='t
  Object.keys(c).forEach(id=>{const a=byId[id];if(!a||a.type!=='tCT')return;edges.push({from:n.id,to:id,type:rt('beauftragt',{label:'führte zu Auftrag',color:'#f08c00'})});
   const t0=Date.parse(n.start),t1=Date.parse(a.start);n.meta['Auftrag']=a._nr;if(isFinite(t0)&&isFinite(t1))n.meta['Tage bis Auftrag']=String(Math.round((t1-t0)/crmTag));(a._angebote=a._angebote||[]).push(n)})})}
 // Version 21: Batches bündeln – abgerechnete je Rechnung (seit Version 22 je Rechnung und Billing Sheet), übrige je Billing Sheet und Monat
-function crmBuendeln(nodes,edges,byId,rt,types){const ba=nodes.filter(n=>n.type==='tBA');if(!ba.length)return;
+// Version 39 (Wunsch des Nutzers, A): wer hat gearbeitet – je Zeitnachweis Stunden je Person/Ressource (Feld anteile {id: Stunden}; Arbeitszeit, sonst Stunden),
+// ohne Prüfer, Verantwortliche, Kontakte; mehrere Bearbeiter teilen sich die Stunden. Gebündelt: Summe, Attribut „Ressourcen“ mit Prozent, Linie zur Person dicker nach Anteil.
+const crmKurzname=n=>{const t=String(n&&n.name||'');return t.includes(' · ')?t.split(' · ').slice(1).join(' · '):t};
+function crmAnteile(nodes,edges,byId){const W={};edges.forEach(e=>{const t=String(e.type||'');if(!/^ctx:/.test(t)||/^ctx:(Prüfer|Verantwortlich|Kontakt|Kunde|Firma)$/.test(t))return;const a=byId[e.from],b=byId[e.to];if(!a||!b)return;
+  const [p,z]=/^t(PE|RS)$/.test(a.type)?[a,b]:/^t(PE|RS)$/.test(b.type)?[b,a]:[null,null];if(!p||z.type!=='tBA')return;(W[z.id]=W[z.id]||new Set()).add(p.id)});
+ nodes.forEach(n=>{if(n.type!=='tBA'||!W[n.id])return;const h=isFinite(n._aw)&&n._aw>0?n._aw:isFinite(n._h)?n._h:0;if(!(h>0))return;const L=[...W[n.id]];n.anteile={};L.forEach(id=>n.anteile[id]=h/L.length)})}
+function crmAnteilText(A,byId){const S=Object.values(A).reduce((a,b)=>a+b,0);if(!(S>0))return'';const L=Object.keys(A).sort((a,b)=>A[b]-A[a]);
+ return L.slice(0,4).map(id=>crmKurzname(byId[id])+' '+Math.round(A[id]/S*100)+' %').join(', ')+(L.length>4?', weitere '+Math.round(L.slice(4).reduce((a,id)=>a+A[id],0)/S*100)+' %':'')}
+function crmBuendeln(nodes,edges,byId,rt,types){crmAnteile(nodes,edges,byId);const ba=nodes.filter(n=>n.type==='tBA');if(!ba.length)return;
  const zuSII={},zuBS={},siiSI={};edges.forEach(e=>{const f=byId[e.from];if(!f)return;if(e.type==='abgerechnet'&&f.type==='tBA')zuSII[e.from]=e.to;if(e.type==='billing'&&f.type==='tBA')zuBS[e.from]=e.to;if(e.type==='position'&&f.type==='tSII')siiSI[e.from]=e.to});
  const G=new Map();ba.forEach(n=>{const si=zuSII[n.id]&&siiSI[zuSII[n.id]],bs=zuBS[n.id]||'',mon=(n.start||'').slice(0,7)||'ohne Datum',key=si?'R|'+si+'|'+bs:'M|'+bs+'|'+mon;   // Version 22: je Rechnung und Billing Sheet (Stunden je Billing Sheet bleiben richtig)
  if(!G.has(key))G.set(key,{si,bs,mon,L:[]});G.get(key).L.push(n)});
@@ -1473,10 +1501,12 @@ function crmBuendeln(nodes,edges,byId,rt,types){const ba=nodes.filter(n=>n.type=
   const pr={};g.L.forEach(n=>{const x=n.meta['Prüfer'];if(x)pr[x]=(pr[x]||0)+1});
   const z={id,type:'tZN',name:'Zeitnachweise '+(si?si._nr:g.mon)+(bs?' · '+bs._nr:''),meta:{Batches:String(g.L.length),Stunden:crmH(h).replace(' h',''),Arbeitszeit:crmH(aw).replace(' h',''),'Nicht abrechenbar':aw-h>.005?crmH(aw-h).replace(' h',''):'',Von:crmIso(ts[0]),Bis:crmIso(ts[ts.length-1])},
    stufe:g.L.every(n=>n.stufe==='kristall')?'kristall':'roh',_h:h,_aw:aw,wert:h,_anz:g.L.length};
+  {const A={};g.L.forEach(n=>Object.entries(n.anteile||{}).forEach(([id,h])=>A[id]=(A[id]||0)+h));if(Object.keys(A).length){z.anteile=A;z.meta.Ressourcen=crmAnteilText(A,byId)}}
   if(!z.meta['Nicht abrechenbar'])delete z.meta['Nicht abrechenbar'];  if(si)z.meta.Rechnung=si._nr;if(bs)z.meta['Billing Sheet']=bs._nr;const pk=Object.keys(pr).sort((a,b)=>pr[b]-pr[a]);if(pk.length)z.meta['Prüfer']=pk.slice(0,3).join(', ');
   if(ts.length)z.start=new Date(ts[0]).toISOString();nodes.push(z);byId[id]=z;g.L.forEach(n=>neu[n.id]=id);
   if(si)edges.push({from:id,to:si.id,type:rt('zn_rechnung',{label:'Zeitnachweise der Rechnung',color:'#2fb36d',hierarchy:true})})});
  const ges=new Set(),E2=[];edges.forEach(e=>{if(e.type==='abgerechnet'&&neu[e.from])return;const f=neu[e.from]||e.from,t=neu[e.to]||e.to;if(f===t)return;const k=f+'|'+t+'|'+e.type;if(ges.has(k))return;ges.add(k);E2.push(Object.assign({},e,{from:f,to:t}))});
+ E2.forEach(e=>{const a=byId[e.from],b=byId[e.to];const [p,z]=a&&a.anteile?[b,a]:b&&b.anteile?[a,b]:[null,null];if(!p||!z.anteile[p.id])return;const S=Object.values(z.anteile).reduce((x,y)=>x+y,0);e.dicke=1+2.5*z.anteile[p.id]/S});
  edges.length=0;E2.forEach(e=>edges.push(e));for(let i=nodes.length-1;i>=0;i--)if(nodes[i].type==='tBA'){delete byId[nodes[i].id];nodes.splice(i,1)}delete types.tBA}
 // Version 21: Projektauswertung je Auftrag – Budget (Sollstunden am Billing Sheet, sonst verkaufte Stunden der Positionen) gegen geleistete Stunden, DB aus den Rechnungen
 function crmProjekte(nodes,edges,byId){const nb=crmNachbarn(edges),sii={},zr={};
