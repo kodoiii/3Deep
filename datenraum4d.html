@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="29">
+<meta name="4deep-darstellung" content="30">
 <title>4Deep Machbarkeitsstudie</title>
 <!-- 4Deep, Stufe 1 (Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -120,7 +120,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 29 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 30 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="chr"></div><div class="pn" id="mas"></div><div class="pn" id="prof"></div><div id="profb"></div>
@@ -819,8 +819,8 @@ function tastenNeu(e){const m=e.buttons|0,alt=maske;maske=m;tasten[0]=!!(m&1);ta
  if(neu){if(!alt){bewegtMaus=0;zug={x:e.clientX,y:e.clientY}}if((neu&2)&&(m&4))zoomModus='bereit'}   // Mitte halten + Rechtsklick = Zoommodus (CATIA)
  if(los){
   if((los&2)&&zoomModus==='bereit'){zoomModus=bewegtMaus<4?true:false}
-  if(bewegtMaus<4&&(los&1)&&!(m&6)&&!(alt&6)){const i=treffer(e);waehle(i);if(i!==prof.i)schliesseProfil()}   // Klick links = Auswahl mit Detailfeld
-  if(bewegtMaus<4&&(los&2)&&!(alt&4)){const i=treffer(e);if(i>=0){waehle(i);zeigeProfil(i)}else schliesseProfil()}   // Rechtsklick = Profilkarte am Objekt (wie 3Deep)
+  if(bewegtMaus<4&&(los&1)&&!(m&6)&&!(alt&6)){const i=treffer(e),k=i<0?trefferK(e):null;waehle(i);if(i!==prof.i)schliesseProfil();if(k)zeigeProfilE(k,e.clientX,e.clientY)}   // Klick links = Auswahl mit Detailfeld
+  if(bewegtMaus<4&&(los&2)&&!(alt&4)){const i=treffer(e);if(i>=0){waehle(i);zeigeProfil(i)}else{const k=trefferK(e);if(k)zeigeProfilE(k,e.clientX,e.clientY);else schliesseProfil()}}   // Rechtsklick = Profilkarte am Objekt (wie 3Deep)
   if(los&4)zoomModus=false;
   if(!m)zug=null}
 }
@@ -850,7 +850,24 @@ function treffer(e){const r=cv.getBoundingClientRect();mausV.set((e.clientX-r.le
  return best}
 let hoverZeit=0;
 function hover(e){const jetzt=performance.now();if(jetzt-hoverZeit<40)return;hoverZeit=jetzt;const n=treffer(e);if(n!==hov){hov=n;faerben();neu()}
- const tip=$('tip');if(n>=0){const o=N[n];tip.textContent=o.name+' · '+((TY[o.ty]||{}).label||o.ty)+(isFinite(o.t0)?' · '+zeitText(o.t0)+(isFinite(o.t1)?' – '+zeitText(o.t1):''):'');tip.style.display='block';tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY+12)+'px'}else tip.style.display='none'}
+ const tip=$('tip');if(n>=0){const o=N[n];tip.textContent=o.name+' · '+((TY[o.ty]||{}).label||o.ty)+(isFinite(o.t0)?' · '+zeitText(o.t0)+(isFinite(o.t1)?' – '+zeitText(o.t1):''):'');tip.style.display='block';tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY+12)+'px'}else{const k=trefferK(e);if(k){tip.textContent=kLabel(k)+': '+k.a.name+(k.dir?' → ':' – ')+k.b.name+' · Rechtsklick = Details';tip.style.display='block';tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY+12)+'px'}else tip.style.display='none'}}
+// Version 30 (Wunsch des Nutzers): Infos zu Beziehungen wie 3Deep: Maus über der Beziehung = Kurzinfo, Klick/Rechtsklick = Profilkarte der Beziehung
+const kLabel=k=>String(k.e.label||(((D&&D.relTypes)||{})[k.e.type]||{}).label||k.e.type||'Beziehung');
+function kSicht(k){return $('kanten').checked&&k.a.s>.05&&k.b.s>.05&&!k.revAus&&!(GEL&&k.dir)&&!(isFinite(k.t0)&&k.t0>tCur)}
+function trefferK(e){if(!E.length)return null;const r=cv.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top,W=r.width,H=r.height,va=new T.Vector3(),vb=new T.Vector3();let best=null,bd=36;   // 6 px Abstand
+ for(let i=0;i<E.length;i++){const k=E[i];if(!kSicht(k))continue;va.copy(k.a.pos).project(cam);vb.copy(k.b.pos).project(cam);if(va.z>1||vb.z>1||va.z<-1||vb.z<-1)continue;
+  const ax=(va.x+1)/2*W,ay=(1-va.y)/2*H,bx=(vb.x+1)/2*W,by=(1-vb.y)/2*H,dx=bx-ax,dy=by-ay,L=dx*dx+dy*dy;let t=L>0?((mx-ax)*dx+(my-ay)*dy)/L:0;t=Math.max(0,Math.min(1,t));const qx=ax+t*dx-mx,qy=ay+t*dy-my,d=qx*qx+qy*qy;if(d<bd){bd=d;best=k}}
+ return best}
+function zeigeProfilE(k,x,y){schliesseProfil();const el=$('prof'),A=k.a,B=k.b,tl=n=>(TY[n.ty]||{}).label||n.ty,m=k.e.meta||{};
+ const R=[['Art',kLabel(k)],[k.dir?'Von':'Zwischen',A.name+' ('+tl(A)+')'],[k.dir?'Nach':'und',B.name+' ('+tl(B)+')'],['Richtung',k.dir?'gerichtet':'ungerichtet']];if(k.e.type&&k.e.type!==kLabel(k))R.push(['Link-Typ',k.e.type]);
+ if(isFinite(k.t0))R.push(['Beginn',zeitText(k.t0)]);if(isFinite(k.t1))R.push(['Ende',zeitText(k.t1)]);
+ if(isFinite(k.t0)&&isFinite(k.t1)){const d=(k.t1-k.t0)/864e5;R.push(['Dauer',d>=730?Math.round(d/365.25)+' Jahre':d>=60?Math.round(d/30.4)+' Monate':Math.round(d)+' Tage'])}
+ Object.keys(m).slice(0,40).forEach(q=>{if(m[q]!==''&&m[q]!=null)R.push([q,typeof m[q]==='object'?JSON.stringify(m[q]):String(m[q])])});
+ el.innerHTML='<span class="x" id="pfx">✕</span><h2><i style="background:#'+new T.Color(k.col).getHexString()+'"></i>'+esc(kLabel(k))+'</h2><div class="ty">Profilkarte · Beziehung · '+R.length+' Attribute</div><table>'+R.map(a=>'<tr><td>'+esc(a[0])+'</td><td>'+esc(a[1])+'</td></tr>').join('')+'</table>'+
+  '<div class="bzg">Enden (Klick = hinfliegen)</div>'+[A,B].map(n=>'<div class="it" data-i="'+n.i+'">'+esc(n.name)+' <span>'+esc(tl(n))+'</span></div>').join('');
+ el.style.display='block';$('pfx').onclick=()=>schliesseProfil();
+ el.querySelectorAll('.it').forEach(e2=>e2.onclick=()=>{const j=+e2.dataset.i;waehle(j);zeigeProfil(j);nutzerSteuert();K.zZiel.copy(N[j].pos);K.flug=true;neu()});
+ const w=el.offsetWidth||340,h=el.offsetHeight||300;el.style.opacity=1;el.style.left=Math.max(8,Math.min(innerWidth-w-8,x+14))+'px';el.style.top=Math.max(8,Math.min(innerHeight-h-8,y-20))+'px'}
 
 // ---------- Auswahl und Profil ----------
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -958,7 +975,7 @@ $('fkb').onclick=faktenExport;
 $('finb').onclick=()=>{$('ly').value='achsen';setzeLayout('achsen',true);const o=[...$('axp').options].findIndex(x=>/^Rechnungen/.test(x.text));if(o>=0&&$('axp').selectedIndex!==o){$('axp').selectedIndex=o;$('axp').dispatchEvent(new Event('change'))}};
 document.querySelectorAll('#pn details.grp').forEach(d=>{try{d.open=localStorage.getItem('4d_auf_'+d.id)==='1'}catch(_){}d.addEventListener('toggle',()=>{try{localStorage.setItem('4d_auf_'+d.id,d.open?'1':'0')}catch(_){}})});
 $('masb').onclick=()=>{const el=$('mas');if(el.style.display==='block')el.style.display='none';else{$('chr').style.display='none';massnahmenZeigen()}};
-$('bae').onchange=e=>{try{localStorage.setItem('4d_crm_einzeln',e.target.checked?'1':'0')}catch(_){}if(CRM_ROH){lauf=null;laden(crmZuDaten(CRM_ROH.b,CRM_ROH.r,{einzeln:e.target.checked}))}};
+$('bae').onchange=e=>{try{localStorage.setItem('4d_crm_einzeln',e.target.checked?'1':'0')}catch(_){}if(CRM_ROH){lauf=null;laden(crmZuDaten(CRM_ROH.b,CRM_ROH.r,{einzeln:e.target.checked,zuord:CRM_ROH.zuord}))}};
 try{$('bae').checked=localStorage.getItem('4d_crm_einzeln')==='1'}catch(_){}
 // Version 20: Kennzahlen-Achsen bedienen
 const axNeu=()=>{$('ly').value='achsen';setzeLayout('achsen',true)};
@@ -1162,11 +1179,21 @@ async function zipEntpacken(e){if(e.meth===0)return e.daten;if(e.meth!==8)throw 
 let CRM_ROH=null;   // Version 21: Rohdaten des zuletzt geladenen CRM-Exports (für „Batches einzeln“), nur im Speicher
 async function leseZip(f){
  meld('Lese '+f.name+' …');
- try{const ein=await zipLesen(await f.arrayBuffer()),dec=new TextDecoder('utf-8'),busse=[],rels=[];let json4d=null;
-  for(const e of ein){if(!/\.json$/i.test(e.name))continue;const teile=e.name.split('/');const art=teile.includes('busses')?'b':teile.includes('rels')?'r':'';
+ try{const dec=new TextDecoder('utf-8'),busse=[],rels=[],bId={},rId={},ordner=[];let json4d=null;
+  // Version 30: neues Exportformat mit Unterordnern je Firma (…/<Firma>/busses/…, …/<Firma>/rels/…), auch ZIP im ZIP; Objekte doppelt in mehreren Ordnern nur einmal, mit allen Ordnern im Feld „Export-Ordner“
+  const lies=async(ein,vor,tiefe)=>{for(const e of ein){
+   if(/\.zip$/i.test(e.name)&&tiefe<2){try{await lies(await zipLesen((await zipEntpacken(e)).slice().buffer),vor+e.name.replace(/\.zip$/i,'')+'/',tiefe+1)}catch(_){}continue}
+   if(!/\.json$/i.test(e.name))continue;const teile=(vor+e.name).split('/');const ib=teile.indexOf('busses'),ir=teile.indexOf('rels'),ix=ib>=0&&(ir<0||ib<ir)?ib:ir,art=ix<0?'':ix===ib?'b':'r';
    if(!art&&ein.length>1)continue;let t=dec.decode(await zipEntpacken(e));if(t.charCodeAt(0)===0xfeff)t=t.slice(1);let o;try{o=JSON.parse(t)}catch(_){continue}
-   if(art==='b')busse.push(o);else if(art==='r')rels.push(o);else json4d=o}
-  if(busse.length){CRM_ROH={b:busse,r:rels};const d=crmZuDaten(busse,rels,{einzeln:$('bae').checked});lauf=null;laden(d);return}
+   if(!art){json4d=o;continue}
+   const ord=teile.slice(0,ix).join('/');if(!ordner.includes(ord))ordner.push(ord);
+   if(art==='b'){const k=o&&o.id!=null?String(o.id):null;if(k&&bId[k]){if(!bId[k].ord.includes(ord))bId[k].ord.push(ord);continue}busse.push(o);if(k)bId[k]={ord:[ord]}}
+   else{const k=o&&(o.id!=null?String(o.id):o.fromid+'|'+o.toid+'|'+o.type);if(rId[k])continue;rId[k]=1;rels.push(o)}}};
+  await lies(await zipLesen(await f.arrayBuffer()),'',0);
+  if(busse.length){let zuord=null;
+   if(ordner.length>1){const kurz=ordner.map(x=>x.split('/').filter(Boolean).pop()||'(Wurzel)');zuord={};Object.keys(bId).forEach(k=>zuord[k]=bId[k].ord.map(x=>kurz[ordner.indexOf(x)]).join(', '))}
+   CRM_ROH={b:busse,r:rels,zuord};const d=crmZuDaten(busse,rels,{einzeln:$('bae').checked,zuord});if(zuord)d.titel='CRM · '+ordner.length+' Export-Ordner';lauf=null;laden(d);
+   return}
   if(json4d){lauf=null;laden(json4d.daten&&json4d.daten.nodes?json4d.daten:json4d);return}
   meld('Im ZIP wurden weder CRM-Daten (Ordner busses/ und rels/) noch ein 4Deep-JSON gefunden.')
  }catch(err){meld('ZIP konnte nicht gelesen werden: '+err.message)}}
@@ -1203,7 +1230,7 @@ function crmZuDaten(busse,rels,opt){opt=opt||{};
  const fmt=x=>isFinite(x)?x.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2}):'';
  busse.forEach(o=>{if(!o||!o.id||byId[o.id])return;const d=o.data||{},pol=o.policy||{},st=String(pol.current||'');
   const titel=String(d.cTitle||'').trim(),nr=String(o.name||'').trim();
-  const n={id:o.id,type:ty(o.type||'?'),name:nr&&titel&&titel!==nr?nr+' · '+titel:(titel||nr||o.id),meta:{}};const m=n.meta;
+  const n={id:o.id,type:ty(o.type||'?'),name:nr&&titel&&titel!==nr?nr+' · '+titel:(titel||nr||o.id),meta:{}};const m=n.meta;if(opt.zuord&&opt.zuord[o.id])m['Export-Ordner']=opt.zuord[o.id];
   if(nr)m.Nummer=nr;if(o.rev)m.Revision=o.rev;if(st)m.Status=st;n._d=d;n._nr=nr;if(o.type==='tOF'&&nr)n.familie=nr;   // gleiche Angebotsnummer = Revisionskette
   if(/^t(OFI|CTI|SII)$/.test(o.type)){const q=Array.isArray(d.cPrice)?d.cPrice:[],vk=q.find(x=>x&&x.name==='VK')||q[0],ek=q.find(x=>x&&x.name==='EK');const pr=vk&&Array.isArray(vk.prices)&&vk.prices[0];n._preis=pr&&pr.value?crmZahl(pr.value.key):NaN;n._menge=crmZahl(d.cQuantity);const t=ek&&Array.isArray(ek.total)&&ek.total[0];n._ek=t&&t.result?crmZahl(t.result.key):NaN}
   // Stufe: abgeschlossen = Kristall, offen/in Arbeit = matt, inaktiv = blass
