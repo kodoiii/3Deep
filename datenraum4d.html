@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="26">
+<meta name="4deep-darstellung" content="27">
 <title>4Deep Machbarkeitsstudie</title>
 <!-- 4Deep, Stufe 1 (Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -11,6 +11,7 @@
      Vierte Dimension: Zeitregler (start/end der Objekte und Beziehungen, sonst Attribut „Erstellt“/„Geändert“). -->
 <style>
 :root{--bg:#0b1220;--pn:rgba(15,23,40,.92);--tx:#e6edf7;--mu:#93a3bd;--ak:#ff9f1c;--rand:#243049}
+body[data-schema^=alien]{--pn:rgba(20,24,30,.9);--rand:#4a3526}
 *{box-sizing:border-box}
 #cv{background:var(--himmel,linear-gradient(#8fb2e0,#c4d8f1 45%,#d6e4f5 50%,#a9c1e4))}
 html,body{margin:0;height:100%;background:#c4d8f1;color:var(--tx);font:13px system-ui,Segoe UI,sans-serif;overflow:hidden}
@@ -86,7 +87,7 @@ html.stereo .pn,html.stereo #st,html.stereo #tip,html.stereo #prof,html.stereo #
  <div class="cb"><input type="checkbox" id="namen"><span>Namen am Objekt (N)</span></div>
  <div class="cb"><input type="checkbox" id="glanz" checked><span>Glanz und Reifegrade</span></div>
  <label>Farbschema</label><select id="fs" title="Hintergrund, Licht und Objektfarben"></select>
- <label>Oberfläche</label><select id="of" title="Materialwirkung der Objekte"><option value="satin">Satin (seidenmatt)</option><option value="metall">Metall (eloxiert)</option><option value="lack">Lack (glänzend, bisher)</option></select>
+ <label>Oberfläche</label><select id="of" title="Materialwirkung der Objekte"><option value="satin">Satin (seidenmatt)</option><option value="metall">Metall (eloxiert)</option><option value="lack">Lack (glänzend, bisher)</option><option value="bio">Bio-Porzellan (Alien-Tech)</option></select>
  <label>Symbol Person</label><select id="syp" title="Form für Personen (Typen mit Form „bust“)"></select>
  <label>Symbol Firma</label><select id="syf" title="Form für Firmen (Typen mit Form „gebaeude“)"></select>
  <button id="lt">Leistung messen (5 s Drehung)</button>
@@ -102,7 +103,7 @@ html.stereo .pn,html.stereo #st,html.stereo #tip,html.stereo #prof,html.stereo #
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 26 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 27 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="chr"></div><div class="pn" id="mas"></div><div class="pn" id="prof"></div><div id="profb"></div>
@@ -126,9 +127,17 @@ renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;
 const scene=new T.Scene();let HIMMEL=null;
 // hellblauer Himmel wie in datenraum3d.html (Verlauf oben → Horizont → unten), als Rundum-Bild, damit der Horizont beim Neigen mitgeht
 const HIMMEL_C=document.createElement('canvas');HIMMEL_C.width=4;HIMMEL_C.height=512;
-function himmelMalen(stops){const g=HIMMEL_C.getContext('2d'),gr=g.createLinearGradient(0,0,0,512);stops.forEach(x=>gr.addColorStop(x[0],x[1]));g.fillStyle=gr;g.fillRect(0,0,4,512);
+function himmelMalen(stops,B){HIMMEL_C.width=B?1024:4;const g=HIMMEL_C.getContext('2d'),gr=g.createLinearGradient(0,0,0,512);stops.forEach(x=>gr.addColorStop(x[0],x[1]));g.fillStyle=gr;g.fillRect(0,0,HIMMEL_C.width,512);
+ if(B)alienHimmel(g,B);
  if(HIMMEL)HIMMEL.dispose();const t=new T.CanvasTexture(HIMMEL_C);t.mapping=T.EquirectangularReflectionMapping;t.encoding=T.sRGBEncoding;scene.background=t;HIMMEL=t;umgebung();   // neue Textur je Schema (Aktualisierung allein greift nicht)
  const st=stops.map(x=>x[1]);document.documentElement.style.setProperty('--himmel','linear-gradient('+st[1]+','+st[Math.floor(st.length/2)]+' 50%,'+st[st.length-2]+')')}
+// Version 27: Alien-Tech – Rippen wie in einem Raumschiffgang und unscharfe Lichtpunkte (Bokeh) in Bernstein und Cyan, nahtlos rundum
+function alienHimmel(g,B){const sAlt=s;s=B.seed||99;const W=1024,rund=f=>{for(const dx of[-W,0,W])f(dx)};
+ g.save();g.filter='blur(7px)';for(let x=0;x<W;x+=64){g.fillStyle=B.rippe;g.fillRect(x,40,14,432);g.fillStyle=B.rippeLicht;g.fillRect(x+15,60,4,392)}g.restore();
+ g.save();g.filter='blur(3px)';g.globalCompositeOperation=B.hell?'source-over':'lighter';
+ for(let i=0;i<B.n;i++){const x=rnd()*W,y=230+Math.pow(rnd(),1.5)*(rnd()<.5?-1:1)*120,R=2+rnd()*rnd()*14,c=rnd()<B.anteilCyan?B.cyan:B.amber,a=.25+rnd()*.6;
+  rund(dx=>{const q=g.createRadialGradient(x+dx,y,0,x+dx,y,R);q.addColorStop(0,'rgba('+c+','+a+')');q.addColorStop(.65,'rgba('+c+','+a*.8+')');q.addColorStop(1,'rgba('+c+',0)');g.fillStyle=q;g.beginPath();g.arc(x+dx,y,R,0,7);g.fill()})}
+ g.restore();s=sAlt}
 // Version 23: Farbschemata – Hintergrund, Nebel, Licht, Belichtung, Raster, Schatten und Objektfarben gemeinsam
 const FARBSCHEMATA={
  atlas:{name:'Atlas (Papier, Druckfarben)',himmel:[[0,'#e2dac8'],[.45,'#f1ece0'],[.5,'#f6f2e9'],[.55,'#eee8db'],[1,'#ddd4c0']],nebel:'#efe9dc',hemi:['#fffaf0','#6f6553',.5],sonne:['#fffaf2',1.25],belicht:.82,gitter:['#8f846d','#c4b9a2'],schatten:.25,farbe:{sat:1.15,hell:.72}},
@@ -136,9 +145,13 @@ const FARBSCHEMATA={
  hitze:{name:'Hitze (Wüstensand)',himmel:[[0,'#d99a45'],[.3,'#ebc27a'],[.47,'#f5dcaa'],[.5,'#f9e7c0'],[.53,'#eed49d'],[.7,'#dcb06e'],[1,'#b8823f']],nebel:'#f0d7a4',hemi:['#fff0d2','#7a5228',.6],sonne:['#ffdca0',1.35],belicht:.88,gitter:['#9a6a32','#c49a5c'],schatten:.3,farbe:{mix:'#ff6a00',anteil:.32,sat:1.25,hell:.88}},
  graphit:{name:'Graphit (Studio)',himmel:[[0,'#17191d'],[.4,'#2e3238'],[.5,'#454a52'],[.6,'#2c3036'],[1,'#141619']],nebel:'#2a2e34',hemi:['#ffffff','#2a2e34',.5],sonne:['#fff6ec',1.6],belicht:.98,gitter:['#5d6570','#3f454e'],schatten:.5,farbe:{sat:1.3,hell:.98}},
  nacht:{name:'Nacht (Leitstand)',himmel:[[0,'#03060d'],[.42,'#0b1631'],[.5,'#142650'],[.58,'#0a1531'],[1,'#02040a']],nebel:'#0b142c',hemi:['#9fb4ff','#05080f',.35],sonne:['#e3ebff',1.5],belicht:1.02,gitter:['#2a8fb0','#173450'],schatten:.55,farbe:{sat:1.4,hell:1}},
+ alien:{name:'Alien-Tech (dunkel)',himmel:[[0,'#06080c'],[.32,'#151c27'],[.46,'#26303d'],[.5,'#2d3846'],[.56,'#1f2834'],[.75,'#10151c'],[1,'#050608']],nebel:'#19212b',hemi:['#c9dcff','#24160c',.42],sonne:['#e2ecff',1.25],belicht:1.05,gitter:['#b5642a','#27313d'],schatten:.55,farbe:{mix:'#d9d1c3',anteil:.42,sat:.95,hell:1.02},
+  bokeh:{n:280,amber:'255,150,70',cyan:'90,200,255',anteilCyan:.3,rippe:'rgba(0,0,0,.45)',rippeLicht:'rgba(150,175,205,.10)'},gegen:['#ff8a3d',1.1],platten:'dunkel',oberflaeche:'bio',rohr:'rippe'},
+ alienhell:{name:'Alien-Tech (hell, Porzellan)',himmel:[[0,'#bfc5cb'],[.35,'#dfdfdc'],[.47,'#efede8'],[.5,'#f5f3ef'],[.55,'#e6e3dd'],[.75,'#d0d0cc'],[1,'#aeb4ba']],nebel:'#e6e3dd',hemi:['#fffaf3','#6c727c',.55],sonne:['#fff3e6',1.2],belicht:.9,gitter:['#b98a63','#c8c5be'],schatten:.3,farbe:{mix:'#ece5d9',anteil:.14,sat:1.15,hell:.82},
+  bokeh:{n:200,hell:true,amber:'255,170,100',cyan:'110,190,235',anteilCyan:.35,rippe:'rgba(120,125,135,.22)',rippeLicht:'rgba(255,255,255,.5)'},gegen:['#ffb070',.8],platten:'hell',oberflaeche:'bio',rohr:'rippe'},
  abendrot:{name:'Abendrot',himmel:[[0,'#272048'],[.28,'#6e3a66'],[.44,'#d8735a'],[.5,'#f4ad6a'],[.56,'#bb6450'],[.75,'#4f3450'],[1,'#221c30']],nebel:'#c97f66',hemi:['#ffd0a6','#33243a',.5],sonne:['#ffbe80',1.45],belicht:.95,gitter:['#7d4b5c','#a06a7c'],schatten:.35,farbe:{mix:'#ff5a2a',anteil:.1,sat:1.25,hell:1}}};
 let SCHEMA='atlas';try{const v=localStorage.getItem('4d_farbschema');if(v&&FARBSCHEMATA[v])SCHEMA=v}catch(_){}
-himmelMalen(FARBSCHEMATA[SCHEMA].himmel)
+himmelMalen(FARBSCHEMATA[SCHEMA].himmel,FARBSCHEMATA[SCHEMA].bokeh)
 function umgebung(){try{const pm=new T.PMREMGenerator(renderer);if(scene.environment)scene.environment.dispose();scene.environment=pm.fromEquirectangular(HIMMEL).texture;pm.dispose()}catch(e){}}
 renderer.setClearColor(FARBSCHEMATA[SCHEMA].nebel,1);   // falls der Himmel einmal nicht gezeichnet wird: hell statt schwarz
 scene.fog=new T.Fog(0xcbdcf1,200,900);
@@ -149,7 +162,19 @@ cv.addEventListener('webglcontextlost',e=>{e.preventDefault();kontextWeg=true;co
 cv.addEventListener('webglcontextrestored',()=>{kontextWeg=false;HIMMEL.needsUpdate=true;umgebung();if(N.length){baueMeshes();leucht.n=-1;marker.n=0;markerBauen();zeitAnwenden()}$('leer').style.display=N.length?'none':'';$('leer').textContent='Datenraum wählen oder JSON-Datei hierher ziehen …';matAlle=true;neu()});
 const hemi=new T.HemisphereLight(0xe4eeff,0x55688a,0.6);scene.add(hemi);
 const sonne=new T.DirectionalLight(0xffffff,1.1);sonne.castShadow=true;sonne.shadow.mapSize.set(2048,2048);sonne.shadow.bias=-0.0005;scene.add(sonne,sonne.target);
+const gegen=new T.DirectionalLight(0xff8a3d,0);scene.add(gegen,gegen.target);   // Version 27: warmes Gegenlicht (Alien-Tech)
 const boden=new T.Mesh(new T.CircleGeometry(1,64),new T.ShadowMaterial({opacity:.22}));boden.rotation.x=-Math.PI/2;boden.receiveShadow=true;scene.add(boden);
+// Version 27: Cockpit-Bodenplatten mit Fugen und glimmenden Punkten (Alien-Tech)
+const platten=new T.Mesh(new T.CircleGeometry(1,64),new T.MeshStandardMaterial({color:0xffffff,roughness:.55,metalness:.3}));platten.rotation.x=-Math.PI/2;platten.visible=false;scene.add(platten);
+function plattenSetzen(art){if(!art){platten.visible=false;return}const c=document.createElement('canvas');c.width=c.height=512;const g=c.getContext('2d'),d=art==='dunkel',sAlt=s;s=31;
+ g.fillStyle=d?'#1a2029':'#d9d6cf';g.fillRect(0,0,512,512);
+ for(let i=0;i<4;i++)for(let j=0;j<4;j++){const x=i*128,y=j*128,gr=g.createLinearGradient(x,y,x+128,y+128);gr.addColorStop(0,d?'#252d38':'#e8e5df');gr.addColorStop(1,d?'#161b23':'#cfcbc3');g.fillStyle=gr;g.fillRect(x+4,y+4,120,120);
+  g.strokeStyle=d?'rgba(255,255,255,.05)':'rgba(255,255,255,.6)';g.lineWidth=2;g.strokeRect(x+10,y+10,108,108)}
+ const e=document.createElement('canvas');e.width=e.height=512;const h=e.getContext('2d');h.fillStyle='#000';h.fillRect(0,0,512,512);
+ for(let i=0;i<16;i++){const x=Math.floor(rnd()*4)*128+14+rnd()*100,y=Math.floor(rnd()*4)*128+14+rnd()*100,R=1.5+rnd()*2.5,c=rnd()<.7?'255,150,70':'90,200,255';
+  [g,h].forEach(k=>{const q=k.createRadialGradient(x,y,0,x,y,R*3);q.addColorStop(0,'rgba('+c+',1)');q.addColorStop(1,'rgba('+c+',0)');k.fillStyle=q;k.beginPath();k.arc(x,y,R*3,0,7);k.fill()})}
+ s=sAlt;const m=platten.material;[m.map,m.emissiveMap].forEach(x=>x&&x.dispose());const tx=cc=>{const t=new T.CanvasTexture(cc);t.encoding=T.sRGBEncoding;t.wrapS=t.wrapT=T.RepeatWrapping;t.repeat.set(4,4);t.anisotropy=4;return t};
+ m.map=tx(c);m.emissiveMap=tx(e);m.emissive.set(d?0xb0b0b0:0x777777);m.roughness=d?.45:.6;m.needsUpdate=true;platten.visible=true}
 let gitter=new T.GridHelper(2,40,0x4f6f9f,0x7d99c4);gitter.material.transparent=true;gitter.material.opacity=.45;scene.add(gitter);
 const zeitEbene=new T.Mesh(new T.PlaneGeometry(1,1),new T.MeshBasicMaterial({color:0xff9f1c,transparent:true,opacity:.07,side:T.DoubleSide,depthWrite:false}));zeitEbene.visible=false;scene.add(zeitEbene);
 const heuteEbene=new T.Mesh(new T.PlaneGeometry(1,1),new T.MeshBasicMaterial({color:0xe0352b,transparent:true,opacity:.09,side:T.DoubleSide,depthWrite:false}));heuteEbene.visible=false;heuteEbene.rotation.y=Math.PI/2;scene.add(heuteEbene);
@@ -158,7 +183,7 @@ let dirty=true;const neu=()=>{dirty=true};
 // ---------- Formen ----------
 // Version 26: figürliche Symbole aus mehreren Teilen; jedes Teil hat eine eigene Helligkeit (Vertexfarbe, wird mit der Objektfarbe multipliziert)
 // Auswahl im Menü „Darstellung“: Symbol Person (Form 'bust') und Symbol Firma (Form 'gebaeude'), Zustand bleibt im Browser
-const PERSON_FORMEN={figur:'Spielfigur',bueste:'Büste',puppe:'Gliederpuppe',avatar:'Avatar',pille:'Pille (bisher)'};
+const PERSON_FORMEN={figur:'Spielfigur',bueste:'Büste',puppe:'Gliederpuppe',avatar:'Avatar',alien:'Alien (Alien-Tech)',pille:'Pille (bisher)'};
 const FIRMA_FORMEN={gehry:'Gebäude (Gehry-Stil)',wright:'Gebäude (Wright-Stil)',box:'Würfel (bisher)'};
 let SYM_PERSON='figur',SYM_FIRMA='gehry';try{const a=localStorage.getItem('4d_sym_person'),b=localStorage.getItem('4d_sym_firma');if(PERSON_FORMEN[a])SYM_PERSON=a;if(FIRMA_FORMEN[b])SYM_FIRMA=b}catch(_){}
 function teile(L){let n=0;const G=L.map(([g,h])=>{const x=g.index?g.toNonIndexed():g;if(x!==g)g.dispose();if(!x.attributes.normal)x.computeVertexNormals();n+=x.attributes.position.count;return[x,h]});
@@ -198,6 +223,12 @@ function symbolGeo(form,grob){const q=grob?6:12;let L;
    G.push([new T.CylinderGeometry(.38,.44,.07,q*2).translate(0,-1.06,0),.6]);L=G;break}
   case'avatar':   // Avatar wie das Benutzersymbol: Kopf über gerundeten Schultern
    L=[[kugel(.4,0,.55,0,q*2),1],[drehteil([[0,-.75],[.78,-.75],[.86,-.68],[.88,-.5],[.82,-.25],[.66,-.05],[.42,.06],[0,.1]],q*3),1]];break;
+  case'alien':{   // Version 27: Alien-Tech – langer Hinterkopf, gerippter schlanker Hals, Schläuche vom Kopf zu den Schultern, Brustpanzer
+   const G=[[drehteil([[0,-1.05],[.42,-1.05],[.44,-.98],[.3,-.92],[.2,-.6],[.24,-.35],[.4,-.12],[.52,0],[.46,.1],[.2,.16],[0,.18]],q*2).scale(1,1,.7),1]];
+   for(let i=0;i<7;i++)G.push([new T.TorusGeometry(.12-.004*i,.035,6,q).rotateX(Math.PI/2).translate(0,.2+i*.065,0),i%2?.7:.9]);
+   const kopf=kugel(.27,0,0,0,q*2,.82,1,1);biege(kopf,v=>{const h=Math.max(0,-v.z+.05)/.32;v.z-=h*h*.62;v.y+=h*h*.36;v.x*=1-.25*h});kopf.translate(0,.78,.1);G.push([kopf,1]);
+   [-1,1].forEach(sx=>{G.push([glied([sx*.16,.92,-.32],[sx*.2,.5,-.3],.035,6),.45]);G.push([glied([sx*.2,.5,-.3],[sx*.34,.08,-.12],.035,6),.45])});
+   G.push([kugel(.07,0,.06,.24,q,1.6,1,.5),.55]);L=G;break}
   case'pille':L=[[new T.CapsuleGeometry(.6,.8,6,14),1]];break;
   case'gehry':{   // Gebäude im Stil von Frank Gehry: gedrehter Turm mit welliger Fassade, geschwungene Metallschalen, gläsernes Atrium
    const fen=(x,y,z)=>Math.floor(y*10+20)%2?1:.45;
@@ -247,6 +278,8 @@ function geo(form,grob){
  return GEO[key]=g;
 }
 const ROHR=new T.CylinderGeometry(1,1,1,8,1,true);ROHR.translate(0,.5,0);
+// Version 27: gerippter Schlauch (Alien-Tech), Rippen mitgestreckt; nur bis RIPPE_BIS Beziehungen
+const RIPPE_BIS=6000,RIPPROHR=(()=>{const P=[],M=24;for(let i=0;i<=M*4;i++){const t=i/(M*4),w=1+.35*Math.max(0,Math.sin(t*M*Math.PI*2));P.push(new T.Vector2(w*.85,t))}return new T.LatheGeometry(P,8)})();
 // Version 16: Trompetenmündung am Kind (wie 3Deep): y 0 = dünnes Ende auf der Röhre, y 1 = weite Mündung an der Kugel
 const TROMPETE=(()=>{const P=[],M=14,w0=.16;for(let i=0;i<=M;i++){const t=i/M;P.push(new T.Vector2(w0+(1-w0)*Math.pow(t,2.4),t))}
  P.push(new T.Vector2(.82,1.04));return new T.LatheGeometry(P,16)})();
@@ -383,8 +416,8 @@ function baueMeshes(){
  kantenLinien=E.length>LINIEN_AB;matAlle=true;
  if(E.length&&kantenLinien){const g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(new Float32Array(E.length*6),3).setUsage(T.DynamicDrawUsage));g.setAttribute('color',new T.BufferAttribute(new Float32Array(E.length*6),3));
   kantenMesh=new T.LineSegments(g,new T.LineBasicMaterial({vertexColors:true,transparent:true,opacity:.6,depthWrite:false}));kantenMesh.frustumCulled=false;scene.add(kantenMesh)}
- else if(E.length){const mat=new T.MeshStandardMaterial({color:0xffffff,metalness:0,roughness:.6,transparent:true,opacity:.75});
-  kantenMesh=new T.InstancedMesh(ROHR,mat,E.length);kantenMesh.instanceMatrix.setUsage(T.DynamicDrawUsage);kantenMesh.frustumCulled=false;E.forEach((k,i)=>kantenMesh.setColorAt(i,k.col));scene.add(kantenMesh);
+ else if(E.length){const rippe=FARBSCHEMATA[SCHEMA].rohr==='rippe'&&E.length<=RIPPE_BIS,mat=rippe?new T.MeshPhysicalMaterial({color:0xffffff,metalness:.25,roughness:.35,clearcoat:.6,clearcoatRoughness:.2,transparent:true,opacity:.9}):new T.MeshStandardMaterial({color:0xffffff,metalness:0,roughness:.6,transparent:true,opacity:.75});
+  kantenMesh=new T.InstancedMesh(rippe?RIPPROHR:ROHR,mat,E.length);kantenMesh.instanceMatrix.setUsage(T.DynamicDrawUsage);kantenMesh.frustumCulled=false;E.forEach((k,i)=>kantenMesh.setColorAt(i,k.col));scene.add(kantenMesh);
   trompE=E.filter(k=>k.hier&&!k.syn);if(trompE.length){const tm=new T.MeshStandardMaterial({color:0xffffff,metalness:.05,roughness:.45,transparent:true,opacity:.85,side:T.DoubleSide});
    trompMesh=new T.InstancedMesh(TROMPETE,tm,trompE.length);trompMesh.instanceMatrix.setUsage(T.DynamicDrawUsage);trompMesh.frustumCulled=false;trompE.forEach((k,j)=>{k.tj=j;trompMesh.setColorAt(j,k.col)});scene.add(trompMesh)}}
  const mitDauer=N.filter(n=>isFinite(n.t0)&&isFinite(n.t1)&&n.t1>n.t0);
@@ -411,7 +444,16 @@ function eisTextur(){if(EIS)return EIS;const c=document.createElement('canvas');
  for(let i=0;i<18;i++){const x=rnd()*256,y=rnd()*256,R=10+rnd()*26;rnd();
   for(const dx of[-256,0,256])for(const dy of[-256,0,256])if(x+dx>-R&&x+dx<256+R&&y+dy>-R&&y+dy<256+R){const s0=s;g.strokeStyle='rgba(70,110,150,.55)';g.shadowColor='rgba(40,80,120,.6)';g.shadowBlur=3;kristall(x+dx,y+dy,R);s=s0;g.shadowBlur=0;g.strokeStyle='#fff';kristall(x+dx,y+dy,R*.97);s=s0}rnd()}   // nahtlos kachelbar
  EIS=new T.CanvasTexture(c);EIS.encoding=T.sRGBEncoding;EIS.wrapS=EIS.wrapT=T.RepeatWrapping;EIS.repeat.set(2,1);EIS.anisotropy=4;s=sAlt;return EIS}
-let OBERFLAECHE='satin';try{const v=localStorage.getItem('4d_oberflaeche');if(/^(satin|metall|lack)$/.test(v))OBERFLAECHE=v}catch(_){}
+// Version 27: Bio-Porzellan-Textur – knochenweiß, wolkig, dunkle Sprenkel in Gruppen und Poren (nahtlos), zugleich Relief
+let BIO=null;function bioTextur(){if(BIO)return BIO;const c=document.createElement('canvas');c.width=c.height=512;const g=c.getContext('2d'),sAlt=s;s=2027;
+ const rund=(x,y,R,f)=>{for(const dx of[-512,0,512])for(const dy of[-512,0,512])if(x+dx>-R&&x+dx<512+R&&y+dy>-R&&y+dy<512+R)f(x+dx,y+dy)};
+ g.fillStyle='#f1ede6';g.fillRect(0,0,512,512);
+ for(let i=0;i<60;i++){const x=rnd()*512,y=rnd()*512,R=30+rnd()*90,a=.04+rnd()*.07,blau=rnd()<.5;rund(x,y,R,(u,v)=>{const q=g.createRadialGradient(u,v,0,u,v,R);q.addColorStop(0,blau?'rgba(120,135,160,'+a+')':'rgba(150,130,110,'+a+')');q.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=q;g.fillRect(u-R,v-R,2*R,2*R)})}
+ for(let k=0;k<9;k++){const cx=rnd()*512,cy=rnd()*512,S=20+rnd()*50;for(let i=0;i<55;i++){const a=rnd()*7,d=Math.pow(rnd(),1.6)*S,x=cx+Math.cos(a)*d,y=cy+Math.sin(a)*d,R=.8+rnd()*rnd()*5;
+  g.fillStyle='rgba(38,44,56,'+(.25+rnd()*.45)+')';rund(x,y,R,(u,v)=>{g.beginPath();g.arc(u,v,R,0,7);g.fill()})}}
+ for(let i=0;i<300;i++){const x=rnd()*512,y=rnd()*512,R=.6+rnd()*1.2;g.fillStyle='rgba(80,80,90,.22)';rund(x,y,R,(u,v)=>{g.beginPath();g.arc(u,v,R,0,7);g.fill()})}
+ BIO=new T.CanvasTexture(c);BIO.encoding=T.sRGBEncoding;BIO.wrapS=BIO.wrapT=T.RepeatWrapping;BIO.repeat.set(1.5,1);BIO.anisotropy=4;s=sAlt;return BIO}
+let OBERFLAECHE='satin';try{const v=localStorage.getItem('4d_oberflaeche');if(/^(satin|metall|lack|bio)$/.test(v))OBERFLAECHE=v}catch(_){}
 // Körnung: feines Rauschen als Rauheitskarte (gegen den glatten Kunststoff-Eindruck)
 let KOERNUNG=null;function koernung(){if(KOERNUNG)return KOERNUNG;const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d'),d=g.createImageData(128,128);const s0=s;s=4711;
  for(let i=0;i<d.data.length;i+=4){const v=200+Math.floor(rnd()*55);d.data[i]=d.data[i+1]=d.data[i+2]=v;d.data[i+3]=255}s=s0;g.putImageData(d,0,0);KOERNUNG=new T.CanvasTexture(c);KOERNUNG.wrapS=KOERNUNG.wrapT=T.RepeatWrapping;KOERNUNG.repeat.set(3,3);return KOERNUNG}
@@ -423,6 +465,12 @@ function material(stufe,form){
   :new T.MeshStandardMaterial({color:0xffffff,metalness:.3,roughness:.12,flatShading:true,envMapIntensity:1.2});
  if(!glanzAn)return new T.MeshStandardMaterial({color:0xffffff,metalness:.15,roughness:.38,envMapIntensity:.35});
  // Version 23: Oberfläche Satin (seidenmatt, deckend, feine Körnung) bzw. Metall (eloxiert); Lack = bisheriger Glanz
+ if(OBERFLAECHE==='bio'){const B={color:0xffffff,map:bioTextur(),bumpMap:bioTextur(),bumpScale:.25,metalness:.05,roughness:.3,clearcoat:1,clearcoatRoughness:.1,iridescence:.35,iridescenceIOR:1.3,iridescenceThicknessRange:[200,500],sheen:.35,sheenRoughness:.4,sheenColor:0xdfe8ff,envMapIntensity:1.1};   // Version 27: nass glänzend, Perlmutt, Poren
+  if(stufe==='kristall')Object.assign(B,{roughness:.12,iridescence:.8,envMapIntensity:1.5});
+  else if(stufe==='glanz')Object.assign(B,{map:eisTextur(),emissiveMap:eisTextur(),emissive:0x45535f,sheen:1,sheenColor:0xeaf6ff});
+  else if(stufe==='roh')Object.assign(B,{roughness:.75,clearcoat:.2,clearcoatRoughness:.5,iridescence:0,envMapIntensity:.5});
+  else if(stufe==='alt')Object.assign(B,{roughness:.6,clearcoat:0,iridescence:0,transparent:true,opacity:.5});
+  return new T.MeshPhysicalMaterial(B)}
  if(OBERFLAECHE!=='lack'){const M=OBERFLAECHE==='metall',Q={color:0xffffff,roughnessMap:koernung(),metalness:M?.55:.04,roughness:M?.42:.62,envMapIntensity:M?.9:.5,clearcoat:0,sheen:M?0:.25,sheenRoughness:.8,sheenColor:0xffffff};
   if(stufe==='kristall')Object.assign(Q,{metalness:M?.7:.2,roughness:M?.22:.26,clearcoat:M?0:.25,clearcoatRoughness:.3,envMapIntensity:M?1.1:.8});
   else if(stufe==='glanz')Object.assign(Q,{map:eisTextur(),emissiveMap:eisTextur(),emissive:0x45535f,metalness:M?.3:0,roughness:M?.35:.45,envMapIntensity:.8,sheen:1,sheenRoughness:.35,sheenColor:0xeaf6ff});   // Version 26: Reifschicht
@@ -698,7 +746,7 @@ function bewegen(dt){
 function bodenSetzen(){
  const b=new T.Box3();N.forEach(n=>b.expandByPoint(n.ziel));if(b.isEmpty())b.set(V.set(-10,-10,-10),V2.set(10,10,10));
  const c=b.getCenter(new T.Vector3()),r=Math.max(20,b.getSize(new T.Vector3()).length()/2);
- const y=b.min.y-4;boden.position.set(c.x,y,c.z);boden.scale.setScalar(r*1.6);gitter.position.set(c.x,y+.01,c.z);gitter.scale.setScalar(r*1.6);
+ const y=b.min.y-4;boden.position.set(c.x,y,c.z);boden.scale.setScalar(r*1.6);platten.position.set(c.x,y-.02,c.z);platten.scale.setScalar(r*1.6);gegen.position.set(c.x-r*.8,c.y+r*.5,c.z-r*1.4);gegen.target.position.copy(c);gitter.position.set(c.x,y+.01,c.z);gitter.scale.setScalar(r*1.6);
  sonne.position.set(c.x+r*.6,c.y+r*1.6,c.z+r*.8);sonne.target.position.copy(c);const sc=sonne.shadow.camera;sc.left=sc.bottom=-r*1.3;sc.right=sc.top=r*1.3;sc.near=.5;sc.far=r*4;sc.updateProjectionMatrix();
  scene.fog.near=r*5;scene.fog.far=r*16;zeitEbene.position.y=c.y;zeitEbene.position.z=c.z;heuteEbene.position.y=c.y;heuteEbene.position.z=c.z;welt={c,r};
 }
@@ -788,7 +836,7 @@ function bezListe(n){const RT=(D&&D.relTypes)||{},kn=E.filter(k=>k.a===n||k.b===
  let h='';Object.keys(gr).sort((a,b)=>gr[b].length-gr[a].length).forEach(g=>{const L=gr[g];h+='<div class="bzg">'+esc(g)+' · '+L.length+'</div>'+L.slice(0,100).map(k=>{const o2=k.a===n?k.b:k.a;
   return'<div class="it" data-i="'+o2.i+'">'+(k.a===n?'→':'←')+' '+esc(o2.name)+' <span>'+esc((TY[o2.ty]||{}).label||o2.ty)+'</span></div>'}).join('')+(L.length>100?'<div class="bzg">… und '+(L.length-100)+' weitere</div>':'')});
  return'<details class="bz"'+(prof.auf?' open':'')+'><summary>Beziehungen ('+kn.length+')</summary><div class="bzl">'+h+'</div></details>'}
-const FORMNAME={sphere:'Kugel',box:'Würfel',torus:'Torus',dodecahedron:'Dodekaeder',diamond:'Raute',octagon:'Achteck',triangle:'Dreieck',book:'Buch',folder:'Ordner',bust:'Person',gebaeude:'Firma',vrbrille:'VR-Brille',figur:'Spielfigur',bueste:'Büste',puppe:'Gliederpuppe',avatar:'Avatar',pille:'Pille',gehry:'Gebäude (Gehry-Stil)',wright:'Gebäude (Wright-Stil)',bar:'Balken',linie:'Linie',muenze:'Goldmünze',saphir:'Saphir'};
+const FORMNAME={sphere:'Kugel',box:'Würfel',torus:'Torus',dodecahedron:'Dodekaeder',diamond:'Raute',octagon:'Achteck',triangle:'Dreieck',book:'Buch',folder:'Ordner',bust:'Person',gebaeude:'Firma',vrbrille:'VR-Brille',alien:'Alien',figur:'Spielfigur',bueste:'Büste',puppe:'Gliederpuppe',avatar:'Avatar',pille:'Pille',gehry:'Gebäude (Gehry-Stil)',wright:'Gebäude (Wright-Stil)',bar:'Balken',linie:'Linie',muenze:'Goldmünze',saphir:'Saphir'};
 const bildAdr=u=>{if(typeof u!=='string')return'';u=u.trim();return u&&(/^(https?:|data:image\/|blob:)/i.test(u)||!/^[a-z][a-z0-9+.-]*:/i.test(u))?u:''};
 function profilAttr(n){const o=n.o,RT=(D&&D.relTypes)||{},meta=o.meta||{};
  const A=[['Name',n.name],['Typ',(TY[n.ty]||{}).label||n.ty],['ID',String(o.id)]];if(o.state)A.push(['Reifegrad',o.state+(n.stufe!=='normal'?' ('+STUFEN[n.stufe].replace(/^[^(]*\(|\)$/g,'')+')':'')]);
@@ -891,11 +939,11 @@ $('axp').onchange=e=>{const v=e.target.value;if(v==='eigen'){AXS.p='eigen';axZei
 $('schatten').onchange=$('glanz').onchange=()=>{baueMeshes();faerben();neu()};
 function schemaFarbe(c){const f=FARBSCHEMATA[SCHEMA].farbe||{};if(OBERFLAECHE!=='lack'){c.getHSL(HSL);c.setHSL(HSL.h,HSL.s*.82,HSL.l*.94)}if(f.mix&&f.anteil)c.lerp(new T.Color(f.mix),f.anteil);if(f.sat||f.hell){c.getHSL(HSL);c.setHSL(HSL.h,Math.min(1,HSL.s*(f.sat||1)),Math.min(.85,HSL.l*(f.hell||1)))}return c}
 function schemaAnwenden(k){if(!FARBSCHEMATA[k])k='himmel';SCHEMA=k;const F=FARBSCHEMATA[k];try{localStorage.setItem('4d_farbschema',k)}catch(_){}
- himmelMalen(F.himmel);renderer.setClearColor(F.nebel,1);scene.fog.color.set(F.nebel);hemi.color.set(F.hemi[0]);hemi.groundColor.set(F.hemi[1]);hemi.intensity=F.hemi[2];sonne.color.set(F.sonne[0]);sonne.intensity=F.sonne[1];renderer.toneMappingExposure=F.belicht;
+ himmelMalen(F.himmel,F.bokeh);gegen.color.set((F.gegen||['#fff'])[0]);gegen.intensity=F.gegen?F.gegen[1]:0;plattenSetzen(F.platten);renderer.setClearColor(F.nebel,1);scene.fog.color.set(F.nebel);hemi.color.set(F.hemi[0]);hemi.groundColor.set(F.hemi[1]);hemi.intensity=F.hemi[2];sonne.color.set(F.sonne[0]);sonne.intensity=F.sonne[1];renderer.toneMappingExposure=F.belicht;
  const g2=new T.GridHelper(2,40,F.gitter[0],F.gitter[1]);g2.material.transparent=true;g2.material.opacity=.45;g2.position.copy(gitter.position);g2.scale.copy(gitter.scale);g2.visible=gitter.visible;scene.remove(gitter);gitter.geometry.dispose();gitter=g2;scene.add(gitter);
  boden.material.opacity=F.schatten;document.body.dataset.schema=k;$('fs').value=k;
  if(N.length){N.forEach(n=>{n.col=schemaFarbe(kraeftig(farbe(n._cq)))});baueMeshes();faerben()}neu()}
-$('fs').innerHTML=Object.keys(FARBSCHEMATA).map(k=>'<option value="'+k+'">'+FARBSCHEMATA[k].name+'</option>').join('');$('fs').onchange=e=>schemaAnwenden(e.target.value);$('syp').innerHTML=Object.keys(PERSON_FORMEN).map(k=>'<option value="'+k+'">'+PERSON_FORMEN[k]+'</option>').join('');$('syf').innerHTML=Object.keys(FIRMA_FORMEN).map(k=>'<option value="'+k+'">'+FIRMA_FORMEN[k]+'</option>').join('');$('syp').value=SYM_PERSON;$('syf').value=SYM_FIRMA;
+$('fs').innerHTML=Object.keys(FARBSCHEMATA).map(k=>'<option value="'+k+'">'+FARBSCHEMATA[k].name+'</option>').join('');$('fs').onchange=e=>{const o=(FARBSCHEMATA[e.target.value]||{}).oberflaeche||(OBERFLAECHE==='bio'?'satin':'');if(o){OBERFLAECHE=o;$('of').value=o;try{localStorage.setItem('4d_oberflaeche',o)}catch(_){}}schemaAnwenden(e.target.value)};$('syp').innerHTML=Object.keys(PERSON_FORMEN).map(k=>'<option value="'+k+'">'+PERSON_FORMEN[k]+'</option>').join('');$('syf').innerHTML=Object.keys(FIRMA_FORMEN).map(k=>'<option value="'+k+'">'+FIRMA_FORMEN[k]+'</option>').join('');$('syp').value=SYM_PERSON;$('syf').value=SYM_FIRMA;
 [['syp','4d_sym_person'],['syf','4d_sym_firma']].forEach(([id,ls])=>$(id).onchange=e=>{if(id==='syp')SYM_PERSON=e.target.value;else SYM_FIRMA=e.target.value;try{localStorage.setItem(ls,e.target.value)}catch(_){}Object.keys(GEO).forEach(k=>{GEO[k].dispose();delete GEO[k]});if(N.length){baueMeshes();faerben()}neu()});
 $('of').value=OBERFLAECHE;$('of').onchange=e=>{OBERFLAECHE=e.target.value;try{localStorage.setItem('4d_oberflaeche',OBERFLAECHE)}catch(_){}schemaAnwenden(SCHEMA)};schemaAnwenden(SCHEMA);
 $('kanten').onchange=()=>{matAlle=true;neu()};$('vergangen').onchange=zeitAnwenden;
