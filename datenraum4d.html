@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="47">
+<meta name="4deep-darstellung" content="48">
 <title>4Deep Machbarkeitsstudie</title>
 <!-- 4Deep, Stufe 1 (Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -122,7 +122,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 47 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 48 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="chr"></div><div class="pn" id="mas"></div><div class="pn" id="prof"></div><div id="profb"></div>
@@ -883,7 +883,7 @@ cv.addEventListener('pointermove',e=>{
 cv.addEventListener('pointerup',e=>tastenNeu(e));
 cv.addEventListener('pointerleave',()=>{if(!zug){$('tip').style.display='none';if(hov>=0){hov=-1;faerben();neu()}}});
 cv.addEventListener('pointercancel',tastenLoesen);cv.addEventListener('lostpointercapture',e=>{if(!e.buttons)tastenLoesen()});addEventListener('blur',tastenLoesen);
-cv.addEventListener('dblclick',e=>{const n=treffer(e);if(layout==='skyline'&&SKY){clearTimeout(SKY_KL);const sk=n<0?skyKoerper(e):null,f=n>=0&&SKY.F.includes(N[n])?N[n]:sk&&!sk.typ?sk.f:null;if(f){SKY_AUF={f:null,offen:new Set()};fokusFirma(f);return}}nutzerSteuert();if(n<0){heim();return}K.zZiel.copy(N[n].pos);K.zDist=Math.max(12,N[n].r*14);K.flug=true;neu()});
+cv.addEventListener('dblclick',e=>{const n=treffer(e);if(layout==='skyline'&&SKY){clearTimeout(SKY_KL);const sk=n<0?skyKoerper(e):null,f=n>=0&&SKY.F.includes(N[n])?N[n]:sk&&!sk.typ?sk.f:null;if(f){SKY_AUF={f:null,offen:new Set()};fokusFirma(f,false,'reise');return}}nutzerSteuert();if(n<0){heim();return}K.zZiel.copy(N[n].pos);K.zDist=Math.max(12,N[n].r*14);K.flug=true;neu()});
 cv.addEventListener('wheel',e=>{e.preventDefault();zoomen(Math.exp(e.deltaY*.0012))},{passive:false});
 const ray=new T.Raycaster(),mausV=new T.Vector2();
 function treffer(e){const r=cv.getBoundingClientRect();mausV.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(mausV,cam);
@@ -1049,8 +1049,9 @@ function warnSchild(prio,anz,gr){const c=document.createElement('canvas');c.widt
  g.lineJoin='round';g.beginPath();g.moveTo(64,10);g.lineTo(120,112);g.lineTo(8,112);g.closePath();g.fillStyle='#ffffff';g.fill();g.lineWidth=14;g.strokeStyle=col;g.stroke();
  g.fillStyle='#1d2430';g.font='bold 62px system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText('!',64,76);
  const t=new T.CanvasTexture(c);t.encoding=T.sRGBEncoding;const sp=new T.Sprite(new T.SpriteMaterial({map:t,transparent:true,depthWrite:false,fog:false}));sp.scale.set(gr,gr,1);sp.renderOrder=15;return sp}
-function fokusFirma(f,still){FOKUS=f;N.forEach(n=>n.fokAus=!gehoertZu(n,f));$('fokb').style.display='';$('fokb').textContent='◀ Alle Firmen (jetzt: '+firmenName(f)+')';
- setzeLayout('netz',!still);$('ly').value='netz';if($('mas').style.display==='block'&&$('mas').dataset.art==='mas')massnahmenZeigen();else if($('mas').style.display==='block'&&$('mas').dataset.art==='lage')lageberichtZeigen()}
+// Version 48 (Wunsch des Nutzers): Doppelklick auf die Firma in der Skyline öffnet die Kundenreise der Firma (ly='reise'), sonst wie bisher das Netz
+function fokusFirma(f,still,ly){ly=ly==='reise'&&D&&D.skyline?'reise':'netz';FOKUS=f;N.forEach(n=>n.fokAus=!gehoertZu(n,f));$('fokb').style.display='';$('fokb').textContent='◀ Alle Firmen (jetzt: '+firmenName(f)+')';
+ setzeLayout(ly,!still);$('ly').value=ly;if($('mas').style.display==='block'&&$('mas').dataset.art==='mas')massnahmenZeigen();else if($('mas').style.display==='block'&&$('mas').dataset.art==='lage')lageberichtZeigen()}
 function fokusAus(){FOKUS=null;N.forEach(n=>n.fokAus=false);$('fokb').style.display='none';if(D&&D.skyline){setzeLayout('skyline',true);$('ly').value='skyline'}else{zeitAnwenden();neu()}if($('mas').style.display==='block'){if($('mas').dataset.art==='mas')massnahmenZeigen();else if($('mas').dataset.art==='lage')lageberichtZeigen()}}
 // Version 43 (Frage des Nutzers: was sagt das Schild?): ein Hinweis der Handlungsliste mit Begründung (Beleg), Rolle, Datum und Sprung zum Beleg
 function hinweisZeigen(m){const el=$('mas'),PN=['','hoch','mittel','niedrig'];el.dataset.art='hin';
