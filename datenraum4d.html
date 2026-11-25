@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="28">
+<meta name="4deep-darstellung" content="29">
 <title>4Deep Machbarkeitsstudie</title>
 <!-- 4Deep, Stufe 1 (Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -120,7 +120,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 28 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 29 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="chr"></div><div class="pn" id="mas"></div><div class="pn" id="prof"></div><div id="profb"></div>
@@ -357,7 +357,7 @@ function laden(daten,opt){
   n.r0=n.r;byId[o.id]=n;N.push(n);
  });
  E=[];(daten.edges||[]).forEach(e=>{const a=byId[e.from],b=byId[e.to];if(!a||!b||a===b)return;const rt=RT[e.type]||{};if(rt.hidden)return;
-  const k={a,b,e,col:farbe(e.color||rt.color,'#6f86ab'),t0:zeit(e.start),t1:zeit(e.end),hier:!!rt.hierarchy||/^(struktur|inhalt|teil|hierarchy)$/i.test(e.type||'')};E.push(k);a.nb.push(b);b.nb.push(a)});
+  const k={a,b,e,col:farbe(e.color||rt.color,'#6f86ab'),t0:zeit(e.start),t1:zeit(e.end),dir:!!rt.directed,hier:!!rt.hierarchy||/^(struktur|inhalt|teil|hierarchy)$/i.test(e.type||'')};E.push(k);a.nb.push(b);b.nb.push(a)});
  HEUTE=isFinite(zeit(daten.heute))?zeit(daten.heute):heuteTag();N.forEach(n=>n.fertig=fertig(n));revKetten();
  // Zeitspanne
  let lo=Infinity,hi=-Infinity;N.forEach(n=>{[n.t0,n.t1].forEach(t=>{if(isFinite(t)){lo=Math.min(lo,t);hi=Math.max(hi,t)}})});
@@ -374,7 +374,8 @@ function laden(daten,opt){
  let ly=opt.behalten?layout:(daten.layout==='achsen'&&AXP.length?'achsen':daten.layout==='plan'||daten.zeitArt?'zeit':hatPos?'fest':'netz');
  if(!$('ly').querySelector('option[value="'+ly+'"]'))ly='netz';
  $('ly').value=ly;setzeLayout(ly,!opt.behalten);
- wkVorbereiten(daten);fbVorbereiten(daten);sterneSetzen(daten.hintergrund==='sterne');uKnopf();
+ wkVorbereiten(daten);fbVorbereiten(daten);gelSetzen(daten.gelaende);figBauen();sterneSetzen(daten.hintergrund==='sterne');wieseSetzen(daten.hintergrund==='wiese');uKnopf();
+ if(!opt.behalten&&isFinite(+daten.blickHoehe)&&daten.blickHoehe!=null){K.nick=Math.min(1.3,.15+(+daten.blickHoehe)*.75)}   // Version 29: Neigung von oben wie 3Deep
  sel=-1;schliesseProfil();kurveBauen();zeitAnwenden();neu();
 }
 // ---------- Revisionsketten (allgemein): verbunden über Beziehungen vom Typ revision (bzw. relTypes[].revision), gleiche familie
@@ -746,11 +747,11 @@ function bewegen(dt){
  const alle=matAlle;matAlle=false;if(!bewegt&&!alle)return true;
  // nur Matrizen bewegter Objekte neu (direkt ins Feld: Skalierung + Lage)
  for(const g of gruppen){const A=g.mesh.instanceMatrix.array,li=g.liste;let ge=false;
-  for(let k=0;k<li.length;k++){const n=li[k];if(!n.m&&!alle)continue;const o=k*16,sc=n.r*n.s;A[o]=A[o+5]=A[o+10]=sc;A[o+1]=A[o+2]=A[o+3]=A[o+4]=A[o+6]=A[o+7]=A[o+8]=A[o+9]=A[o+11]=0;A[o+12]=n.pos.x;A[o+13]=n.pos.y;A[o+14]=n.pos.z;A[o+15]=1;ge=true}
+  for(let k=0;k<li.length;k++){const n=li[k];if(!n.m&&!alle)continue;const o=k*16,sc=n.fig?0:n.r*n.s;A[o]=A[o+5]=A[o+10]=sc;A[o+1]=A[o+2]=A[o+3]=A[o+4]=A[o+6]=A[o+7]=A[o+8]=A[o+9]=A[o+11]=0;A[o+12]=n.pos.x;A[o+13]=n.pos.y;A[o+14]=n.pos.z;A[o+15]=1;ge=true}
   if(ge)g.mesh.instanceMatrix.needsUpdate=true}
  if(kantenMesh){const zeig=$('kanten').checked;kantenMesh.visible=zeig;if(trompMesh)trompMesh.visible=zeig;if(zeig){let ge=false;
   const A=kantenLinien?kantenMesh.geometry.attributes.position.array:kantenMesh.instanceMatrix.array;
-  for(let i=0;i<E.length;i++){const k=E[i],p=k.a.pos,q=k.b.pos;if(!alle&&!k.a.m&&!k.b.m)continue;ge=true;const vis=k.a.s>.05&&k.b.s>.05&&!k.revAus&&!(isFinite(k.t0)&&k.t0>tCur);
+  for(let i=0;i<E.length;i++){const k=E[i],p=k.a.pos,q=k.b.pos;if(!alle&&!k.a.m&&!k.b.m)continue;ge=true;const vis=k.a.s>.05&&k.b.s>.05&&!k.revAus&&!(GEL&&k.dir)&&!(isFinite(k.t0)&&k.t0>tCur);
    if(kantenLinien){const o=i*6;A[o]=p.x;A[o+1]=p.y;A[o+2]=p.z;if(vis){A[o+3]=q.x;A[o+4]=q.y;A[o+5]=q.z}else{A[o+3]=p.x;A[o+4]=p.y;A[o+5]=p.z}continue}
    const o=i*16;let ux=q.x-p.x,uy=q.y-p.y,uz=q.z-p.z;const len=Math.sqrt(ux*ux+uy*uy+uz*uz);
    if(!vis||len<1e-3){for(let j=0;j<16;j++)A[o+j]=0;A[o+15]=1;if(k.tj!=null){const B=trompMesh.instanceMatrix.array,ob=k.tj*16;for(let j=0;j<16;j++)B[ob+j]=0;B[ob+15]=1;trompMesh.instanceMatrix.needsUpdate=true}continue}
@@ -771,8 +772,10 @@ function bodenSetzen(){
  const b=new T.Box3();N.forEach(n=>b.expandByPoint(n.ziel));if(b.isEmpty())b.set(V.set(-10,-10,-10),V2.set(10,10,10));
  const c=b.getCenter(new T.Vector3()),r=Math.max(20,b.getSize(new T.Vector3()).length()/2);
  const y=b.min.y-4;boden.position.set(c.x,y,c.z);boden.scale.setScalar(r*1.6);platten.position.set(c.x,y-.02,c.z);platten.scale.setScalar(r*1.6);gegen.position.set(c.x-r*.8,c.y+r*.5,c.z-r*1.4);gegen.target.position.copy(c);gitter.position.set(c.x,y+.01,c.z);gitter.scale.setScalar(r*1.6);
- sonne.position.set(c.x+r*.6,c.y+r*1.6,c.z+r*.8);sonne.target.position.copy(c);const sc=sonne.shadow.camera;sc.left=sc.bottom=-r*1.3;sc.right=sc.top=r*1.3;sc.near=.5;sc.far=r*4;sc.updateProjectionMatrix();
- scene.fog.near=r*5;scene.fog.far=r*16;zeitEbene.position.y=c.y;zeitEbene.position.z=c.z;heuteEbene.position.y=c.y;heuteEbene.position.z=c.z;welt={c,r};
+ sonne.position.set(c.x+r*.6,c.y+r*1.6,c.z+r*.8);sonne.target.position.copy(c);let rs=r;
+ if(GEL){const G=GEL,F=FEST_F;rs=Math.max(r,Math.hypot((G.nx-1)*G.dx,(G.nz-1)*G.dz)*F*.5);boden.visible=gitter.visible=platten.visible=false}if(WIESE&&TL.dir)sonne.position.copy(c).addScaledVector(TL.dir,rs*2.2);   // Version 29: Sonne nach Uhrzeit, Schatten über das ganze Gelände
+ const sc=sonne.shadow.camera;sc.left=sc.bottom=-rs*1.3;sc.right=sc.top=rs*1.3;sc.near=.5;sc.far=rs*5;sc.updateProjectionMatrix();
+ scene.fog.near=r*5;scene.fog.far=r*16;if(GEL){const du=TL.dunst||0;scene.fog.near=rs*(4-2.6*du);scene.fog.far=rs*(14-8*du)}zeitEbene.position.y=c.y;zeitEbene.position.z=c.z;heuteEbene.position.y=c.y;heuteEbene.position.z=c.z;welt={c,r};
 }
 let welt={c:new T.Vector3(),r:30};
 
@@ -788,7 +791,7 @@ function freieFlaeche(){const W=cv.clientWidth||innerWidth,H=cv.clientHeight||in
  return{W,H,x0,x1,y0,y1}}
 function heim(){if(sim){heimNachSim=true}const z=heimZiel(null);if(!z)return;K.zZiel.copy(z.c);K.zDist=z.d;K.flug=true;neu()}
 // Version 28: Ziel für eine Liste von Objekten (mit Radius) oder alle sichtbaren samt Punktwolke
-function heimZiel(Z){const P=[];if(Z){Z.forEach(n=>{const r=n.r*1.2;P.push(n.ziel);[[r,0,0],[-r,0,0],[0,r,0],[0,-r,0],[0,0,r],[0,0,-r]].forEach(d=>P.push(n.ziel.clone().add(V.set(...d))))})}else{N.forEach(n=>{if(n.sZiel>0)P.push(n.ziel)});if(WK.teile.length)P.push(...wkPunkte())}if(!P.length)return null;
+function heimZiel(Z){const P=[];if(Z){Z.forEach(n=>{const r=n.r*1.2;P.push(n.ziel);[[r,0,0],[-r,0,0],[0,r,0],[0,-r,0],[0,0,r],[0,0,-r]].forEach(d=>P.push(n.ziel.clone().add(V.set(...d))))})}else{N.forEach(n=>{if(n.sZiel>0)P.push(n.ziel)});if(WK.teile.length)P.push(...wkPunkte());if(GEL){const F=FEST_F,G=GEL,x1=(G.x0+(G.nx-1)*G.dx)*F,z1=(G.z0+(G.nz-1)*G.dz)*F;[[G.x0*F,G.z0*F],[x1,G.z0*F],[G.x0*F,z1],[x1,z1]].forEach(q=>P.push(new T.Vector3(q[0],gelH(q[0],q[1]),q[1])))}}if(!P.length)return null;
  const cp=Math.cos(K.nick),f=new T.Vector3(cp*Math.sin(K.gier),Math.sin(K.nick),cp*Math.cos(K.gier)),re=new T.Vector3(Math.cos(K.gier),0,-Math.sin(K.gier)),up=new T.Vector3().crossVectors(f,re);
  const st=Math.max(1,Math.floor(P.length/4000));let ax=1e9,bx=-1e9,ay=1e9,by=-1e9,az=1e9,bz=-1e9;
  for(let i=0;i<P.length;i+=st){const p=P[i],x=p.dot(re),y=p.dot(up),z=p.dot(f);if(x<ax)ax=x;if(x>bx)bx=x;if(y<ay)ay=y;if(y>by)by=y;if(z<az)az=z;if(z>bz)bz=z}
@@ -968,7 +971,7 @@ function schemaAnwenden(k){if(!FARBSCHEMATA[k])k='himmel';SCHEMA=k;const F=FARBS
  himmelMalen(F.himmel,F.bokeh);gegen.color.set((F.gegen||['#fff'])[0]);gegen.intensity=F.gegen?F.gegen[1]:0;plattenSetzen(F.platten);renderer.setClearColor(F.nebel,1);scene.fog.color.set(F.nebel);hemi.color.set(F.hemi[0]);hemi.groundColor.set(F.hemi[1]);hemi.intensity=F.hemi[2];sonne.color.set(F.sonne[0]);sonne.intensity=F.sonne[1];renderer.toneMappingExposure=F.belicht;
  const g2=new T.GridHelper(2,40,F.gitter[0],F.gitter[1]);g2.material.transparent=true;g2.material.opacity=.45;g2.position.copy(gitter.position);g2.scale.copy(gitter.scale);g2.visible=gitter.visible;scene.remove(gitter);gitter.geometry.dispose();gitter=g2;scene.add(gitter);
  boden.material.opacity=F.schatten;document.body.dataset.schema=k;$('fs').value=k;
- if(N.length){N.forEach(n=>{n.col=schemaFarbe(kraeftig(farbe(n._cq)))});baueMeshes();faerben();if(FB.sel)fbSetzen(FB.sel)}neu()}
+ if(N.length){N.forEach(n=>{n.col=schemaFarbe(kraeftig(farbe(n._cq)))});baueMeshes();faerben();if(FB.sel)fbSetzen(FB.sel);if(FIG.knoten.length)figFarben()}neu()}
 $('fs').innerHTML=Object.keys(FARBSCHEMATA).map(k=>'<option value="'+k+'">'+FARBSCHEMATA[k].name+'</option>').join('');$('fs').onchange=e=>{const o=(FARBSCHEMATA[e.target.value]||{}).oberflaeche||(OBERFLAECHE==='bio'?'satin':'');if(o){OBERFLAECHE=o;$('of').value=o;try{localStorage.setItem('4d_oberflaeche',o)}catch(_){}}schemaAnwenden(e.target.value)};$('syp').innerHTML=Object.keys(PERSON_FORMEN).map(k=>'<option value="'+k+'">'+PERSON_FORMEN[k]+'</option>').join('');$('syf').innerHTML=Object.keys(FIRMA_FORMEN).map(k=>'<option value="'+k+'">'+FIRMA_FORMEN[k]+'</option>').join('');$('syp').value=SYM_PERSON;$('syf').value=SYM_FIRMA;
 [['syp','4d_sym_person'],['syf','4d_sym_firma']].forEach(([id,ls])=>$(id).onchange=e=>{if(id==='syp')SYM_PERSON=e.target.value;else SYM_FIRMA=e.target.value;try{localStorage.setItem(ls,e.target.value)}catch(_){}Object.keys(GEO).forEach(k=>{GEO[k].dispose();delete GEO[k]});if(N.length){baueMeshes();faerben()}neu()});
 $('of').value=OBERFLAECHE;$('of').onchange=e=>{OBERFLAECHE=e.target.value;try{localStorage.setItem('4d_oberflaeche',OBERFLAECHE)}catch(_){}schemaAnwenden(SCHEMA)};schemaAnwenden(SCHEMA);
@@ -1436,7 +1439,7 @@ function waehleRaum(v){lauf=null;
  else if(v.startsWith('stress:'))laden(stressDaten(+v.slice(7)));
  else if(v.startsWith('thema:')){const name=v.slice(6);const pfade=['themen/'+name+'.json','3deep-widget/themen/'+name+'.json'];
   const versuch=i=>{if(i>=pfade.length){meld('Thema nicht erreichbar (nur über einen Webserver, nicht per Doppelklick).');return}
-   fetch(pfade[i]).then(r=>{if(!r.ok)throw 0;return r.json()}).then(j=>laden(j.daten||j)).catch(()=>versuch(i+1))};versuch(0)}}
+   fetch(pfade[i]).then(r=>{if(!r.ok)throw 0;return r.json()}).then(j=>laden(j.daten||j),()=>versuch(i+1))};versuch(0)}}   // Version 29: Fehler beim Aufbau nicht mehr als „nicht erreichbar“ verschlucken
 function meld(t){$('leer').style.display='';$('leer').textContent=t}
 
 // ---------- Leistung ----------
@@ -1458,7 +1461,7 @@ function revAus(rv){return !!(RV.akt!=null&&Array.isArray(rv)&&!rv.map(String).i
 function revPos(o,r){const P=o.posRev;if(!P||r==null||!RV.ids.length)return o.pos;if(P[r])return P[r];const i=RV.ids.indexOf(r);
  for(let j=i-1;j>=0;j--)if(P[RV.ids[j]])return P[RV.ids[j]];for(let j=i+1;j<RV.ids.length;j++)if(P[RV.ids[j]])return P[RV.ids[j]];return o.pos}
 function rvAnwenden(){N.forEach(n=>{n.revAus=revAus(n.o.revs);if(layout==='fest'&&n.o.posRev){const p=revPos(n.o,RV.akt);if(Array.isArray(p))n.ziel.set(+p[0]*FEST_F,+p[1]*FEST_F,+p[2]*FEST_F)}});
- E.forEach(k=>{k.revAus=revAus(k.e.revs)});wkBauen();zeitAnwenden();rvUi()}
+ E.forEach(k=>{k.revAus=revAus(k.e.revs)});wkBauen();zeitAnwenden();rvUi();FIG.alle=true;if(WIESE)tagesLicht()}
 function rvSetzen(r){r=String(r);if(!RV.ids.includes(r)||r===RV.akt)return;RV.akt=r;rvAnwenden()}
 function rvUi(){const an=RV.ids.length>1;$('rvw').style.display=an?'':'none';if(!an)return;const i=RV.ids.indexOf(RV.akt),w=(D&&D.revisionenTitel)||'Revision';
  $('rvl').textContent=D&&D.revisionenTitel?'Ablauf ('+w+' für '+w+')':'Revisionen';$('rvr').max=RV.ids.length-1;$('rvr').value=i;$('rvt').textContent=w+' '+RV.akt+(RV.titel[RV.akt]?': '+RV.titel[RV.akt]:'')}
@@ -1515,7 +1518,7 @@ function fbVorbereiten(d){FB.liste=Array.isArray(d.faerbungen)?d.faerbungen.filt
 function fbSetzen(id){FB.sel=FB.liste.some(f=>String(f.id)===String(id||''))?String(id):'';$('fbs').value=FB.sel;const f=FB.liste.find(x=>String(x.id)===FB.sel);
  N.forEach(n=>{n.col=schemaFarbe(kraeftig(farbe(n._cq)));if(f){const w=(n.o.werte||{})[f.id];if(w!=null&&isFinite(+w))n.col=verlauf(f.farben,(+w-(+f.min||0))/(((+f.max||1)-(+f.min||0))||1));else n.col.lerp(HELL.set(0x5a6070),.6)}});
  const t=$('fbt');if(f){t.style.display='';t.innerHTML='<span style="background:linear-gradient(90deg,'+(f.farben||['#d7301f','#f2f2f2','#2b6cc4']).join(',')+')"></span><b>'+esc(f.links||f.min)+'</b><b>'+esc(f.rechts||f.max)+'</b>'}else t.style.display='none';
- faerben();neu()}
+ faerben();if(FIG.knoten.length)figFarben();neu()}
 // Sternenhimmel (dunkel, Sterne, Milchstraße, Nebel); Objekte bekommen einen Leuchthof
 const halo=(()=>{const g=new T.BufferGeometry(),mat=new T.ShaderMaterial({transparent:true,depthWrite:false,blending:T.AdditiveBlending,uniforms:{sk:{value:1}},vertexShader:WK_VS,fragmentShader:'varying vec3 vF;varying float vA;void main(){vec2 d=gl_PointCoord-.5;float r=dot(d,d)*4.;if(r>1.)discard;float a=exp(-r*5.)*.9+exp(-r*1.4)*.25;gl_FragColor=vec4(vF,a*vA);}'});
  const p=new T.Points(g,mat);p.frustumCulled=false;p.renderOrder=3;p.visible=false;scene.add(p);return{p,n:-1}})();
@@ -1582,6 +1585,123 @@ function schuelerStart(i){if(!SCH)return;if(i!=null)SCH.ti=i;const t=SCH.themen[
  $('ustart').innerHTML='<h1>'+esc(t.titel||t.daten.titel||'Unterricht')+'</h1>'+(SCH.themen.length>1?'<div class="uthemen">'+SCH.themen.map((x,j)=>'<button data-t="'+j+'" class="'+(j===SCH.ti?'an':'')+'">'+esc(x.titel||x.daten.titel||('Thema '+(j+1)))+'</button>').join('')+'</div>':'')+'<button id="ugo">'+esc(SCH.start)+'</button><div class="m">Strg+Umschalt+P = volle Ansicht für Lehrkräfte</div>';
  $('ustart').style.display='block';$('ugo').onclick=()=>uStart(0);$('ustart').querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>schuelerStart(+b.dataset.t))}
 addEventListener('keydown',e=>{if(e.code==='KeyP'&&e.ctrlKey&&e.shiftKey&&!e.altKey&&!e.metaKey){e.preventDefault();e.stopImmediatePropagation();document.body.classList.toggle('schueler')}},true);
+// ---------- Version 29: Gelände naturalistisch (allgemein über das Datenformat wie 3Deep: gelaende, hintergrund:'wiese', blickHoehe) ----------
+// Höhenraster als beleuchtete Landschaft (Grastextur, Flächen wie Wald/Sumpf gefärbt, Bäume in Flächen mit „Wald“ im Namen, Wege als Bänder),
+// Umland bis zum Horizont; Himmel mit Wolken, Sonnenstand nach der Uhrzeit im Titel des Schritts („ca. 9 Uhr“, „Dämmerung“);
+// Truppen als Figurenblöcke (Form linie = Fußvolk, triangle = Bogenschützen, diamond = Reiterei, octagon = Anführer mit Banner), folgen dem Gelände,
+// blicken zum Gegner (Partner über Beziehungen) bzw. in Marschrichtung; gerichtete Beziehungen als fliegende Teilchen im Bogen.
+let GEL=null,WIESE=false;const gelGrp=new T.Group();scene.add(gelGrp);
+function gelH(x,z){const g=GEL;if(!g)return 0;const F=FEST_F;let i=(x/F-g.x0)/g.dx,j=(z/F-g.z0)/g.dz;i=Math.max(0,Math.min(g.nx-1.001,i));j=Math.max(0,Math.min(g.nz-1.001,j));
+ const i0=Math.floor(i),j0=Math.floor(j),fi=i-i0,fj=j-j0,H=g.hoehen,n=g.nx,a=H[j0*n+i0],b=H[j0*n+i0+1],c=H[(j0+1)*n+i0],d=H[(j0+1)*n+i0+1];
+ return ((a*(1-fi)+b*fi)*(1-fj)+(c*(1-fi)+d*fi)*fj)*F}
+function imPoly(x,z,P){let inn=false;for(let i=0,j=P.length-1;i<P.length;j=i++){const a=P[i],b=P[j];if((a[1]>z)!==(b[1]>z)&&x<(b[0]-a[0])*(z-a[1])/(b[1]-a[1])+a[0])inn=!inn}return inn}
+let GRAS=null;function grasTextur(){if(GRAS)return GRAS;const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d'),sAlt=s;s=1066;g.fillStyle='#c9c9c9';g.fillRect(0,0,256,256);
+ for(let i=0;i<5000;i++){const v=150+Math.floor(rnd()*105),x=rnd()*256,y=rnd()*256;g.strokeStyle='rgb('+v+','+v+','+v+')';g.lineWidth=.8+rnd();g.beginPath();g.moveTo(x,y);g.lineTo(x+(rnd()-.5)*3,y-2-rnd()*5);g.stroke()}
+ s=sAlt;GRAS=new T.CanvasTexture(c);GRAS.wrapS=GRAS.wrapT=T.RepeatWrapping;GRAS.encoding=T.sRGBEncoding;GRAS.anisotropy=8;return GRAS}
+function gelLeeren(){gelGrp.children.slice().forEach(o=>{gelGrp.remove(o);o.geometry&&o.geometry.dispose();o.material&&o.material.dispose()});GEL=null}
+function gelSetzen(g){gelLeeren();if(!g||!Array.isArray(g.hoehen)||!(g.nx>1&&g.nz>1)||g.hoehen.length<g.nx*g.nz)return;
+ GEL={nx:g.nx|0,nz:g.nz|0,x0:+g.x0||0,z0:+g.z0||0,dx:+g.dx||1,dz:+g.dz||1,hoehen:g.hoehen.map(Number),flaechen:Array.isArray(g.flaechen)?g.flaechen:[],linien:Array.isArray(g.linien)?g.linien:[],farben:Array.isArray(g.farben)&&g.farben.length?g.farben:['#6f9a4c','#8fb15a','#b3b86c']};
+ const F=FEST_F,G=GEL,lo=Math.min(...G.hoehen),hi=Math.max(...G.hoehen),FA=G.farben.map(c=>new T.Color(c)),fl=G.flaechen.filter(f=>Array.isArray(f.punkte)&&f.punkte.length>2).map(f=>({P:f.punkte,c:new T.Color(f.farbe||'#2e5a27'),a:Math.max(0,Math.min(1,f.alpha==null?.6:+f.alpha))}));
+ const grund=(x,z,y,out)=>{const v=Math.max(0,Math.min(1,(y/F-lo)/((hi-lo)||1))),p=v*(FA.length-1),i=Math.min(FA.length-2,Math.floor(p));if(FA.length===1)out.copy(FA[0]);else out.copy(FA[i]).lerp(FA[i+1],p-i);
+  fl.forEach(f=>{if(imPoly(x/F,z/F,f.P))out.lerp(f.c,f.a)});return out.convertSRGBToLinear()};   // Farben der Daten sind sRGB
+ const mat=new T.MeshStandardMaterial({vertexColors:true,map:grasTextur(),roughness:.96,metalness:0});
+ // Gelände (doppelt so fein wie das Raster, Höhen bilinear)
+ const k=2,NX=(G.nx-1)*k+1,NZ=(G.nz-1)*k+1,P=new Float32Array(NX*NZ*3),C=new Float32Array(NX*NZ*3),UV=new Float32Array(NX*NZ*2),idx=[],col=new T.Color();
+ for(let j=0;j<NZ;j++)for(let i=0;i<NX;i++){const q=j*NX+i,x=(G.x0+i/k*G.dx)*F,z=(G.z0+j/k*G.dz)*F,y=gelH(x,z);P[q*3]=x;P[q*3+1]=y;P[q*3+2]=z;grund(x,z,y,col);C[q*3]=col.r;C[q*3+1]=col.g;C[q*3+2]=col.b;UV[q*2]=x/(6*F);UV[q*2+1]=z/(6*F);
+  if(i<NX-1&&j<NZ-1)idx.push(q,q+NX,q+1,q+1,q+NX,q+NX+1)}
+ const geo=new T.BufferGeometry();geo.setAttribute('position',new T.BufferAttribute(P,3));geo.setAttribute('color',new T.BufferAttribute(C,3));geo.setAttribute('uv',new T.BufferAttribute(UV,2));geo.setIndex(idx);geo.computeVertexNormals();
+ const m=new T.Mesh(geo,mat);m.receiveShadow=true;gelGrp.add(m);
+ // Umland bis zum Horizont: Randhöhen laufen zum Mittel aus, innen unter dem Gelände
+ const xa=G.x0*F,xb=(G.x0+(G.nx-1)*G.dx)*F,za=G.z0*F,zb=(G.z0+(G.nz-1)*G.dz)*F,W=Math.max(xb-xa,zb-za),cx=(xa+xb)/2,cz=(za+zb)/2,mid=(lo+hi)/2*F;
+ const U=new T.PlaneGeometry(W*9,W*9,90,90);U.rotateX(-Math.PI/2);U.translate(cx,0,cz);const up=U.attributes.position,uc=new Float32Array(up.count*3),uu=new Float32Array(up.count*2);
+ for(let i=0;i<up.count;i++){const x=up.getX(i),z=up.getZ(i),dx=Math.max(xa-x,0,x-xb),dz=Math.max(za-z,0,z-zb),d=Math.hypot(dx,dz),f=Math.exp(-d/(W*.35));
+  const y=d>0?gelH(x,z)*f+mid*.4*(1-f)-d*.004:gelH(x,z)-2*F;up.setY(i,y);grund(Math.min(xb,Math.max(xa,x)),Math.min(zb,Math.max(za,z)),y,col);col.lerp(FA[0].clone().convertSRGBToLinear(),1-f);uc[i*3]=col.r;uc[i*3+1]=col.g;uc[i*3+2]=col.b;uu[i*2]=x/(6*F);uu[i*2+1]=z/(6*F)}
+ U.setAttribute('color',new T.BufferAttribute(uc,3));U.setAttribute('uv',new T.BufferAttribute(uu,2));U.computeVertexNormals();const um=new T.Mesh(U,mat.clone());um.material.map=grasTextur();um.receiveShadow=true;gelGrp.add(um);
+ // Wege als Bänder auf dem Gelände
+ G.linien.forEach(L=>{const pts=(L.punkte||[]).filter(p=>Array.isArray(p));if(pts.length<2)return;const w=Math.max(.6,(+L.breite||3)*.45)*F,S=[];
+  for(let i=1;i<pts.length;i++){const a=pts[i-1],b=pts[i],n=Math.max(1,Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/2));for(let t=0;t<n;t++)S.push([(a[0]+(b[0]-a[0])*t/n)*F,(a[1]+(b[1]-a[1])*t/n)*F])}S.push([pts[pts.length-1][0]*F,pts[pts.length-1][1]*F]);
+  const Q=new Float32Array(S.length*6),I=[];S.forEach((p,i)=>{const a=S[Math.max(0,i-1)],b=S[Math.min(S.length-1,i+1)];let tx=b[0]-a[0],tz=b[1]-a[1];const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;
+   const nx=-tz*w/2,nz=tx*w/2;Q.set([p[0]+nx,gelH(p[0]+nx,p[1]+nz)+.12*F,p[1]+nz,p[0]-nx,gelH(p[0]-nx,p[1]-nz)+.12*F,p[1]-nz],i*6);if(i)I.push(i*2-2,i*2-1,i*2,i*2,i*2-1,i*2+1)});
+  const rg=new T.BufferGeometry();rg.setAttribute('position',new T.BufferAttribute(Q,3));rg.setIndex(I);rg.computeVertexNormals();const rm=new T.Mesh(rg,new T.MeshStandardMaterial({color:L.farbe||'#8a6d3b',roughness:1,polygonOffset:true,polygonOffsetFactor:-2}));rm.receiveShadow=true;gelGrp.add(rm)});
+ // Bäume in Waldflächen
+ const wald=G.flaechen.filter(f=>/wald|forest|wood/i.test(f.name||'')&&Array.isArray(f.punkte)),B=[];const sAlt=s;s=1166;
+ wald.forEach(f=>{const xs=f.punkte.map(p=>p[0]),zs=f.punkte.map(p=>p[1]),sp=3.4;for(let x=Math.min(...xs);x<Math.max(...xs);x+=sp)for(let z=Math.min(...zs);z<Math.max(...zs);z+=sp){const px=x+(rnd()-.5)*sp,pz=z+(rnd()-.5)*sp;
+  if(px*F<xa||px*F>xb||pz*F<za||pz*F>zb||!imPoly(px,pz,f.punkte)||rnd()>.85)continue;B.push([px*F,pz*F,1.9+rnd()*1.4,rnd()*6.28,rnd()])}});s=sAlt;
+ if(B.length){const tg=teile([[new T.CylinderGeometry(.07,.12,1,6).translate(0,.5,0),[.42,.3,.2]],[kugel(.62,0,1.45,0,8,1,1.2,1),1],[kugel(.42,.25,1.15,.1,6),.85]]);
+  const tm=new T.InstancedMesh(tg,new T.MeshStandardMaterial({vertexColors:true,roughness:.9}),B.length);tm.castShadow=true;tm.receiveShadow=true;tm.frustumCulled=false;const gruen=['#2f5a28','#3d6b2f','#4a7a34','#36612d','#5c7d35'];
+  B.forEach((b,i)=>{V.set(b[0],gelH(b[0],b[1])-.1*F,b[1]);SK.setScalar(b[2]*F);Q.setFromAxisAngle(Vy,b[3]);M4.compose(V,Q,SK);tm.setMatrixAt(i,M4);tm.setColorAt(i,HELL.set(gruen[Math.floor(b[4]*gruen.length)]).convertSRGBToLinear().multiplyScalar(1.6))});gelGrp.add(tm)}
+ gelGrp.visible=true}
+// Himmel mit Wolken und Sonnenstand nach der Uhrzeit
+function wolkenHimmel(g,W,H,B){const sAlt=s;s=1415;g.save();g.filter='blur(10px)';
+ for(let i=0;i<70;i++){const x=rnd()*W,y=H*.12+rnd()*H*.3,r=18+rnd()*46;for(let k=0;k<6;k++){g.fillStyle='rgba('+B.wolke+','+(.12+rnd()*.18)+')';g.beginPath();g.ellipse(x+(rnd()-.5)*r*2.5,y+(rnd()-.5)*r*.5,r*(.6+rnd()*.6),r*(.25+rnd()*.25),0,0,7);g.fill()}}
+ g.restore();s=sAlt}
+const TL={h:null};
+function stundeAus(t){t=String(t||'');const m=t.match(/(\d{1,2})(?:[:.](\d{2}))?\s*(?:[–-]\s*(\d{1,2})(?:[:.](\d{2}))?\s*)?Uhr/);
+ if(m){const a=+m[1]+(+m[2]||0)/60;return m[3]?(a+ +m[3]+(+m[4]||0)/60)/2:a}if(/dämmerung|abend/i.test(t))return 17.2;if(/nacht/i.test(t))return 20;return null}
+const TCOL=c=>new T.Color(c);
+function tagesLicht(){if(!WIESE)return;const h0=stundeAus(RV.titel[RV.akt]);if(h0!=null)TL.h=h0;else if(TL.h==null)TL.h=12.5;const h=TL.h;
+ const x=(h-6.6)/(17.4-6.6),el=x<0||x>1?-.06:.5*Math.sin(Math.PI*x),az=(110+140*Math.max(0,Math.min(1,x)))*Math.PI/180,warm=1-Math.max(0,Math.min(1,el/.33)),nacht=el<0;
+ const oben=nacht?TCOL('#1d2950'):TCOL('#3f7bc8').lerp(TCOL('#556196'),warm*.75),hor=nacht?TCOL('#c9764f'):TCOL('#d4e6f4').lerp(TCOL('#f2b583'),warm),mitte=oben.clone().lerp(hor,.55);
+ himmelMalen([[0,'#'+oben.getHexString()],[.3,'#'+mitte.getHexString()],[.49,'#'+hor.getHexString()],[.52,'#'+hor.clone().lerp(TCOL('#6b7a55'),.5).getHexString()],[1,'#4d5b3c']],{wolken:true,wolke:nacht?'215,150,130':warm>.5?'255,215,185':'255,255,255'});
+ renderer.setClearColor(hor,1);scene.fog.color.copy(hor);renderer.toneMappingExposure=nacht?.8:.88;
+ sonne.color.copy(TCOL('#fff4e4').lerp(TCOL('#ff9550'),warm));sonne.intensity=nacht?.3:.75+.65*Math.sin(Math.max(.05,el)*1.6);
+ hemi.color.copy(oben.clone().lerp(TCOL('#ffffff'),.4));hemi.groundColor.set('#55663a');hemi.intensity=nacht?.25:.35+.2*(1-warm);gegen.intensity=0;
+ TL.dir=new T.Vector3(Math.sin(az)*Math.cos(Math.max(el,.04)),Math.sin(Math.max(el,.04)),-Math.cos(az)*Math.cos(Math.max(el,.04)));TL.dunst=h<9.6?1-(h-7)/2.6:0;bodenSetzen();neu()}
+function wieseSetzen(an){an=!!an;if(an){WIESE=true;boden.visible=gitter.visible=platten.visible=false;TL.h=null;tagesLicht()}else if(WIESE){WIESE=false;boden.visible=gitter.visible=true;schemaAnwenden(SCHEMA)}}
+// Figuren
+const FIG={arten:{},knoten:[],teil:null,t:0};
+function figGeos(){if(FIG.geo)return FIG.geo;const H=[.86,.68,.52],M=[.6,.62,.66],B=[.3,.24,.18],Hz=[.55,.4,.24],q=8;
+ const beine=(y0)=>[[glied([-.07,y0,0],[-.07,y0+.42,0],.05,4),B],[glied([.07,y0,0],[.07,y0+.42,0],.05,4),B]];
+ const kopf=(y)=>[[kugel(.09,0,y,0,q),H],[new T.ConeGeometry(.1,.15,8).translate(0,y+.1,0),M]];
+ const rumpf=(y0)=>drehteil([[0,y0],[.15,y0+.02],[.17,y0+.2],[.16,y0+.32],[.11,y0+.38],[0,y0+.39]],q);
+ const g={};
+ g.fuss={a:teile([[rumpf(.4),1],[new T.CylinderGeometry(.2,.2,.03,12).rotateX(Math.PI/2).translate(-.13,.6,.15),1]]),b:teile([...beine(0),...kopf(.86),[glied([.21,0,.05],[.21,1.4,.05],.013,4),Hz],[new T.ConeGeometry(.025,.1,4).translate(.21,1.45,.05),M],[kugel(.035,-.13,.6,.17,6),M]])};
+ g.bogen={a:teile([[rumpf(.4),1]]),b:teile([...beine(0),...kopf(.86),[new T.TorusGeometry(.33,.012,4,14,Math.PI*.85).rotateZ(-Math.PI*.42).rotateY(Math.PI/2).translate(-.2,.72,.14),Hz],[glied([.12,.55,-.12],[.18,.95,-.15],.04,4),Hz]])};
+ const pf=(c)=>[[glied([0,.62,-.38],[0,.66,.32],.17,6),c],[glied([0,.68,.3],[0,.98,.5],.08,5),c],[glied([0,.98,.5],[0,.88,.72],.065,5),c],[glied([0,.62,-.5],[0,.36,-.62],.03,4),[.2,.15,.1]],
+  ...[[-.1,-.28],[.1,-.28],[-.1,.25],[.1,.25]].map(p=>[glied([p[0],0,p[1]],[p[0],.55,p[1]],.035,4),c])];
+ g.reiter={a:teile([[rumpf(.78).scale(.95,1,.95),1],[new T.CylinderGeometry(.15,.15,.03,10).rotateZ(Math.PI/2).translate(-.2,1,.05),1]]),b:teile([...pf([.45,.31,.19]),[glied([-.17,.58,0],[-.12,.85,.05],.045,4),B],[glied([.17,.58,0],[.12,.85,.05],.045,4),B],...kopf(1.25),[glied([.2,.85,-.5],[.2,1.25,1.1],.012,4),Hz]])};
+ g.ort={a:teile([[new T.BoxGeometry(.5,.32,.02).translate(.27,1.55,0),1]]),b:teile([[drehteil([[0,0],[.32,0],[.28,.5],[.22,.9],[.12,1.05],[0,1.08]],7).scale(1,1,.6),[.62,.6,.55]],[glied([0,.9,0],[0,1.75,0],.018,4),[.4,.3,.2]]])};
+ g.fuehrer={a:teile([[rumpf(.4),1],[new T.BoxGeometry(.6,.4,.02).translate(.52,1.72,0),1]]),b:teile([...beine(0),...kopf(.86),[glied([.21,0,0],[.21,2,0],.018,4),Hz],[kugel(.04,.21,2.02,0,6),[.85,.7,.3]]])};
+ return FIG.geo=g}
+function figArt(n){const ty=TY[n.ty]||{},f=ty.figuren;if(f&&f.art)return f.art;const sh=ty.shape;return sh==='linie'?'fuss':sh==='triangle'?'bogen':sh==='diamond'?'reiter':sh==='octagon'?'fuehrer':sh==='torus'?'ort':null}
+function figBauen(){Object.values(FIG.arten).forEach(A=>{[A.a,A.b].forEach(m=>{scene.remove(m);m.dispose();m.material.dispose()})});FIG.arten={};FIG.knoten=[];N.forEach(n=>{n.fig=null});
+ if(!GEL)return;const geo=figGeos(),sAlt=s;s=1215;const zahl={};
+ N.forEach(n=>{const art=figArt(n);if(!art)return;const S=+n.o.size||+(TY[n.ty]||{}).size||4,sl=[];
+  if(art==='fuss'){const c=Math.max(3,Math.round(S*1.6)),r=4,sp=S/c;for(let i=0;i<c;i++)for(let j=0;j<r;j++)sl.push([(i-(c-1)/2)*sp+(rnd()-.5)*sp*.3,(j-(r-1)/2)*.72+(rnd()-.5)*.15,rnd()*6.3])}
+  else if(art==='bogen'){const c=Math.max(3,Math.round(S*1.3)),r=2,sp=S/c;for(let i=0;i<c;i++)for(let j=0;j<r;j++)sl.push([(i-(c-1)/2)*sp+(rnd()-.5)*sp*.6,(j-.5)*1.1+(rnd()-.5)*.5,rnd()*6.3])}
+  else if(art==='reiter'){const c=Math.max(3,Math.round(S*.9)),r=2,sp=S/c;for(let i=0;i<c;i++)for(let j=0;j<r;j++)sl.push([(i-(c-1)/2)*sp+(rnd()-.5)*sp*.3,(j-.5)*1.6+(rnd()-.5)*.3,rnd()*6.3])}
+  else sl.push([0,0,0]);
+  n.fig={art,sl,yaw:null,k0:zahl[art]||0,gr:art==='fuehrer'?1.35:art==='ort'?1.6:1};zahl[art]=(zahl[art]||0)+sl.length;FIG.knoten.push(n)});s=sAlt;
+ Object.keys(zahl).forEach(art=>{const mk=(g,an)=>{const m=new T.InstancedMesh(g,new T.MeshStandardMaterial({vertexColors:true,roughness:.75,metalness:an?.05:.15}),zahl[art]);m.castShadow=true;m.receiveShadow=true;m.frustumCulled=false;m.instanceMatrix.setUsage(T.DynamicDrawUsage);scene.add(m);return m};
+  FIG.arten[art]={a:mk(geo[art].a,true),b:mk(geo[art].b,false)};for(let i=0;i<zahl[art];i++)FIG.arten[art].b.setColorAt(i,HELL.set(0xffffff))});
+ // Partner (Gegner) aus allen Beziehungen, unabhängig vom Schritt
+ const P={};(D.edges||[]).forEach(e=>{if(!byId[e.from]||!byId[e.to])return;(P[e.from]=P[e.from]||new Set()).add(e.to);(P[e.to]=P[e.to]||new Set()).add(e.from)});
+ FIG.knoten.forEach(n=>{n.fig.partner=[...(P[n.id]||[])].map(id=>byId[id])});
+ FIG.knoten.forEach(n=>{if(!n.fig.partner.length){let b=null,bd=Infinity;FIG.knoten.forEach(m=>{if(m.fig.partner.length){const d=m.ziel.distanceToSquared(n.ziel);if(d<bd){bd=d;b=m}}});n.fig.wie=b}});
+ FIG.alle=true;figFarben()}
+function figFarben(){FIG.knoten.forEach(n=>{const A=FIG.arten[n.fig.art];if(!A)return;for(let i=0;i<n.fig.sl.length;i++)A.a.setColorAt(n.fig.k0+i,n.col)});Object.values(FIG.arten).forEach(A=>{if(A.a.instanceColor)A.a.instanceColor.needsUpdate=true;if(A.b.instanceColor)A.b.instanceColor.needsUpdate=true})}
+const FQ=new T.Quaternion(),FV=new T.Vector3(),FS3=new T.Vector3();
+function figZielYaw(n){const f=n.fig,mv=FV.subVectors(n.ziel,n.pos);if(mv.lengthSq()>4*FEST_F*FEST_F)return Math.atan2(mv.x,mv.z);
+ const L=(f.partner.length?f.partner:f.wie?[f.wie]:[]).filter(m=>m.s>.05);if(f.wie&&!f.partner.length)return f.wie.fig.yaw==null?0:f.wie.fig.yaw;if(!L.length)return f.yaw==null?0:f.yaw;
+ let x=0,z=0;L.forEach(m=>{x+=m.pos.x;z+=m.pos.z});x=x/L.length-n.pos.x;z=z/L.length-n.pos.z;return Math.atan2(x,z)}
+function figTick(t,dt){if(!FIG.knoten.length)return false;let geaendert=FIG.alle;FIG.alle=false;const FSc=1.15*FEST_F;
+ for(const n of FIG.knoten){const f=n.fig,zy=figZielYaw(n);if(f.yaw==null){f.yaw=zy;geaendert=true}else{let d=zy-f.yaw;d=Math.atan2(Math.sin(d),Math.cos(d));if(Math.abs(d)>.002){f.yaw+=d*Math.min(1,dt*2.5);geaendert=true}}
+  const lauf=n.pos.distanceToSquared(n.ziel)>.01;if(!lauf&&!n.m&&!geaendert&&!f.dirty)continue;f.dirty=lauf;geaendert=true;
+  const A=FIG.arten[f.art],c=Math.cos(f.yaw),s_=Math.sin(f.yaw),sc=n.s>.05?FSc*f.gr*n.s:0;FQ.setFromAxisAngle(Vy,f.yaw);FS3.setScalar(sc);
+  f.sl.forEach((p,i)=>{const lx=p[0]*FEST_F,lz=p[1]*FEST_F,x=n.pos.x+lx*c+lz*s_,z=n.pos.z-lx*s_+lz*c,y=gelH(x,z)+(lauf?Math.abs(Math.sin(t*9+p[2]))*.08*FSc:0);V.set(x,y,z);M4.compose(V,FQ,FS3);A.a.setMatrixAt(f.k0+i,M4);A.b.setMatrixAt(f.k0+i,M4)})}
+ if(geaendert)Object.values(FIG.arten).forEach(A=>{A.a.instanceMatrix.needsUpdate=A.b.instanceMatrix.needsUpdate=true});return geaendert}
+// gerichtete Beziehungen im Gelände: Teilchen im Bogen (Pfeile, Vorstöße)
+const strahl=(()=>{const mat=new T.ShaderMaterial({transparent:true,depthWrite:false,uniforms:{sk:{value:1}},vertexShader:WK_VS,fragmentShader:'varying vec3 vF;varying float vA;void main(){vec2 d=gl_PointCoord-.5;float r=dot(d,d)*4.;if(r>1.)discard;gl_FragColor=vec4(vF,(1.-r)*vA);}'});
+ const p=new T.Points(new T.BufferGeometry(),mat);p.frustumCulled=false;p.renderOrder=6;p.visible=false;scene.add(p);return{p,n:0}})();
+const STRAHL_N=36;
+function strahlTick(t){const S=strahl,L=GEL?E.filter(k=>k.dir&&!k.revAus&&k.a.s>.05&&k.b.s>.05):[];if(!L.length){if(S.p.visible){S.p.visible=false;dirty=true}return false}
+ const n=L.length*STRAHL_N;if(S.n!==n){S.p.geometry.dispose();const g=new T.BufferGeometry();['position','farbe'].forEach(a=>g.setAttribute(a,new T.BufferAttribute(new Float32Array(n*3),3).setUsage(T.DynamicDrawUsage)));
+  g.setAttribute('al',new T.BufferAttribute(new Float32Array(n),1).setUsage(T.DynamicDrawUsage));g.setAttribute('gr',new T.BufferAttribute(new Float32Array(n),1));S.p.geometry=g;S.n=n}
+ const g=S.p.geometry,P=g.attributes.position.array,C=g.attributes.farbe.array,A=g.attributes.al.array,G=g.attributes.gr.array;
+ L.forEach((k,e)=>{const a=k.a.pos,b=k.b.pos,len=a.distanceTo(b),hb=len*(figArt(k.a)==='bogen'?.32:.08)+1.5*FEST_F,ya=gelH(a.x,a.z)+.8*FEST_F,yb=gelH(b.x,b.z)+.8*FEST_F;
+  for(let i=0;i<STRAHL_N;i++){const q=e*STRAHL_N+i,u=((t*.45+i/STRAHL_N+e*.137)%1);P[q*3]=a.x+(b.x-a.x)*u;P[q*3+2]=a.z+(b.z-a.z)*u;P[q*3+1]=ya+(yb-ya)*u+4*hb*u*(1-u);
+   C[q*3]=k.col.r;C[q*3+1]=k.col.g;C[q*3+2]=k.col.b;A[q]=.9*Math.min(1,u*8,(1-u)*8);G[q]=.55*FEST_F}});
+ S.p.material.uniforms.sk.value=renderer.domElement.height*(ST.on&&ST.tb?.5:1)/(2*Math.tan(cam.fov*Math.PI/360));['position','farbe','al'].forEach(a=>g.attributes[a].needsUpdate=true);S.p.visible=true;return true}
 // ---------- Datenquellen: Adapter (postMessage), Beispiele ----------
 addEventListener('message',e=>{const m=e.data;if(!m||m.quelle!=='3deep-adapter'||!m.daten)return;
  const gleich=m.lauf!=null&&m.lauf===lauf&&N.length>0;lauf=m.lauf;$('ds').value='';laden(m.daten,{behalten:gleich})});
@@ -1663,7 +1783,7 @@ function schleife(jetzt){requestAnimationFrame(schleife);const dt=Math.min(.1,(j
  if(spiel){tCur+=(tMax-tMin)/(+$('ztempo').value||20)*dt*tempoFaktor();if(tCur>=tMax){tCur=tMax;spiel=false;$('zp').textContent='▶'}zeitAnwenden()}
  if(heimSpaeter&&(!sim||jetzt-heimT>700)){heimT=jetzt;if(!sim)heimSpaeter=false;heim()}   // Kamera während des Layouts mitführen, bis der Nutzer selbst steuert
  if(messung&&!messung.erg){K.gier=messung.gier+(jetzt-messung.start)/5000*Math.PI*2;messung.frames++;dirty=true;if(jetzt-messung.start>=5000){messung.erg=Math.round(messung.frames/5)+' fps im Mittel ('+N.length.toLocaleString('de-DE')+' Objekte, Schatten '+($('schatten').checked&&N.length<=12000?'an':'aus')+')';K.gier=messung.gier}}
- smTick(dt,jetzt);uTick(jetzt);const b=bewegen(dt);if(K.flug)dirty=true;leuchten();markerSetzen(jetzt);if(wkTick(jetzt/1000))dirty=true;haloTick();
+ smTick(dt,jetzt);uTick(jetzt);const b=bewegen(dt);if(K.flug)dirty=true;leuchten();markerSetzen(jetzt);if(wkTick(jetzt/1000))dirty=true;haloTick();if(figTick(jetzt/1000,dt))dirty=true;if(strahlTick(jetzt/1000))dirty=true;
  if(ST.on&&ST.msgT&&jetzt>ST.msgT){ST.msgT=0;NM.neu=true}
  const gemalt=b||dirty;if(gemalt&&!kontextWeg){kameraSetzen();zeichnen();fz++;dirty=false}
  namenZeichnen(jetzt,dt,gemalt);if(gemalt&&prof.i>=0)profLage();
