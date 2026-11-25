@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="30">
+<meta name="4deep-darstellung" content="32">
 <title>4Deep Machbarkeitsstudie</title>
 <!-- 4Deep, Stufe 1 (Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -120,7 +120,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 30 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 32 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="chr"></div><div class="pn" id="mas"></div><div class="pn" id="prof"></div><div id="profb"></div>
@@ -1191,7 +1191,8 @@ async function leseZip(f){
    else{const k=o&&(o.id!=null?String(o.id):o.fromid+'|'+o.toid+'|'+o.type);if(rId[k])continue;rId[k]=1;rels.push(o)}}};
   await lies(await zipLesen(await f.arrayBuffer()),'',0);
   if(busse.length){let zuord=null;
-   if(ordner.length>1){const kurz=ordner.map(x=>x.split('/').filter(Boolean).pop()||'(Wurzel)');zuord={};Object.keys(bId).forEach(k=>zuord[k]=bId[k].ord.map(x=>kurz[ordner.indexOf(x)]).join(', '))}
+   if(ordner.length>1){const fn=id=>{const o=busse.find(b=>b&&String(b.id)===id),d=o&&o.data||{};return o?String(d.cTitle||o.name||'').trim():''};   // Ordner heißt nach der Firma (bus.sct.public.tCO.202_<Zeitstempel>) → Firmenname
+    const kurz=ordner.map(x=>{const l=x.split('/').filter(Boolean).pop()||'(Wurzel)',m=/^(bus\.[^_]+)_\d+$/.exec(l);return m&&fn(m[1])||l});zuord={};Object.keys(bId).forEach(k=>zuord[k]=bId[k].ord.map(x=>kurz[ordner.indexOf(x)]).join(', '))}
    CRM_ROH={b:busse,r:rels,zuord};const d=crmZuDaten(busse,rels,{einzeln:$('bae').checked,zuord});if(zuord)d.titel='CRM · '+ordner.length+' Export-Ordner';lauf=null;laden(d);
    return}
   if(json4d){lauf=null;laden(json4d.daten&&json4d.daten.nodes?json4d.daten:json4d);return}
@@ -1817,6 +1818,8 @@ function schleife(jetzt){requestAnimationFrame(schleife);const dt=Math.min(.1,(j
  if(jetzt-fT>1000){fps=fz;fz=0;fT=jetzt;status()}
 }
 requestAnimationFrame(schleife);
+// Version 31: eingebettete Daten wie datenraum3d.html (<script id="3deep-daten" type="application/json">, auch Sammlung {themen,ansicht}) beim Start laden, z. B. für eine Einzeldatei
+{const el=document.getElementById('3deep-daten');if(el){try{const d=JSON.parse(el.textContent);lauf=null;laden(d.daten&&d.daten.nodes?d.daten:d)}catch(x){meld('Eingebettete Daten fehlerhaft: '+x.message)}}}
 // Meldung an den Adapter wie datenraum3d.html (Ausnahme (2) der Grundregel)
 if(window.parent!==window)parent.postMessage({quelle:'3deep',bereit:true},'*');
 window.__4deep={stereo:{ST,stereoEin,stereoAus},sm:{SM,smReport,smTick,smErlaubt},laden,setzeLayout,zustand:()=>({ketten:KET.length,verzug:verzugN,gueltig:N.filter(n=>n.gueltig&&n.kette).length,heute:HEUTE,layoutMs:letzteSimDauer,worker:!!(sim&&sim.w),n:N.length,e:E.length,layout,sim:!!sim,hatZeit,tCur,tMin,tMax,sicht:N.filter(n=>n.sZiel>0).length,fps,messung}),setzeZeit:t=>{tCur=t;zeitAnwenden()},waehle,heim,VERSION};
