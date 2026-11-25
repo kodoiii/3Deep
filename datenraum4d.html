@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="46">
+<meta name="4deep-darstellung" content="47">
 <title>4Deep Machbarkeitsstudie</title>
 <!-- 4Deep, Stufe 1 (Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -122,7 +122,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 46 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 47 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="chr"></div><div class="pn" id="mas"></div><div class="pn" id="prof"></div><div id="profb"></div>
@@ -1937,7 +1937,8 @@ function figBauen(){Object.values(FIG.arten).forEach(A=>{[A.a,A.b].forEach(m=>{s
  FIG.knoten.forEach(n=>{n.fig.partner=[...(P[n.id]||[])].map(id=>byId[id])});
  FIG.knoten.forEach(n=>{if(!n.fig.partner.length){let b=null,bd=Infinity;FIG.knoten.forEach(m=>{if(m.fig.partner.length){const d=m.ziel.distanceToSquared(n.ziel);if(d<bd){bd=d;b=m}}});n.fig.wie=b}});
  FIG.alle=true;figFarben()}
-function figFarben(){FIG.knoten.forEach(n=>{const A=FIG.arten[n.fig.art];if(!A)return;for(let i=0;i<n.fig.sl.length;i++)A.a.setColorAt(n.fig.k0+i,n.col)});Object.values(FIG.arten).forEach(A=>{if(A.a.instanceColor)A.a.instanceColor.needsUpdate=true;if(A.b.instanceColor)A.b.instanceColor.needsUpdate=true})}
+// Version 47 (Wunsch des Nutzers): Figuren im Gelände in den Datenfarben, ohne Mischung des Farbschemas (Alien-Tech mischte 42 % Creme hinein, Parteien kaum unterscheidbar)
+function figFarben(){FIG.knoten.forEach(n=>{const A=FIG.arten[n.fig.art];if(!A)return;const c=kraeftig(farbe(n._cq));for(let i=0;i<n.fig.sl.length;i++)A.a.setColorAt(n.fig.k0+i,c)});Object.values(FIG.arten).forEach(A=>{if(A.a.instanceColor)A.a.instanceColor.needsUpdate=true;if(A.b.instanceColor)A.b.instanceColor.needsUpdate=true})}
 const FQ=new T.Quaternion(),FV=new T.Vector3(),FS3=new T.Vector3();
 function figZielYaw(n){const f=n.fig,mv=FV.subVectors(n.ziel,n.pos);if(mv.lengthSq()>4*FEST_F*FEST_F)return Math.atan2(mv.x,mv.z);
  const L=(f.partner.length?f.partner:f.wie?[f.wie]:[]).filter(m=>m.s>.05);if(f.wie&&!f.partner.length)return f.wie.fig.yaw==null?0:f.wie.fig.yaw;if(!L.length)return f.yaw==null?0:f.yaw;
