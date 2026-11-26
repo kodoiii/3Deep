@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="52">
+<meta name="4deep-darstellung" content="54">
 <title>4Deep Machbarkeitsstudie</title>
 <!-- 4Deep, Stufe 1 (Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -30,6 +30,7 @@ html.stereo .pn,html.stereo #st,html.stereo #tip,html.stereo #prof,html.stereo #
 #lg i.r-kristall{background:linear-gradient(135deg,#e8f6ff,#9fd3ff 45%,#f4c6ff);box-shadow:0 0 4px #bfe6ff}#lg i.r-glanz{background:radial-gradient(circle at 35% 30%,#fff,#8aa6c8 60%,#4c6386)}#lg i.r-roh{background:#8b94a3;opacity:.8}#lg i.r-alt{background:#8b94a3;opacity:.4}
 #axui .axz{display:flex;align-items:center;gap:5px;margin-top:4px}#axui .axz select{flex:1;min-width:0}#axui .axl{display:flex;align-items:center;gap:2px;font-size:11px;color:var(--mu)}
 #ver{color:var(--mu);font-size:10px;margin-top:8px}
+#legende{position:fixed;top:10px;left:280px;right:10px;margin:0 auto;width:fit-content;max-width:calc(100% - 300px);display:none;z-index:4;background:var(--pn);border:1px solid var(--rand);border-radius:8px;padding:5px 12px;font-size:12.5px;line-height:1.45;color:var(--tx);text-align:center;pointer-events:none;backdrop-filter:blur(6px)}#legende b{color:#e0b040}html.stereo #legende{display:none!important}
 #pn .rvz{display:flex;gap:4px;align-items:center}#pn .rvz button{width:auto;margin:0;padding:3px 9px}#pn .rvz input{flex:1;min-width:0}#wkt,#fbt{margin-top:4px}
 #fbt span{display:block;height:8px;border-radius:4px;margin-bottom:2px}#fbt b{font-weight:400;font-size:10.5px}#fbt b+b{float:right}
 #utxt{left:50%;top:10px;transform:translateX(-50%);width:min(700px,calc(100% - 540px));min-width:340px;display:none;z-index:12;font-size:14px;line-height:1.45}
@@ -122,11 +123,11 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 52 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 54 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="chr"></div><div class="pn" id="mas"></div><div class="pn" id="prof"></div><div id="profb"></div>
-<div id="tip"></div>
+<div id="tip"></div><div id="legende"></div>
 <div class="pn" id="utxt"></div><div class="pn" id="ufr"></div><div class="pn" id="ust"></div><div id="uhin"></div><div class="pn" id="ustart"></div>
 <div id="st"></div>
 
@@ -744,7 +745,9 @@ function achsenBeschriften(L){const I=AXINFO;if(!I)return;const A=I.LEN[0]/2,B=I
   const tt=['→ ','↑ ','↙ '][j]+k+(I.log[j]?' (log)':'')+(I.inv[j]?' (umgekehrt)':'')+(I.rand[j]?' · Ausreißer am Rand':'');
   if(j===0)marke(tt,A+L*.8,0,-C,h*1.2,farben[0]).center.set(0,.5);else if(j===1)marke(tt,-A,B+L*1.5,-C,h*1.2,farben[1]).center.set(.5,.5);else marke(tt,-A-L*.6,-L*.9,C+L*2,h*.8,farben[2]).center.set(1,.5)});
  if(!I.nIn)marke('Keine Objekte mit diesen Kennzahlen',0,B/2,0,h*1.4,'#c0281f').center.set(.5,.5)}
-function beschriften(){schrift.children.slice().forEach(c=>{schrift.remove(c);c.material.map.dispose();c.material.dispose()});const L=abstand();
+// Version 53 (Wunsch des CEO): Legende als Leiste oben (HTML) statt 3D-Schrift vorn – überlappte die Zeitleiste und lief aus dem Bild
+function legendeOben(html){const e=$('legende');e.innerHTML=html||'';e.style.display=html?'block':'none'}
+function beschriften(){legendeOben('');schrift.children.slice().forEach(c=>{schrift.remove(c);c.material.map.dispose();c.material.dispose()});const L=abstand();
  if(layout==='achsen'){achsenBeschriften(L);return}
  if(layout==='skyline'){skyBeschriften();return}
  if(layout==='reise'){reiseBeschriften();return}
@@ -824,9 +827,9 @@ function bodenSetzen(){
 let welt={c:new T.Vector3(),r:30};
 
 // ---------- Kamera (Steuerung wie CATIA in datenraum3d.html) ----------
-const K={ziel:new T.Vector3(),gier:-.6,nick:.45,dist:80,zZiel:new T.Vector3(),zDist:80,flug:false};
+const K={ziel:new T.Vector3(),gier:-.6,nick:.45,dist:80,zZiel:new T.Vector3(),zDist:80,flug:false,zGier:null};
 let heimSpaeter=false,heimNachSim=false,heimT=0;
-function nutzerSteuert(){heimSpaeter=false;heimNachSim=false;K.flug=false}
+function nutzerSteuert(){heimSpaeter=false;heimNachSim=false;K.flug=false;K.zGier=null}
 // Version 18: Einpassen nach Bildformat (Breite und Höhe getrennt) in die freie Fläche neben Bedienfeld und Zeitleiste
 function freieFlaeche(){const W=cv.clientWidth||innerWidth,H=cv.clientHeight||innerHeight;let x0=0,x1=W,y0=0,y1=H;
  const pn=$('pn'),zt=$('zt');
@@ -846,7 +849,7 @@ function heimZiel(Z){const P=[];if(!Z&&(layout==='skyline'||layout==='reise')&&S
  const s=d*2*tv/A.H,ox=((A.x0+A.x1)/2-A.W/2)*s,oy=((A.y0+A.y1)/2-A.H/2)*s;
  c.addScaledVector(re,-ox).addScaledVector(up,oy);return{c,d}}
 function kameraSetzen(){
- if(K.flug){K.ziel.lerp(K.zZiel,.12);K.dist+=(K.zDist-K.dist)*.12;if(K.ziel.distanceTo(K.zZiel)<.01&&Math.abs(K.zDist-K.dist)<.01)K.flug=false;dirty=true}
+ if(K.flug){K.ziel.lerp(K.zZiel,.12);K.dist+=(K.zDist-K.dist)*.12;if(K.zGier!=null){K.gier+=(K.zGier-K.gier)*.12;if(Math.abs(K.zGier-K.gier)<.001){K.gier=K.zGier;K.zGier=null}}if(K.ziel.distanceTo(K.zZiel)<.01&&Math.abs(K.zDist-K.dist)<.01&&K.zGier==null)K.flug=false;dirty=true}   // Version 53: optional auch Drehung (K.zGier)
  if(![K.dist,K.gier,K.nick,K.ziel.x,K.ziel.y,K.ziel.z].every(isFinite)){K.ziel.set(0,0,0);K.dist=80;K.gier=-.6;K.nick=.45;K.zZiel.set(0,0,0);K.zDist=80;K.flug=false}   // Schutz: ungültige Kamera → Bild schwarz
  if(SKY&&SKY.schilder&&skyG.visible)SKY.schilder.forEach(G=>{G.rotation.y=K.gier});
  const cp=Math.cos(K.nick);cam.position.set(K.ziel.x+K.dist*cp*Math.sin(K.gier),K.ziel.y+K.dist*Math.sin(K.nick),K.ziel.z+K.dist*cp*Math.cos(K.gier));
@@ -886,7 +889,7 @@ cv.addEventListener('pointermove',e=>{
 cv.addEventListener('pointerup',e=>tastenNeu(e));
 cv.addEventListener('pointerleave',()=>{if(!zug){$('tip').style.display='none';if(hov>=0){hov=-1;faerben();neu()}}});
 cv.addEventListener('pointercancel',tastenLoesen);cv.addEventListener('lostpointercapture',e=>{if(!e.buttons)tastenLoesen()});addEventListener('blur',tastenLoesen);
-cv.addEventListener('dblclick',e=>{const n=treffer(e);if(layout==='skyline'&&SKY){clearTimeout(SKY_KL);const sk=n<0?skyKoerper(e):null,f=n>=0&&SKY.F.includes(N[n])?N[n]:sk&&!sk.typ?sk.f:null;if(f){SKY_AUF={f:null,offen:new Set()};skyFlug(f);return}}nutzerSteuert();if(n<0){heim();return}K.zZiel.copy(N[n].pos);K.zDist=Math.max(12,N[n].r*14);K.flug=true;neu()});
+cv.addEventListener('dblclick',e=>{const n=treffer(e);if(layout==='skyline'&&SKY){clearTimeout(SKY_KL);const sk=n<0?skyKoerper(e):null,f=n>=0&&SKY.F.includes(N[n])?N[n]:sk&&!sk.typ?sk.f:null;if(f){SKY_AUF={f:null,offen:new Set()};skyFlug(f);return}if(n<0&&!sk&&SKY_AUF.f){SKY_AUF={f:null,offen:new Set()};setzeLayout('skyline',false);heim();neu();return}}nutzerSteuert();if(n<0){heim();return}K.zZiel.copy(N[n].pos);K.zDist=Math.max(12,N[n].r*14);K.flug=true;neu()});
 cv.addEventListener('wheel',e=>{e.preventDefault();zoomen(Math.exp(e.deltaY*.0012))},{passive:false});
 const ray=new T.Raycaster(),mausV=new T.Vector2();
 function treffer(e){const r=cv.getBoundingClientRect();mausV.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(mausV,cam);
@@ -1031,7 +1034,8 @@ function skyline(L){if(SKY&&SKY.schilder)SKY.schilder.forEach(G=>{const u=G.user
  const c=D.skyline,F=skyFirmen(),n=F.length;SKY={F,ecken:[],info:[],koerper:[],sammel:[],buehne:null,block:null};if(!n){skyG.visible=false;return}
  const M=masListe(),cols=Math.max(1,Math.ceil(Math.sqrt(n*1.5))),rows=Math.ceil(n/cols),br=Math.max(1,Math.min(2.6,7.8/cols)),A=L*6*br,Hmax=L*14,vmax=Math.max(1e-9,...F.map(f=>kzv(f,c.hoehe)).filter(v=>v>0));
  N.forEach(x=>{if(!F.includes(x))x.skyAus=true;x.ziel.copy(x.pos)});
- F.forEach((f,i)=>{const x=(i%cols-(cols-1)/2)*A,z=(Math.floor(i/cols)-(rows-1)/2)*A*1.15,v=kzv(f,c.hoehe),h=Math.max(L*.4,(v>0?v/vmax:0)*Hmax),w=L*2.52*Math.max(1,Math.min(1.5,4.5/cols));   /* Version 50: wenige Firmen breiter verteilt und etwas kräftiger, damit die Bildbreite genutzt wird */
+ const nurF=SKY_AUF.f&&F.includes(SKY_AUF.f)?SKY_AUF.f:null;   // Version 53 (Wunsch des CEO): aufgeklappte Firma allein, andere Türme und Firmen ausgeblendet (Plätze bleiben)
+ F.forEach((f,i)=>{if(nurF&&f!==nurF){f.skyAus=true;return}const x=(i%cols-(cols-1)/2)*A,z=(Math.floor(i/cols)-(rows-1)/2)*A*1.15,v=kzv(f,c.hoehe),h=Math.max(L*.4,(v>0?v/vmax:0)*Hmax),w=L*2.52*Math.max(1,Math.min(1.5,4.5/cols));   /* Version 50: wenige Firmen breiter verteilt und etwas kräftiger, damit die Bildbreite genutzt wird */
   // Version 50 (Wunsch des Nutzers, Probe K1): Turm als dunkelblauer Glasquader mit weißen Kanten (Stil Intro 3Deep / Ladekugel); Marge als farbige Dachkante
   const tm=new T.Mesh(new T.BoxGeometry(1,1,1),new T.MeshPhysicalMaterial({color:0x0e2557,transparent:true,opacity:.72,roughness:.06,metalness:0,clearcoat:1,clearcoatRoughness:.05,depthWrite:false,side:T.DoubleSide}));tm.scale.set(w,h,w);tm.position.set(x,h/2,z);skyG.add(tm);SKY.koerper.push({m:tm,f});
   tm.add(new T.LineSegments(new T.EdgesGeometry(tm.geometry),new T.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.95,depthWrite:false})));
@@ -1049,7 +1053,8 @@ function skyline(L){if(SKY&&SKY.schilder)SKY.schilder.forEach(G=>{const u=G.user
   SKY.info.push({f,x,z,h,v,p1,p2,tp,txt:[c.titelHoehe||c.hoehe,eur(v)].join(' ')+' · '+(c.farbe||'')+' '+((f.o.meta||{})[c.farbe]||'–')+(isFinite(g)?' · '+(g>=0?'↗ +':'↘ −')+Math.round(Math.abs(g))+' %':'')+(p1||p2?' · ⚠ Hinweise im Lagebericht':'')});
   SKY.ecken.push(new T.Vector3(x-w,0,z-w),new T.Vector3(x+w,h+L*5.4,z+w),new T.Vector3(x-w*2.2,h+L*3.4,z),new T.Vector3(x+w*2.2,h+L*3.4,z))});
  SKY.reihen=rows;
- if(SKY_AUF.f&&F.includes(SKY_AUF.f))skyBuehne(L,A,(rows-1)/2*A*1.15+A*.9);else SKY_AUF={f:null,offen:new Set()};
+ if(nurF)skyBuehne(L,A,SKY.info[0].z+A*.9);   // Version 53: Bühne direkt vor dem Turm (andere Reihen sind aus), Kamera passt besser
+ else SKY_AUF={f:null,offen:new Set()};
  skyG.visible=true}
 // Version 42: Name und Kennzahlen der Firmen immer vor den Türmen (auch vor höheren Nachbarn), Trendzahl am Pfeil
 const vorne=sp=>{sp.material.depthTest=false;sp.renderOrder=20;return sp};
@@ -1074,7 +1079,7 @@ function skyBeschriften(){if(!SKY)return;const L=abstand(),hh=L*.55;
   if(zusatz)vorne(marke(zusatz,I.x,I.h+L*3.15,I.z,hk*.5,'#2a3b5c')).center.set(.5,.5);
   vorne(marke(I.txt.replace(' · ⚠ Hinweise im Lagebericht',''),I.x,I.h+L*2.45,I.z,hh*.8,'#2a3b5c')).center.set(.5,.5);
   if(I.tp)marke(I.tp.txt,I.tp.x+I.tp.s*.45,I.tp.y+I.tp.s*.1,I.tp.z,hh*1.05,I.tp.auf?'#1f7a3c':'#b02a1a').center.set(0,.5)});
- skyBuehneBeschriften(L,hh);const b=SKY.ecken;if(b.length)marke('Firmen-Skyline · Höhe = '+(D.skyline.titelHoehe||D.skyline.hoehe)+', Dachkante = '+D.skyline.farbe+' (rot < '+((D.skyline.farbeGrenzen||[10,25])[0])+', gelb < '+((D.skyline.farbeGrenzen||[10,25])[1])+'), Pfeil ↗/↘ = '+D.skyline.pfeil+', ⚠ = Hinweise der Handlungsliste (Klick = Lagebericht) · Klick = Firma aufklappen · Doppelklick = Firma öffnen',Math.min(...b.map(p=>p.x)),-L*.2,Math.max(...b.map(p=>p.z))+L*3,hh*.9,'#2a3b5c')}
+ skyBuehneBeschriften(L,hh);legendeOben(SKY.buehne?'<b>Aufgeklappt: '+esc(firmenName(SKY.buehne.f))+'</b> · Klick auf einen Sammelkörper = Objekte zeigen/verbergen · Klick auf den Turm oder Doppelklick ins Leere = alle Firmen':esc('Firmen-Skyline · Höhe = '+(D.skyline.titelHoehe||D.skyline.hoehe)+', Dachkante = '+D.skyline.farbe+' (rot < '+((D.skyline.farbeGrenzen||[10,25])[0])+', gelb < '+((D.skyline.farbeGrenzen||[10,25])[1])+'), Pfeil ↗/↘ = '+D.skyline.pfeil+', ⚠ = Hinweise der Handlungsliste (Klick = Lagebericht)')+'<br>Klick = Firma aufklappen · Doppelklick = Firma öffnen')}
 function trendPfeil(auf,s,x,y,z){const mat=new T.MeshStandardMaterial({color:auf?0x2e9e4f:0xd0402a,roughness:.35,metalness:.1}),a=auf?-Math.PI/4:-Math.PI*3/4;
  [new T.CylinderGeometry(s*.07,s*.07,s*.62,14).translate(0,-.19*s,0),new T.ConeGeometry(s*.2,s*.38,20).translate(0,.31*s,0)].forEach(gm=>{gm.rotateZ(a);const m=new T.Mesh(gm,mat);m.position.set(x,y,z);m.castShadow=true;skyG.add(m)});
  return{auf,s,x,y,z}}
@@ -1162,7 +1167,8 @@ function skyBlock(L,f,x,z){const C=Array.isArray(D.skyline.anteile)?D.skyline.an
   B.top=Math.max(y,yf+L*.7);SKY.ecken.push(new T.Vector3(x-w,0,z-w),new T.Vector3(x+w+L*9,B.top+L*2.5,z+w));xa=x+w+L*15});
  SKY.block=SKY.bloecke[0]||null}
 function crmKurz(n){const t=String(n.name||'');return t.includes(' · ')?t.split(' · ').slice(1).join(' · '):t}
-function skyBuehneBeschriften(L,hh){const S=SKY.buehne;if(!S)return;marke('Aufgeklappt: '+firmenName(S.f)+' · Klick auf einen Sammelkörper = Objekte zeigen/verbergen',S.x0-S.B*.5,Math.max(0,...SKY.sammel.map(g=>g.h))+L*4.4,S.z0-L*2,hh*.85,'#7a5a00').center.set(0,.5);
+function skyBuehneBeschriften(L,hh){const S=SKY.buehne;if(!S)return;   // Überschrift „Aufgeklappt …“ seit Version 53 in der Legende oben (überlappte Sammelkörper-Beschriftung)
+
  (SKY.reihen||[]).forEach(r=>marke(r.txt,r.x,L*.05,r.z,hh*.75,'#4a5a75').center.set(1,.5));
  SKY.sammel.forEach(g=>{marke(g.txt,g.x,g.h+L*.9,g.z,hh*.8,'#10203c').center.set(.5,.5)});
  (SKY.bloecke||[]).forEach(K=>{marke(K.titel+' · '+Math.round(K.S).toLocaleString('de-DE')+' h',K.x,K.top+L*1.6,K.z,hh*1.0,'#10203c').center.set(.5,.5);
@@ -1172,8 +1178,9 @@ function skyKlick(e,i){if(layout==='reise'&&SKY&&i<0){const sk=skyKoerper(e);if(
  if(layout!=='skyline'||!SKY)return false;const sw=skyKoerper(e),sk=i<0||(sw&&sw.warn&&sw.d<ray.ray.origin.distanceTo(N[i].pos)-N[i].r*.5)?sw:null;if(sk&&sk.warn){clearTimeout(SKY_KL);$('chr').style.display='none';lageberichtZeigen(sk.f);return true}const f=i>=0&&SKY.F.includes(N[i])?N[i]:sk&&!sk.typ?sk.f:null;
  if(!f&&!(sk&&sk.typ))return false;clearTimeout(SKY_KL);
  SKY_KL=setTimeout(()=>{if(f){SKY_AUF=SKY_AUF.f===f?{f:null,offen:new Set()}:{f,offen:new Set()}}else{const o=SKY_AUF.offen;o.has(sk.typ)?o.delete(sk.typ):o.add(sk.typ)}
-  setzeLayout('skyline',false);if(SKY_AUF.f&&SKY.buehne){const P=[];SKY.sammel.forEach(g=>P.push(new T.Vector3(g.x,g.h,g.z)));N.forEach(n=>{if(!n.skyAus&&!SKY.F.includes(n))P.push(n.ziel)});P.push(new T.Vector3(SKY.buehne.I.x,SKY.buehne.I.h,SKY.buehne.I.z));
-   const z=heimZiel(P.map(p=>({ziel:p,r:abstand()})));if(z){K.zZiel.copy(z.c);K.zDist=z.d;K.flug=true}}else heim();neu()},260);return true}
+  setzeLayout('skyline',false);if(SKY_AUF.f&&SKY.buehne){const P=[];const Ls=abstand();SKY.sammel.forEach(g=>P.push(new T.Vector3(g.x,g.h+Ls,g.z),new T.Vector3(g.x,0,g.z+Ls*1.3),new T.Vector3(g.x-Ls*1.3,0,g.z),new T.Vector3(g.x+Ls*1.3,0,g.z)));N.forEach(n=>{if(!n.skyAus&&!SKY.F.includes(n))P.push(n.ziel)});P.push(new T.Vector3(SKY.buehne.I.x,SKY.buehne.I.h,SKY.buehne.I.z));
+   // Version 53 (Wunsch des CEO): beim Aufklappen gerade von vorn (Turm hinten, Sammelkörper davor mittig); Drehung auf kürzestem Weg
+   const g0=K.gier,g1=g0-Math.round(g0/(2*Math.PI))*2*Math.PI;K.gier=0;const z=heimZiel(P.map(p=>({ziel:p,r:abstand()})));K.gier=g0;if(z){K.zZiel.copy(z.c);K.zDist=z.d;K.zGier=g0-g1;K.flug=true}}else heim();neu()},260);return true}
 // ---------- Version 35 (Vorschlag C für den CEO): Kundenreise ----------
 // Layout „Kundenreise“: je Firma eine Bahn über die Zeit (links alt, rechts neu, Quartale). Hinten Säulen = Umsatz je Quartal (Typ daten.skyline.umsatzTyp, Feld „Betrag“),
 // auf der Bahn die Objekte der Firma als Ereignisse an ihrem Datum (eine Spur je Typ), Fähnchen = Punkte der Handlungsliste mit Datum. Mit „Firma öffnen“ nur diese Firma.
@@ -1205,7 +1212,7 @@ function reiseBeschriften(){const R=SKY&&SKY.reise;if(!R)return;const L=abstand(
  SKY.info.forEach(I=>{marke(firmenName(I.f),R.xa-L*6,I.f.r*2+L*1.2,I.zb,hh*1.2,'#10203c').center.set(.5,.5);marke('Umsatz '+eur(I.u),R.xa-L*6,I.f.r*2+L*.45,I.zb,hh*.75,'#2a3b5c').center.set(.5,.5);
   R.typen.forEach((t,r)=>marke((TY[t]||{}).label||t,R.xa-L*.3,L*.05,I.zs+L*.6+r*R.sp,hh*.75,'#4a5a75').center.set(1,.5))});
  SKY.sammel.forEach(g=>{marke(g.txt,g.x,g.h+L*.5,g.z,hh*.85,'#1f6b38').center.set(.5,.5)});
- marke('Kundenreise · je Firma eine Bahn · Säulen = Umsatz je Quartal · Spuren = Objekte am Datum'+((D.skyline.reiseOhne||[]).length?' (ohne '+D.skyline.reiseOhne.map(t=>(TY[t]||{}).label||t).join(', ')+')':'')+' · ⚠ = Hinweise der Handlungsliste',R.xa-L*8,L*.05,zl+L*2.6,hh*.9,'#2a3b5c').center.set(0,.5)}
+ legendeOben(esc('Kundenreise · je Firma eine Bahn · Säulen = Umsatz je Quartal · Spuren = Objekte am Datum'+((D.skyline.reiseOhne||[]).length?' (ohne '+D.skyline.reiseOhne.map(t=>(TY[t]||{}).label||t).join(', ')+')':'')+' · ⚠ = Hinweise der Handlungsliste'))}
 // Version 24: Maßnahmen-Datei des KI-Agenten laden ({massnahmen:[…]} oder Liste); ids dürfen CRM-Nummern sein (z. B. AU240749); ersetzt frühere KI-Maßnahmen, Regel-Maßnahmen bleiben
 function istMassnahmenDatei(j){const L=Array.isArray(j)?j:j&&!j.nodes&&!(j.daten&&j.daten.nodes)&&Array.isArray(j.massnahmen)?j.massnahmen:null;return!!L&&L.length>0&&L.every(m=>m&&typeof m==='object'&&(m.text||m.signal))}
 function massnahmenLaden(j){if(!D||!N.length){meld('Erst den Datenraum (CRM-ZIP) laden, dann die Maßnahmen-Datei.');return}
