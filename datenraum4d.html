@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="48">
+<meta name="4deep-darstellung" content="49">
 <title>4Deep Machbarkeitsstudie</title>
 <!-- 4Deep, Stufe 1 (Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -122,7 +122,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 48 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 49 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="chr"></div><div class="pn" id="mas"></div><div class="pn" id="prof"></div><div id="profb"></div>
@@ -1147,9 +1147,14 @@ function reise(L){while(skyG.children.length){const c=skyG.children.pop();c.geom
   M.filter(m=>m._f===firmenName(f)&&m.t&&m.prio<=2&&isFinite(Date.parse(m.t))).forEach(m=>{const x=Math.max(xa,Math.min(xe,xT(Date.parse(m.t)))),st=new T.Mesh(new T.CylinderGeometry(L*.02,L*.02,L*.7,6),new T.MeshStandardMaterial({color:0x5a6472}));st.position.set(x,L*.35,zs-L*.2);skyG.add(st);
    const ws=warnSchild(m.prio,0,L*.5);ws.position.set(x,L*.95,zs-L*.2);skyG.add(ws);SKY.koerper.push({m:ws,f,warn:true,mas:m})});   // Version 43: Klick = Hinweis mit Begründung   // Version 42: Warnschild wie in der Skyline
   SKY.info.push({f,zb,zs,u:umQ[k].reduce((a,b)=>a+b,0)});SKY.ecken.push(new T.Vector3(xa-L*8,0,zb-Bz/2),new T.Vector3(xe+L,Hm,zb+Bz/2))});
- SKY.reise={q0,nq,Q,xa,xe,typen,sp,Bz};skyG.visible=true}
+ // Version 49 (Frage des Nutzers: Zeitachse bei Schrägsicht schwer abzulesen): Quartalslinien quer über alle Bahnen (Jahre kräftiger), orange Linie „heute“
+ const zA=-Bz/2,zE=(F.length-1)*Bz+Bz/2,zM=(zA+zE)/2,zL=zE-zA,strich=(x,b,col,y)=>{const m=new T.Mesh(new T.BoxGeometry(b,L*.02,zL),new T.MeshBasicMaterial({color:col,transparent:true,opacity:.9}));m.position.set(x,y,zM);skyG.add(m)};
+ for(let j=0;j<=nq;j++){const jahr=(q0+j)%4===0;strich(xa+j*Q,L*(jahr?.09:.035),jahr?0x7d8aa0:0xb9c2d0,L*.07)}
+ const jetzt=Date.now(),heute=jetzt>=qStart(q0)&&jetzt<qStart(q1+1)?xT(jetzt):null;if(heute!=null)strich(heute,L*.14,0xd9480f,L*.08);
+ SKY.reise={q0,nq,Q,xa,xe,typen,sp,Bz,heute,zA,zE};skyG.visible=true}
 function reiseBeschriften(){const R=SKY&&SKY.reise;if(!R)return;const L=abstand(),hh=L*.55,zl=(SKY.F.length-1)*R.Bz+R.Bz/2+L*.4,st=Math.max(1,Math.ceil(R.nq/24));
- for(let j=0;j<R.nq;j+=st){const x=R.xa+(j+.5)*R.Q;marke(qName(R.q0+j),x,L*.05,zl+L*.6,hh*.75,'#2a3b5c').center.set(.5,.5);if((R.q0+j)%4===0&&j){const g=new T.BufferGeometry().setFromPoints([new T.Vector3(R.xa+j*R.Q,.08,-R.Bz/2),new T.Vector3(R.xa+j*R.Q,.08,zl)]);skyG.add(new T.Line(g,new T.LineBasicMaterial({color:0x8a96a8})))}}
+ for(let j=0;j<R.nq;j+=st){const x=R.xa+(j+.5)*R.Q;marke(qName(R.q0+j),x,L*.05,zl+L*.6,hh*.75,'#2a3b5c').center.set(.5,.5);marke(qName(R.q0+j),x,L*.05,R.zA-L*.9,hh*.75,'#2a3b5c').center.set(.5,.5)}   // Version 49: auch an der hinteren Kante
+ if(R.heute!=null){marke('heute',R.heute,L*.05,zl+L*1.6,hh*.85,'#c46a00').center.set(.5,.5);marke('heute',R.heute,L*.05,R.zA-L*1.9,hh*.85,'#c46a00').center.set(.5,.5)}
  SKY.info.forEach(I=>{marke(firmenName(I.f),R.xa-L*6,I.f.r*2+L*1.2,I.zb,hh*1.2,'#10203c').center.set(.5,.5);marke('Umsatz '+eur(I.u),R.xa-L*6,I.f.r*2+L*.45,I.zb,hh*.75,'#2a3b5c').center.set(.5,.5);
   R.typen.forEach((t,r)=>marke((TY[t]||{}).label||t,R.xa-L*.3,L*.05,I.zs+L*.6+r*R.sp,hh*.75,'#4a5a75').center.set(1,.5))});
  SKY.sammel.forEach(g=>{marke(g.txt,g.x,g.h+L*.5,g.z,hh*.85,'#1f6b38').center.set(.5,.5)});
