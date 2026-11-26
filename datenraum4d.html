@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="49">
+<meta name="4deep-darstellung" content="50">
 <title>4Deep Machbarkeitsstudie</title>
 <!-- 4Deep, Stufe 1 (Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -122,7 +122,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 49 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 50 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="chr"></div><div class="pn" id="mas"></div><div class="pn" id="prof"></div><div id="profb"></div>
@@ -569,7 +569,7 @@ function setzeLayout(ly,kamera){
   starteSim(L);
  }else if(ly==='baum'){baum(L)}
  else if(ly==='zeit'){zeitachse(L)}
- else if(ly==='skyline'){skyline(L);if(kamera){K.gier=-.5;K.nick=.42}}
+ else if(ly==='skyline'){skyline(L);if(kamera){const rw=SKY?SKY.reihen:9;/* Version 50: eine Reihe fast auf Augenhöhe (P3), zwei Reihen halbhoch, viele wie bisher */K.gier=rw<=1?-.15:rw===2?-.3:-.5;K.nick=rw<=1?.04:rw===2?.25:.42}}
  else if(ly==='reise'){reise(L);if(kamera){K.gier=-.35;K.nick=.5}}
  else if(ly==='achsen'){achsenLayout(L);if(kamera){K.gier=-.3;K.nick=.32}}
  else if(ly==='fest'){const b=new T.Box3();N.forEach((n,i)=>{const p=revPos(n.o,RV.akt)||n.fest;if(Array.isArray(p))n.ziel.set(+p[0]||0,+p[1]||0,+p[2]||0);else if(p)n.ziel.set(+p.x||0,+p.y||0,+p.z||0);else n.ziel.set(0,-L*3,i*.5);
@@ -577,6 +577,7 @@ function setzeLayout(ly,kamera){
   // auf übliche Größe bringen (Hülle aller Schritte); Version 28: Daten mit layout 'fest' (Unterricht, Moleküle) mit Größen in Dateneinheiten wie 3Deep
   const g=b.getSize(V).length()||1,f=Math.max(1,Math.sqrt(N.length)*L/g);FEST_F=f;N.forEach(n=>n.ziel.multiplyScalar(f));
   if(D&&D.layout==='fest')N.forEach(n=>{const sz=+n.o.size||+(TY[n.ty]||{}).size||1;n.r=Math.max(.05,sz/2*f)});if(WK.teile.length)wkBauen()}
+ $('zt').style.display=hatZeit&&ly!=='skyline'?'flex':'none';   // Version 50: Zeitleiste in der Skyline ausgeblendet (Unruhe)
  bodenSetzen();beschriften();heuteSetzen();axZeigen();if(N.length)zeitAnwenden();if(kamera)heimSpaeter=true;neu();
 }
 // Kräfte-Layout als reine Funktion über Zahlenfelder (Float32Array, Zahlen-Gitter mit Hash), läuft im Web Worker
@@ -846,6 +847,7 @@ function heimZiel(Z){const P=[];if(!Z&&(layout==='skyline'||layout==='reise')&&S
 function kameraSetzen(){
  if(K.flug){K.ziel.lerp(K.zZiel,.12);K.dist+=(K.zDist-K.dist)*.12;if(K.ziel.distanceTo(K.zZiel)<.01&&Math.abs(K.zDist-K.dist)<.01)K.flug=false;dirty=true}
  if(![K.dist,K.gier,K.nick,K.ziel.x,K.ziel.y,K.ziel.z].every(isFinite)){K.ziel.set(0,0,0);K.dist=80;K.gier=-.6;K.nick=.45;K.zZiel.set(0,0,0);K.zDist=80;K.flug=false}   // Schutz: ungültige Kamera → Bild schwarz
+ if(SKY&&SKY.schilder&&skyG.visible)SKY.schilder.forEach(G=>{G.rotation.y=K.gier});
  const cp=Math.cos(K.nick);cam.position.set(K.ziel.x+K.dist*cp*Math.sin(K.gier),K.ziel.y+K.dist*Math.sin(K.nick),K.ziel.z+K.dist*cp*Math.cos(K.gier));
  cam.lookAt(K.ziel);cam.near=Math.max(.1,K.dist/200);cam.far=K.dist+welt.r*18;cam.updateProjectionMatrix();
 }
@@ -1003,6 +1005,10 @@ function masSpringen(m){const ids=(m.ids||[]).filter(id=>byId[id]);if(!ids.lengt
 // Allgemein über daten.skyline {typ, hoehe, farbe, pfeil, farbeGrenzen:[rot<a, gelb<b], einheit}: je Objekt des Typs ein Turm (Höhe = meta[hoehe], Farbe = meta[farbe], Pfeil = meta[pfeil]),
 // Fähnchen = Punkte der Handlungsliste (rot P1, gelb P2). Zuordnung der übrigen Objekte zur nächsten Firma über die Beziehungen (Breitensuche von allen Firmen zugleich).
 const kzv=(n,k)=>k?numv((n.o.meta||{})[k]):NaN;
+// Version 50 (Wunsch des Nutzers): Kurzname geraten – erstes Wort („Strontinger Elektrotechnische Systeme GmbH“ → „Strontinger“), Vorsätze wie Dr./Gebr./Autohaus
+// und sehr kurze Wörter nehmen das nächste Wort dazu, „&“/„und“ verbindet („Ernst & Young“). Rest = Zusatz (halb so groß darunter).
+function kurzName(t){const W=String(t||'').trim().split(/\s+/).filter(Boolean),vor=/^(dr\.?|prof\.?|ing\.?|dipl\.?|gebr\.?|gebrüder|firma|fa\.?|autohaus|stadtwerke|ingenieurbüro|hotel|klinik|klinikum|institut|verlag|die|der|das|the|st\.?|sankt|bad|von|van|de|le|la)$/i;
+ let k=1;while(k<W.length&&(vor.test(W[k-1])||W[k-1].length<=2))k++;if(k+1<W.length&&/^(&|\+|und|and|u\.)$/i.test(W[k]))k+=2;return{kurz:W.slice(0,k).join(' '),zusatz:W.slice(k).join(' ')}}
 function firmenName(f){const t=String(f.name||'');return t.includes(' · ')?t.split(' · ').slice(1).join(' · '):t}   // CRM: „CO000001 · Firma GmbH“ → „Firma GmbH“
 function firmenTyp(){return D&&D.skyline?D.skyline.typ:D&&D.crm?'tCO':null}
 function firmaVon(n){const ft=firmenTyp();if(!ft||!n)return null;if(!FZ){FZ=new Array(N.length).fill(null);const Q=[];N.forEach(x=>{if(x.ty===ft){FZ[x.i]=x;Q.push(x)}});
@@ -1019,12 +1025,16 @@ function eur(v){if(!isFinite(v))return'–';const a=Math.abs(v);return a>=1e6?(v
 function skyFirmen(){const c=D&&D.skyline;if(!c)return[];const zahl={};N.forEach(n=>{const f=firmaVon(n);if(f&&f!==n)zahl[f.i]=(zahl[f.i]||0)+1});
  return N.filter(n=>n.ty===c.typ&&!typAus[n.ty]&&((kzv(n,c.hoehe)>0)||(zahl[n.i]||0)>=3)).sort((a,b)=>(kzv(b,c.hoehe)||0)-(kzv(a,c.hoehe)||0)||(zahl[b.i]||0)-(zahl[a.i]||0))}
 function skyFarbe(v){const g=(D.skyline.farbeGrenzen)||[10,25];return!isFinite(v)?0x8a96a8:v<g[0]?0xd0402a:v<g[1]?0xe0a020:0x2e9e4f}
-function skyline(L){while(skyG.children.length){const c=skyG.children.pop();c.geometry&&c.geometry.dispose();c.material&&c.material.dispose()}
+function skyline(L){if(SKY&&SKY.schilder)SKY.schilder.forEach(G=>{const u=G.userData.s3;u.geo.dispose();u.tx.dispose();u.mats.forEach(m=>m.dispose())});
+ while(skyG.children.length){const c=skyG.children.pop();c.geometry&&c.geometry.dispose();c.material&&c.material.dispose()}
  const c=D.skyline,F=skyFirmen(),n=F.length;SKY={F,ecken:[],info:[],koerper:[],sammel:[],buehne:null,block:null};if(!n){skyG.visible=false;return}
- const M=masListe(),cols=Math.max(1,Math.ceil(Math.sqrt(n*1.5))),rows=Math.ceil(n/cols),A=L*6,Hmax=L*14,vmax=Math.max(1e-9,...F.map(f=>kzv(f,c.hoehe)).filter(v=>v>0));
+ const M=masListe(),cols=Math.max(1,Math.ceil(Math.sqrt(n*1.5))),rows=Math.ceil(n/cols),br=Math.max(1,Math.min(2.6,7.8/cols)),A=L*6*br,Hmax=L*14,vmax=Math.max(1e-9,...F.map(f=>kzv(f,c.hoehe)).filter(v=>v>0));
  N.forEach(x=>{if(!F.includes(x))x.skyAus=true;x.ziel.copy(x.pos)});
- F.forEach((f,i)=>{const x=(i%cols-(cols-1)/2)*A,z=(Math.floor(i/cols)-(rows-1)/2)*A*1.15,v=kzv(f,c.hoehe),h=Math.max(L*.4,(v>0?v/vmax:0)*Hmax),w=A*.42;
-  const tm=new T.Mesh(new T.BoxGeometry(1,1,1),new T.MeshStandardMaterial({color:skyFarbe(kzv(f,c.farbe)),roughness:.35,metalness:.1,transparent:true,opacity:.92}));tm.scale.set(w,h,w);tm.position.set(x,h/2,z);tm.castShadow=tm.receiveShadow=true;skyG.add(tm);SKY.koerper.push({m:tm,f});
+ F.forEach((f,i)=>{const x=(i%cols-(cols-1)/2)*A,z=(Math.floor(i/cols)-(rows-1)/2)*A*1.15,v=kzv(f,c.hoehe),h=Math.max(L*.4,(v>0?v/vmax:0)*Hmax),w=L*2.52*Math.max(1,Math.min(1.5,4.5/cols));   /* Version 50: wenige Firmen breiter verteilt und etwas kräftiger, damit die Bildbreite genutzt wird */
+  // Version 50 (Wunsch des Nutzers, Probe K1): Turm als dunkelblauer Glasquader mit weißen Kanten (Stil Intro 3Deep / Ladekugel); Marge als farbige Dachkante
+  const tm=new T.Mesh(new T.BoxGeometry(1,1,1),new T.MeshPhysicalMaterial({color:0x0e2557,transparent:true,opacity:.72,roughness:.06,metalness:0,clearcoat:1,clearcoatRoughness:.05,depthWrite:false,side:T.DoubleSide}));tm.scale.set(w,h,w);tm.position.set(x,h/2,z);tm.receiveShadow=true;skyG.add(tm);SKY.koerper.push({m:tm,f});
+  tm.add(new T.LineSegments(new T.EdgesGeometry(tm.geometry),new T.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.95,depthWrite:false})));
+  {const dk=Math.min(h*.5,L*.16),dm=new T.Mesh(new T.BoxGeometry(w*1.04,dk,w*1.04),new T.MeshStandardMaterial({color:skyFarbe(kzv(f,c.farbe)),roughness:.3,metalness:.1,emissive:skyFarbe(kzv(f,c.farbe)),emissiveIntensity:.25}));dm.position.set(x,h-dk/2,z);dm.castShadow=true;skyG.add(dm)}
   f.ziel.set(x,h+f.r*1.3,z);
   // Version 42 (Wunsch des Nutzers): Trend als schräger Pfeil mit Schaft (↗ grün / ↘ rot, wie im Börsenchart) statt Kegel, Prozentzahl daneben
   const g=kzv(f,c.pfeil);let tp=null;if(isFinite(g)&&Math.abs(g)>=1){const auf=g>0,s=L*(1.1+Math.min(.8,Math.abs(g)/60));tp=trendPfeil(auf,s,x+w*.25,h+s*.6,z+w*.2);/* auf dem Dach rechts, neben dem Turm verdeckte er Nachbarn */tp.txt=(auf?'+':'−')+Math.round(Math.abs(g))+' %'}
@@ -1034,14 +1044,27 @@ function skyline(L){while(skyG.children.length){const c=skyG.children.pop();c.ge
   if(p1||p2){const st=new T.Mesh(new T.CylinderGeometry(L*.018,L*.018,L*.5,6),new T.MeshStandardMaterial({color:0x5a6472}));const fx=x-w*.5+L*.3,fz=z-w*.5+L*.3;st.position.set(fx,h+L*.25,fz);skyG.add(st);
    const ws=warnSchild(p1?1:2,0,L*.45);ws.position.set(fx,h+L*.62,fz);skyG.add(ws);SKY.koerper.push({m:ws,f,warn:true})}
   SKY.info.push({f,x,z,h,v,p1,p2,tp,txt:[c.titelHoehe||c.hoehe,eur(v)].join(' ')+' · '+(c.farbe||'')+' '+((f.o.meta||{})[c.farbe]||'–')+(isFinite(g)?' · '+(g>=0?'↗ +':'↘ −')+Math.round(Math.abs(g))+' %':'')+(p1||p2?' · ⚠ Hinweise im Lagebericht':'')});
-  SKY.ecken.push(new T.Vector3(x-w,0,z-w),new T.Vector3(x+w,h+L*4.2,z+w),new T.Vector3(x-w*2.2,h+L*3.4,z),new T.Vector3(x+w*2.2,h+L*3.4,z))});
+  SKY.ecken.push(new T.Vector3(x-w,0,z-w),new T.Vector3(x+w,h+L*5.4,z+w),new T.Vector3(x-w*2.2,h+L*3.4,z),new T.Vector3(x+w*2.2,h+L*3.4,z))});
+ SKY.reihen=rows;
  if(SKY_AUF.f&&F.includes(SKY_AUF.f))skyBuehne(L,A,(rows-1)/2*A*1.15+A*.9);else SKY_AUF={f:null,offen:new Set()};
  skyG.visible=true}
 // Version 42: Name und Kennzahlen der Firmen immer vor den Türmen (auch vor höheren Nachbarn), Trendzahl am Pfeil
 const vorne=sp=>{sp.material.depthTest=false;sp.renderOrder=20;return sp};
-function skyBeschriften(){if(!SKY)return;const L=abstand(),hh=L*.55;SKY.info.forEach(I=>{vorne(marke(firmenName(I.f),I.x,I.h+L*3.4,I.z,hh*1.25,'#10203c')).center.set(.5,.5);vorne(marke(I.txt,I.x,I.h+L*2.6,I.z,hh*.8,'#2a3b5c')).center.set(.5,.5);
+// Version 50 (Wunsch des Nutzers, Probe S2): Kurzname groß als dezente 3D-Schrift (Schild, dreht sich zur Kamera), Zusatz halb so groß und Kennzahlen flach darunter
+function schrift3d(text,hoehe,tiefe,farbe,seite){const c=document.createElement('canvas'),g=c.getContext('2d'),F='800 128px system-ui,sans-serif';g.font=F;
+ const w=Math.ceil(g.measureText(text).width)+24;c.width=w;c.height=170;g.font=F;g.fillStyle='#fff';g.textBaseline='middle';g.fillText(text,12,88);
+ const tx=new T.CanvasTexture(c);tx.encoding=T.sRGBEncoding;tx.anisotropy=8;const geo=new T.PlaneGeometry(hoehe*w/170,hoehe),G=new T.Group();
+ const dm=new T.MeshDepthMaterial({depthPacking:T.RGBADepthPacking,map:tx,alphaTest:.5}),n=Math.max(1,Math.round(tiefe/(hoehe*.012))),mv=new T.MeshStandardMaterial({map:tx,alphaTest:.5,color:farbe,roughness:.4,metalness:.15,side:T.DoubleSide}),ms=mv.clone();ms.color.set(seite);
+ for(let i=n;i>=0;i--){const m=new T.Mesh(geo,i?ms:mv);m.position.z=(n/2-i)*tiefe/n;m.customDepthMaterial=dm;G.add(m)}
+ G.userData.s3={geo,tx,mats:[mv,ms,dm]};return G}
+function skyBeschriften(){if(!SKY)return;const L=abstand(),hh=L*.55;
+ (SKY.schilder||[]).forEach(G=>{skyG.remove(G);const u=G.userData.s3;u.geo.dispose();u.tx.dispose();u.mats.forEach(m=>m.dispose())});SKY.schilder=[];
+ SKY.info.forEach(I=>{const {kurz,zusatz}=kurzName(firmenName(I.f)),hk=hh*2.1;
+  const G=schrift3d(kurz,hk*1.05,L*.2,0x2f4f8a,0x0c1730);G.position.set(I.x,I.h+L*4.2,I.z);G.rotation.y=K.gier;skyG.add(G);SKY.schilder.push(G);
+  if(zusatz)vorne(marke(zusatz,I.x,I.h+L*3.15,I.z,hk*.5,'#2a3b5c')).center.set(.5,.5);
+  vorne(marke(I.txt.replace(' · ⚠ Hinweise im Lagebericht',''),I.x,I.h+L*2.45,I.z,hh*.8,'#2a3b5c')).center.set(.5,.5);
   if(I.tp)marke(I.tp.txt,I.tp.x+I.tp.s*.45,I.tp.y+I.tp.s*.1,I.tp.z,hh*1.05,I.tp.auf?'#1f7a3c':'#b02a1a').center.set(0,.5)});
- skyBuehneBeschriften(L,hh);const b=SKY.ecken;if(b.length)marke('Firmen-Skyline · Höhe = '+(D.skyline.titelHoehe||D.skyline.hoehe)+', Farbe = '+D.skyline.farbe+' (rot < '+((D.skyline.farbeGrenzen||[10,25])[0])+', gelb < '+((D.skyline.farbeGrenzen||[10,25])[1])+'), Pfeil ↗/↘ = '+D.skyline.pfeil+', ⚠ = Hinweise der Handlungsliste (Klick = Lagebericht) · Klick = Firma aufklappen · Doppelklick = Firma öffnen',Math.min(...b.map(p=>p.x)),-L*.2,Math.max(...b.map(p=>p.z))+L*3,hh*.9,'#2a3b5c')}
+ skyBuehneBeschriften(L,hh);const b=SKY.ecken;if(b.length)marke('Firmen-Skyline · Höhe = '+(D.skyline.titelHoehe||D.skyline.hoehe)+', Dachkante = '+D.skyline.farbe+' (rot < '+((D.skyline.farbeGrenzen||[10,25])[0])+', gelb < '+((D.skyline.farbeGrenzen||[10,25])[1])+'), Pfeil ↗/↘ = '+D.skyline.pfeil+', ⚠ = Hinweise der Handlungsliste (Klick = Lagebericht) · Klick = Firma aufklappen · Doppelklick = Firma öffnen',Math.min(...b.map(p=>p.x)),-L*.2,Math.max(...b.map(p=>p.z))+L*3,hh*.9,'#2a3b5c')}
 function trendPfeil(auf,s,x,y,z){const mat=new T.MeshStandardMaterial({color:auf?0x2e9e4f:0xd0402a,roughness:.35,metalness:.1}),a=auf?-Math.PI/4:-Math.PI*3/4;
  [new T.CylinderGeometry(s*.07,s*.07,s*.62,14).translate(0,-.19*s,0),new T.ConeGeometry(s*.2,s*.38,20).translate(0,.31*s,0)].forEach(gm=>{gm.rotateZ(a);const m=new T.Mesh(gm,mat);m.position.set(x,y,z);m.castShadow=true;skyG.add(m)});
  return{auf,s,x,y,z}}
