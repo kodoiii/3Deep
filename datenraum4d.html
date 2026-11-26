@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="51">
+<meta name="4deep-darstellung" content="52">
 <title>4Deep Machbarkeitsstudie</title>
 <!-- 4Deep, Stufe 1 (Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -122,7 +122,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 51 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 52 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="chr"></div><div class="pn" id="mas"></div><div class="pn" id="prof"></div><div id="profb"></div>
@@ -1226,9 +1226,14 @@ $('fkb').onclick=faktenExport;
 $('finb').onclick=()=>{$('ly').value='achsen';setzeLayout('achsen',true);const o=[...$('axp').options].findIndex(x=>/^Rechnungen/.test(x.text));if(o>=0&&$('axp').selectedIndex!==o){$('axp').selectedIndex=o;$('axp').dispatchEvent(new Event('change'))}};
 document.querySelectorAll('#pn details.grp').forEach(d=>{try{d.open=localStorage.getItem('4d_auf_'+d.id)==='1'}catch(_){}d.addEventListener('toggle',()=>{try{localStorage.setItem('4d_auf_'+d.id,d.open?'1':'0')}catch(_){}})});
 $('masb').onclick=()=>{const el=$('mas');if(el.style.display==='block'&&el.dataset.art==='mas')el.style.display='none';else{$('chr').style.display='none';massnahmenZeigen()}};
-$('bae').onchange=e=>{try{localStorage.setItem('4d_crm_einzeln',e.target.checked?'1':'0')}catch(_){}if(CRM_ROH){eigeneWahl();lauf=null;laden(crmZuDaten(CRM_ROH.b,CRM_ROH.r,{einzeln:e.target.checked,zuord:CRM_ROH.zuord,domain:$('crmdom').value}))}};
+// Version 52 (Wunsch des Nutzers): „Batches einzeln“ / eigene Domain bauen die aktuelle Ansicht neu auf (Layout, geöffnete Firma, Kamera, Zeitpunkt bleiben;
+// bekannte Objekte behalten ihre Lage, neue kommen hinzu) statt zur Firmen-Skyline zu springen
+function crmNeuAufbauen(){if(!CRM_ROH)return;const fid=FOKUS&&FOKUS.id,ly=layout;eigeneWahl();lauf=null;
+ laden(crmZuDaten(CRM_ROH.b,CRM_ROH.r,{einzeln:$('bae').checked,zuord:CRM_ROH.zuord,domain:$('crmdom').value}),{behalten:true});
+ const f=fid!=null&&byId[fid];if(f)fokusFirma(f,true,ly==='reise'?'reise':'netz')}
+$('bae').onchange=e=>{try{localStorage.setItem('4d_crm_einzeln',e.target.checked?'1':'0')}catch(_){}crmNeuAufbauen()};
 try{$('bae').checked=localStorage.getItem('4d_crm_einzeln')==='1';$('crmdom').value=localStorage.getItem('4d_crm_domain')||''}catch(_){}
-$('crmdom').onchange=e=>{try{localStorage.setItem('4d_crm_domain',e.target.value.trim())}catch(_){}if(CRM_ROH){eigeneWahl();lauf=null;laden(crmZuDaten(CRM_ROH.b,CRM_ROH.r,{einzeln:$('bae').checked,zuord:CRM_ROH.zuord,domain:e.target.value}))}};
+$('crmdom').onchange=e=>{try{localStorage.setItem('4d_crm_domain',e.target.value.trim())}catch(_){}crmNeuAufbauen()};
 // Version 20: Kennzahlen-Achsen bedienen
 const axNeu=()=>{$('ly').value='achsen';setzeLayout('achsen',true)};
 $('axp').onchange=e=>{const v=e.target.value;if(v==='eigen'){AXS.p='eigen';axZeigen()}else{axVorlage(+v);axNeu()}};
