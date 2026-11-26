@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="50">
+<meta name="4deep-darstellung" content="51">
 <title>4Deep Machbarkeitsstudie</title>
 <!-- 4Deep, Stufe 1 (Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -47,7 +47,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
 #zt input{flex:1}#zt button{background:#16213a;color:var(--tx);border:1px solid var(--rand);border-radius:6px;padding:4px 10px;cursor:pointer;font:inherit}
 #zjahr{min-width:170px;text-align:right;font-weight:600;color:var(--ak)}
 #chr{right:10px;top:10px;width:390px;max-height:calc(100% - 120px);overflow:auto;display:none;z-index:15;font-size:12px}#chr h2{font-size:15px;margin:0 18px 6px 0}#chr .x{position:absolute;right:8px;top:6px;cursor:pointer;color:var(--mu);font-size:16px}
-#mas{right:10px;top:10px;width:420px;max-height:calc(100% - 120px);overflow:auto;display:none;z-index:15;font-size:12px}#mas h2{font-size:15px;margin:0 18px 6px 0}#mas .x{position:absolute;right:8px;top:6px;cursor:pointer;color:var(--mu);font-size:16px}
+#mas{right:10px;top:10px;width:420px;max-height:calc(100% - 120px);overflow:auto;display:none;z-index:15;font-size:12px}#mas h2{font-size:15px;margin:0 18px 6px 0}#mas[data-art="lage"],#mas[data-art="mas"],#mas[data-art="hin"]{zoom:1.25;max-height:calc((100% - 120px)/1.25)}/* Version 51 (Wunsch des Nutzers): Lagebericht, Handlungsliste und Hinweis 125 % – Anweisungen für die Geschäftsführung groß und deutlich */#mas .x{position:absolute;right:8px;top:6px;cursor:pointer;color:var(--mu);font-size:16px}
 #chr select{background:#16213a;color:var(--tx);border:1px solid var(--rand);border-radius:6px;padding:3px;font:inherit;margin-bottom:6px}#chr .sum{border:1px solid var(--rand);border-radius:6px;padding:5px 7px;margin-bottom:6px;line-height:1.5}
 #mas select{background:#16213a;color:var(--tx);border:1px solid var(--rand);border-radius:6px;padding:3px;font:inherit;margin-bottom:6px}#mas .sum{border:1px solid var(--rand);border-radius:6px;padding:5px 7px;margin-bottom:6px;line-height:1.5}
 #chr .ev{display:grid;grid-template-columns:76px 1fr;gap:1px 6px;padding:4px 3px;border-top:1px solid #1c2740;cursor:pointer;border-radius:4px}#chr .ev:hover{background:#1c2a48}#chr .ev .d{color:var(--mu);white-space:nowrap}#chr .ev .a{font-weight:600}#chr .ev .e{grid-column:2;color:var(--mu)}#chr .ok{color:#3fbf7f}#chr .nok{color:#ff6b5e}
@@ -122,7 +122,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 50 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 51 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="chr"></div><div class="pn" id="mas"></div><div class="pn" id="prof"></div><div id="profb"></div>
@@ -577,7 +577,8 @@ function setzeLayout(ly,kamera){
   // auf übliche Größe bringen (Hülle aller Schritte); Version 28: Daten mit layout 'fest' (Unterricht, Moleküle) mit Größen in Dateneinheiten wie 3Deep
   const g=b.getSize(V).length()||1,f=Math.max(1,Math.sqrt(N.length)*L/g);FEST_F=f;N.forEach(n=>n.ziel.multiplyScalar(f));
   if(D&&D.layout==='fest')N.forEach(n=>{const sz=+n.o.size||+(TY[n.ty]||{}).size||1;n.r=Math.max(.05,sz/2*f)});if(WK.teile.length)wkBauen()}
- $('zt').style.display=hatZeit&&ly!=='skyline'?'flex':'none';   // Version 50: Zeitleiste in der Skyline ausgeblendet (Unruhe)
+ $('zt').style.display=hatZeit&&ly!=='skyline'?'flex':'none';
+ {const pr=ly==='skyline'?Math.min(3,(devicePixelRatio||1)*2):Math.min(devicePixelRatio,2);if(renderer.getPixelRatio()!==pr)renderer.setPixelRatio(pr)}   // Version 51: Skyline (erster Eindruck) mit doppelter Auflösung gerendert = glattere Kanten   // Version 50: Zeitleiste in der Skyline ausgeblendet (Unruhe)
  bodenSetzen();beschriften();heuteSetzen();axZeigen();if(N.length)zeitAnwenden();if(kamera)heimSpaeter=true;neu();
 }
 // Kräfte-Layout als reine Funktion über Zahlenfelder (Float32Array, Zahlen-Gitter mit Hash), läuft im Web Worker
@@ -885,7 +886,7 @@ cv.addEventListener('pointermove',e=>{
 cv.addEventListener('pointerup',e=>tastenNeu(e));
 cv.addEventListener('pointerleave',()=>{if(!zug){$('tip').style.display='none';if(hov>=0){hov=-1;faerben();neu()}}});
 cv.addEventListener('pointercancel',tastenLoesen);cv.addEventListener('lostpointercapture',e=>{if(!e.buttons)tastenLoesen()});addEventListener('blur',tastenLoesen);
-cv.addEventListener('dblclick',e=>{const n=treffer(e);if(layout==='skyline'&&SKY){clearTimeout(SKY_KL);const sk=n<0?skyKoerper(e):null,f=n>=0&&SKY.F.includes(N[n])?N[n]:sk&&!sk.typ?sk.f:null;if(f){SKY_AUF={f:null,offen:new Set()};fokusFirma(f,false,'reise');return}}nutzerSteuert();if(n<0){heim();return}K.zZiel.copy(N[n].pos);K.zDist=Math.max(12,N[n].r*14);K.flug=true;neu()});
+cv.addEventListener('dblclick',e=>{const n=treffer(e);if(layout==='skyline'&&SKY){clearTimeout(SKY_KL);const sk=n<0?skyKoerper(e):null,f=n>=0&&SKY.F.includes(N[n])?N[n]:sk&&!sk.typ?sk.f:null;if(f){SKY_AUF={f:null,offen:new Set()};skyFlug(f);return}}nutzerSteuert();if(n<0){heim();return}K.zZiel.copy(N[n].pos);K.zDist=Math.max(12,N[n].r*14);K.flug=true;neu()});
 cv.addEventListener('wheel',e=>{e.preventDefault();zoomen(Math.exp(e.deltaY*.0012))},{passive:false});
 const ray=new T.Raycaster(),mausV=new T.Vector2();
 function treffer(e){const r=cv.getBoundingClientRect();mausV.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(mausV,cam);
@@ -1032,9 +1033,11 @@ function skyline(L){if(SKY&&SKY.schilder)SKY.schilder.forEach(G=>{const u=G.user
  N.forEach(x=>{if(!F.includes(x))x.skyAus=true;x.ziel.copy(x.pos)});
  F.forEach((f,i)=>{const x=(i%cols-(cols-1)/2)*A,z=(Math.floor(i/cols)-(rows-1)/2)*A*1.15,v=kzv(f,c.hoehe),h=Math.max(L*.4,(v>0?v/vmax:0)*Hmax),w=L*2.52*Math.max(1,Math.min(1.5,4.5/cols));   /* Version 50: wenige Firmen breiter verteilt und etwas kräftiger, damit die Bildbreite genutzt wird */
   // Version 50 (Wunsch des Nutzers, Probe K1): Turm als dunkelblauer Glasquader mit weißen Kanten (Stil Intro 3Deep / Ladekugel); Marge als farbige Dachkante
-  const tm=new T.Mesh(new T.BoxGeometry(1,1,1),new T.MeshPhysicalMaterial({color:0x0e2557,transparent:true,opacity:.72,roughness:.06,metalness:0,clearcoat:1,clearcoatRoughness:.05,depthWrite:false,side:T.DoubleSide}));tm.scale.set(w,h,w);tm.position.set(x,h/2,z);tm.receiveShadow=true;skyG.add(tm);SKY.koerper.push({m:tm,f});
+  const tm=new T.Mesh(new T.BoxGeometry(1,1,1),new T.MeshPhysicalMaterial({color:0x0e2557,transparent:true,opacity:.72,roughness:.06,metalness:0,clearcoat:1,clearcoatRoughness:.05,depthWrite:false,side:T.DoubleSide}));tm.scale.set(w,h,w);tm.position.set(x,h/2,z);skyG.add(tm);SKY.koerper.push({m:tm,f});
   tm.add(new T.LineSegments(new T.EdgesGeometry(tm.geometry),new T.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.95,depthWrite:false})));
-  {const dk=Math.min(h*.5,L*.16),dm=new T.Mesh(new T.BoxGeometry(w*1.04,dk,w*1.04),new T.MeshStandardMaterial({color:skyFarbe(kzv(f,c.farbe)),roughness:.3,metalness:.1,emissive:skyFarbe(kzv(f,c.farbe)),emissiveIntensity:.25}));dm.position.set(x,h-dk/2,z);dm.castShadow=true;skyG.add(dm)}
+  // Version 51: Marge als schmaler Rahmen außen um die Dachkante (die Deckplatte flimmerte mit dem Glasdach und Schatten)
+  {const dk=Math.min(h*.5,L*.16),t=L*.07,o=w/2+t/2+L*.01,mt=new T.MeshStandardMaterial({color:skyFarbe(kzv(f,c.farbe)),roughness:.3,metalness:.1,emissive:skyFarbe(kzv(f,c.farbe)),emissiveIntensity:.25});
+   [[0,o,w+t*2+L*.02,t],[0,-o,w+t*2+L*.02,t],[o,0,t,w],[-o,0,t,w]].forEach(([dx,dz,sx,sz])=>{const m=new T.Mesh(new T.BoxGeometry(sx,dk,sz),mt);m.position.set(x+dx,h-dk/2,z+dz);skyG.add(m)})}
   f.ziel.set(x,h+f.r*1.3,z);
   // Version 42 (Wunsch des Nutzers): Trend als schräger Pfeil mit Schaft (↗ grün / ↘ rot, wie im Börsenchart) statt Kegel, Prozentzahl daneben
   const g=kzv(f,c.pfeil);let tp=null;if(isFinite(g)&&Math.abs(g)>=1){const auf=g>0,s=L*(1.1+Math.min(.8,Math.abs(g)/60));tp=trendPfeil(auf,s,x+w*.25,h+s*.6,z+w*.2);/* auf dem Dach rechts, neben dem Turm verdeckte er Nachbarn */tp.txt=(auf?'+':'−')+Math.round(Math.abs(g))+' %'}
@@ -1051,12 +1054,19 @@ function skyline(L){if(SKY&&SKY.schilder)SKY.schilder.forEach(G=>{const u=G.user
 // Version 42: Name und Kennzahlen der Firmen immer vor den Türmen (auch vor höheren Nachbarn), Trendzahl am Pfeil
 const vorne=sp=>{sp.material.depthTest=false;sp.renderOrder=20;return sp};
 // Version 50 (Wunsch des Nutzers, Probe S2): Kurzname groß als dezente 3D-Schrift (Schild, dreht sich zur Kamera), Zusatz halb so groß und Kennzahlen flach darunter
-function schrift3d(text,hoehe,tiefe,farbe,seite){const c=document.createElement('canvas'),g=c.getContext('2d'),F='800 128px system-ui,sans-serif';g.font=F;
- const w=Math.ceil(g.measureText(text).width)+24;c.width=w;c.height=170;g.font=F;g.fillStyle='#fff';g.textBaseline='middle';g.fillText(text,12,88);
- const tx=new T.CanvasTexture(c);tx.encoding=T.sRGBEncoding;tx.anisotropy=8;const geo=new T.PlaneGeometry(hoehe*w/170,hoehe),G=new T.Group();
- const dm=new T.MeshDepthMaterial({depthPacking:T.RGBADepthPacking,map:tx,alphaTest:.5}),n=Math.max(1,Math.round(tiefe/(hoehe*.012))),mv=new T.MeshStandardMaterial({map:tx,alphaTest:.5,color:farbe,roughness:.4,metalness:.15,side:T.DoubleSide}),ms=mv.clone();ms.color.set(seite);
- for(let i=n;i>=0;i--){const m=new T.Mesh(geo,i?ms:mv);m.position.z=(n/2-i)*tiefe/n;m.customDepthMaterial=dm;G.add(m)}
- G.userData.s3={geo,tx,mats:[mv,ms,dm]};return G}
+// Version 51 (Wunsch des Nutzers): Kanten glätten – Alpha-to-Coverage (MSAA) und verrundete Buchstaben: Vorder- und Rückseite schmal, zur Mitte hin
+// breiter (Kontur je Stufe), Farbe von Vorderseite zur Seitenfarbe verlaufend = runde Kante statt Treppe
+function schrift3d(text,hoehe,tiefe,farbe,seite){const F='800 128px system-ui,sans-serif',S=[0,2,4,6],c0=document.createElement('canvas').getContext('2d');c0.font=F;
+ const w=Math.ceil(c0.measureText(text).width)+24+2*S[S.length-1],an=renderer.capabilities.getMaxAnisotropy(),geo=new T.PlaneGeometry(hoehe*w/170,hoehe),G=new T.Group(),mats=[],txs=[];
+ const fv=new T.Color(farbe),fs=new T.Color(seite);
+ const stufe=S.map((sw,k)=>{const c=document.createElement('canvas');c.width=w;c.height=170;const g=c.getContext('2d');g.font=F;g.fillStyle=g.strokeStyle='#fff';g.textBaseline='middle';g.lineJoin='round';
+  const x0=12+S[S.length-1];g.fillText(text,x0,88);if(sw){g.lineWidth=sw*2;g.strokeText(text,x0,88)}
+  const tx=new T.CanvasTexture(c);tx.encoding=T.sRGBEncoding;tx.anisotropy=an;txs.push(tx);
+  const m=new T.MeshStandardMaterial({map:tx,alphaTest:.5,alphaToCoverage:true,color:k?fv.clone().lerp(fs,Math.min(1,.35+k/(S.length-1)*.65)):fv,roughness:.4,metalness:.15,side:T.DoubleSide});mats.push(m);return m});
+ const n=Math.max(2,Math.round(tiefe/(hoehe*.006))),b=.38;
+ for(let i=0;i<=n;i++){const u=i/n,e=Math.min(u,1-u)/b,p=e>=1?1:Math.sqrt(1-(1-e)*(1-e)),k=Math.round(p*(S.length-1));
+  const m=new T.Mesh(geo,stufe[k]);m.position.z=(n/2-i)*tiefe/n;m.renderOrder=i;G.add(m)}
+ G.userData.s3={geo,tx:{dispose:()=>txs.forEach(x=>x.dispose())},mats};return G}
 function skyBeschriften(){if(!SKY)return;const L=abstand(),hh=L*.55;
  (SKY.schilder||[]).forEach(G=>{skyG.remove(G);const u=G.userData.s3;u.geo.dispose();u.tx.dispose();u.mats.forEach(m=>m.dispose())});SKY.schilder=[];
  SKY.info.forEach(I=>{const {kurz,zusatz}=kurzName(firmenName(I.f)),hk=hh*2.1;
@@ -1072,6 +1082,20 @@ function warnSchild(prio,anz,gr){const c=document.createElement('canvas');c.widt
  g.lineJoin='round';g.beginPath();g.moveTo(64,10);g.lineTo(120,112);g.lineTo(8,112);g.closePath();g.fillStyle='#ffffff';g.fill();g.lineWidth=14;g.strokeStyle=col;g.stroke();
  g.fillStyle='#1d2430';g.font='bold 62px system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText('!',64,76);
  const t=new T.CanvasTexture(c);t.encoding=T.sRGBEncoding;const sp=new T.Sprite(new T.SpriteMaterial({map:t,transparent:true,depthWrite:false,fog:false}));sp.scale.set(gr,gr,1);sp.renderOrder=15;return sp}
+// Version 51 (Wunsch des Nutzers): Doppelklick auf die Firma = kurze Animation (2 s): Turm wird durchsichtig, Kamera fliegt schnell auf ihn zu,
+// rasche Überblendung (Himmelsfarbe des Farbschemas) zur Kundenreise. Zeitgesteuert (unabhängig von der Bildrate); weitere Doppelklicks währenddessen ignoriert.
+let SKY_FLUG=null;
+function skyFlug(f){if(SKY_FLUG)return;const k=SKY&&SKY.koerper.find(q=>q.f===f&&!q.warn);if(!k){fokusFirma(f,false,'reise');return}
+ nutzerSteuert();const m=k.m,w=m.scale.x,h=m.scale.y,mat=m.material,op0=mat.opacity,z0=K.ziel.clone(),d0=K.dist,z1=new T.Vector3(m.position.x,h*.6,m.position.z),d1=Math.max(w*.6,2);
+ let bl=$('flugblende');if(!bl){bl=document.createElement('div');bl.id='flugblende';bl.style.cssText='position:fixed;inset:0;pointer-events:none;opacity:0;z-index:5';document.body.appendChild(bl)}
+ bl.style.background=(FARBSCHEMATA[SCHEMA]||{}).nebel||'#cbdcf1';const t0=performance.now(),DAUER=2000,WECHSEL=1350;let gewechselt=false;SKY_FLUG={f};
+ const schritt=()=>{const ms=performance.now()-t0;
+  if(!gewechselt){const a=Math.min(1,ms/1300),e=a*a*a;mat.opacity=op0+(.08-op0)*Math.min(1,ms/600);K.flug=false;K.ziel.copy(z0).lerp(z1,1-Math.pow(1-a,2));K.dist=d0+(d1-d0)*e;dirty=true;
+   bl.style.opacity=Math.max(0,Math.min(1,(ms-1000)/(WECHSEL-1000)));
+   if(ms>=WECHSEL){gewechselt=true;bl.style.opacity=1;fokusFirma(f,false,'reise');const z=heimZiel(null);if(z){K.ziel.copy(z.c);K.dist=z.d;K.zZiel.copy(z.c);K.zDist=z.d}neu()}}
+  else bl.style.opacity=Math.max(0,1-(ms-WECHSEL)/(DAUER-WECHSEL));
+  if(ms<DAUER)requestAnimationFrame(schritt);else{bl.style.opacity=0;SKY_FLUG=null}};
+ requestAnimationFrame(schritt)}
 // Version 48 (Wunsch des Nutzers): Doppelklick auf die Firma in der Skyline öffnet die Kundenreise der Firma (ly='reise'), sonst wie bisher das Netz
 function fokusFirma(f,still,ly){ly=ly==='reise'&&D&&D.skyline?'reise':'netz';FOKUS=f;N.forEach(n=>n.fokAus=!gehoertZu(n,f));$('fokb').style.display='';$('fokb').textContent='◀ Alle Firmen (jetzt: '+firmenName(f)+')';
  setzeLayout(ly,!still);$('ly').value=ly;if($('mas').style.display==='block'&&$('mas').dataset.art==='mas')massnahmenZeigen();else if($('mas').style.display==='block'&&$('mas').dataset.art==='lage')lageberichtZeigen()}
