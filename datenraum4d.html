@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="61">
+<meta name="4deep-darstellung" content="62">
 <title>4Deep – Datenraum in Raum und Zeit</title>
 <!-- 4Deep – Datenraum in Raum und Zeit (begonnen als Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026; Produkt seit 26.11.2026, Version 55): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -61,6 +61,12 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
 #profb{position:fixed;display:none;z-index:21;pointer-events:none;filter:drop-shadow(0 6px 9px rgba(0,0,0,.45))}#profb img{display:block;border-radius:6px}
 #profb .txt{max-width:280px;padding:10px 14px;background:#fff8e6;color:#1a2433;border-radius:8px;font:600 15px/1.35 system-ui,sans-serif;white-space:pre-wrap;overflow-wrap:anywhere}
 #dcap{left:50%;top:10px;transform:translateX(-50%);width:min(700px,calc(100% - 540px));min-width:340px;display:none;z-index:13;font-size:14px;line-height:1.45;pointer-events:none}#dcap .m{color:var(--mu);font-size:12.5px}#dczr{margin-top:4px;font-variant-numeric:tabular-nums}
+/* Version 62: Intro in 3D (wie 3Deep) */
+#intro{position:fixed;inset:0;z-index:60;transition:opacity 1.4s ease;cursor:pointer;background:#9dbbe4}#intro canvas{position:absolute;inset:0;width:100%;height:100%;display:block}#intro.aus{opacity:0;pointer-events:none}
+#intro .ton{position:absolute;right:18px;bottom:16px;z-index:2;margin:0;padding:6px 12px;border-radius:16px;background:rgba(255,255,255,.28);color:#fff;font:500 13px system-ui,sans-serif;border:1px solid rgba(255,255,255,.55);cursor:pointer;backdrop-filter:blur(4px)}#intro .ton:hover{background:rgba(255,255,255,.42)}
+#intro .it{position:absolute;left:0;right:0;bottom:calc(13% + clamp(29px,5vw,56px));text-align:center;color:#fff;text-shadow:0 2px 22px rgba(20,50,100,.5),0 0 2px rgba(20,50,100,.3);opacity:0;animation:itin 1.8s ease .9s forwards;pointer-events:none}
+#intro .it b{display:block;font:600 clamp(40px,7vw,78px)/1 system-ui,sans-serif;letter-spacing:.05em}#intro .it span{display:block;margin-top:10px;font:300 clamp(13px,1.6vw,20px) system-ui,sans-serif;letter-spacing:.35em;text-transform:uppercase}
+@keyframes itin{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 #dfade{position:fixed;inset:0;background:#0d1424;opacity:0;pointer-events:none;transition:opacity .6s ease;z-index:9}
 #tip{position:fixed;pointer-events:none;background:rgba(0,0,0,.75);padding:3px 7px;border-radius:5px;font-size:12px;display:none;white-space:nowrap}
 #st{position:fixed;right:10px;bottom:10px;color:var(--tx);background:var(--pn);border-radius:6px;padding:3px 8px;font-size:11px;text-align:right}
@@ -113,6 +119,9 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  <div class="cb"><input type="checkbox" id="namen"><span>Namen am Objekt (N)</span></div>
  <div class="cb"><input type="checkbox" id="glanz" checked><span>Glanz und Reifegrade</span></div>
  <div class="cb" title="Pulsierende Kugel während des Ladens (wird im Browser gespeichert)"><input type="checkbox" id="kugelan" checked><span>Ladekugel</span></div>
+ <div class="cb" title="Kurzes Intro in 3D beim Öffnen (wird im Browser gespeichert)"><input type="checkbox" id="introan" checked><span>Intro beim Start zeigen</span></div>
+ <div class="cb" title="Leise Musik im Intro (wird im Browser gespeichert)"><input type="checkbox" id="intromu"><span>Musik im Intro (leise)</span></div>
+ <button id="intb">▶ Intro zeigen</button>
  <label class="nurdemo">Farbschema</label><select id="fs" class="nurdemo" title="Hintergrund, Licht und Objektfarben"></select>
  <label class="nurdemo">Oberfläche</label><select id="of" class="nurdemo" title="Materialwirkung der Objekte"><option value="satin">Satin (seidenmatt)</option><option value="metall">Metall (eloxiert)</option><option value="lack">Lack (glänzend, bisher)</option><option value="bio">Bio-Porzellan (Alien-Tech)</option></select>
  <button id="lt" class="nurdemo">Leistung messen (5 s Drehung)</button>
@@ -128,7 +137,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 61 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 62 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="chr"></div><div class="pn" id="mas"></div><div class="pn" id="prof"></div><div class="pn" id="dcap"></div><div id="dfade"></div><div id="profb"></div>
@@ -1045,6 +1054,10 @@ function heimZiel(Z){const P=[];if(!Z&&(layout==='skyline'||layout==='reise')&&S
  const mx=(ax+bx)/2,my=(ay+by)/2,mz=(az+bz)/2,c=re.clone().multiplyScalar(mx).addScaledVector(up,my).addScaledVector(f,mz);
  const A=freieFlaeche(),tv=Math.tan(cam.fov*Math.PI/360),tvE=tv*(A.y1-A.y0)/A.H*.92,thE=tv*A.W/A.H*(A.x1-A.x0)/A.W*.92;
  let d=8/tv;for(let i=0;i<P.length;i+=st){const p=P[i],x=Math.abs(p.dot(re)-mx),y=Math.abs(p.dot(up)-my),z=p.dot(f)-mz;d=Math.max(d,z+x/thE,z+y/tvE)}
+ // Version 62 (Wunsch des Nutzers: kaufmännische Ansicht näher): bei Kennzahlen mit Perspektive nachrechnen – sichtbare Ausdehnung (Winkel) mittig und knapp einpassen
+ if(!Z&&layout==='achsen'){for(let it=0;it<5;it++){const cp2=c.clone().addScaledVector(f,d);let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9,ok=true;
+   for(let i=0;i<P.length;i+=st){const v=P[i].clone().sub(cp2),z=-v.dot(f);if(z<=d*.05){ok=false;break}const sx=v.dot(re)/z,sy=v.dot(up)/z;if(sx<x0)x0=sx;if(sx>x1)x1=sx;if(sy<y0)y0=sy;if(sy>y1)y1=sy}
+   if(!ok)break;c.addScaledVector(re,(x0+x1)/2*d).addScaledVector(up,(y0+y1)/2*d);d*=Math.max(.5,Math.min(1.5,Math.max((x1-x0)/2/thE,(y1-y0)/2/tvE)))}}
  // Mitte der freien Fläche: Ziel gegenläufig verschieben (Maßstab in Zielentfernung)
  const s=d*2*tv/A.H,ox=((A.x0+A.x1)/2-A.W/2)*s,oy=((A.y0+A.y1)/2-A.H/2)*s;
  c.addScaledVector(re,-ox).addScaledVector(up,oy);return{c,d}}
@@ -1234,7 +1247,7 @@ function masListe(){return(D&&D.massnahmen||[]).filter(m=>m&&(m.text||m.signal))
 function eur(v){if(!isFinite(v))return'–';const a=Math.abs(v);return a>=1e6?(v/1e6).toLocaleString('de-DE',{maximumFractionDigits:2})+' Mio €':a>=1e4?Math.round(v/1e3).toLocaleString('de-DE')+' T€':Math.round(v).toLocaleString('de-DE')+' €'}
 function skyFirmen(){const c=D&&D.skyline;if(!c)return[];const zahl={};N.forEach(n=>{const f=firmaVon(n);if(f&&f!==n)zahl[f.i]=(zahl[f.i]||0)+1});
  return N.filter(n=>n.ty===c.typ&&!typAus[n.ty]&&((kzv(n,c.hoehe)>0)||(zahl[n.i]||0)>=3)).sort((a,b)=>(kzv(b,c.hoehe)||0)-(kzv(a,c.hoehe)||0)||(zahl[b.i]||0)-(zahl[a.i]||0))}
-function skyFarbe(v){const g=(D.skyline.farbeGrenzen)||[10,25];return!isFinite(v)?0x8a96a8:v<g[0]?0xd0402a:v<g[1]?0xe0a020:0x2e9e4f}
+function skyFarbe(v){const g=(D.skyline.farbeGrenzen)||[10,25];return!isFinite(v)?0x8a96a8:v<g[0]?0xd0402a:v<g[1]?0xe0a020:0x3a72d0}   // Version 62 (Wunsch des Nutzers): gute Marge blau statt grün
 function skyline(L){if(SKY&&SKY.schilder)SKY.schilder.forEach(G=>{const u=G.userData.s3;u.geo.dispose();u.tx.dispose();u.mats.forEach(m=>m.dispose())});
  while(skyG.children.length){const c=skyG.children.pop();c.geometry&&c.geometry.dispose();c.material&&c.material.dispose()}
  const c=D.skyline,F=skyFirmen(),n=F.length;SKY={F,ecken:[],info:[],koerper:[],sammel:[],buehne:null,block:null};if(!n){skyG.visible=false;return}
@@ -1255,8 +1268,8 @@ function skyline(L){if(SKY&&SKY.schilder)SKY.schilder.forEach(G=>{const u=G.user
   const mf=M.filter(m=>m._f===firmenName(f)),p1=mf.filter(m=>m.prio===1).length,p2=mf.filter(m=>m.prio===2).length;
   // Version 43 (Wunsch des Nutzers): dezent – ein Viertel so groß, ohne Anzahl
   if(p1||p2){const st=new T.Mesh(new T.CylinderGeometry(L*.018,L*.018,L*.5,6),new T.MeshStandardMaterial({color:0x5a6472}));const fx=x-w*.5+L*.3,fz=z-w*.5+L*.3;st.position.set(fx,h+L*.25,fz);skyG.add(st);
-   const ws=warnSchild(p1?1:2,0,L*.45);ws.position.set(fx,h+L*.62,fz);skyG.add(ws);SKY.koerper.push({m:ws,f,warn:true})}
-  SKY.info.push({f,x,z,h,v,p1,p2,tp,txt:[c.titelHoehe||c.hoehe,eur(v)].join(' ')+' · '+(c.farbe||'')+' '+((f.o.meta||{})[c.farbe]||'–')+(isFinite(g)?' · '+(g>=0?'↗ +':'↘ −')+Math.round(Math.abs(g))+' %':'')+(p1||p2?' · ⚠ Hinweise im Lagebericht':'')});
+   const ws=ampelSchild(p1>0,p2>0,L*.5);ws.position.set(fx,h+L*.72,fz);skyG.add(ws);SKY.koerper.push({m:ws,f,warn:true})}   // Version 62 (Wunsch des Nutzers): Ampel (rot = Einträge Prio 1, gelb = Prio 2) statt Warnschild
+  SKY.info.push({f,x,z,h,v,p1,p2,tp,txt:[c.titelHoehe||c.hoehe,eur(v)].join(' ')+' · '+(c.farbe||'')+' '+((f.o.meta||{})[c.farbe]||'–')+(isFinite(g)?' · '+(g>=0?'↗ +':'↘ −')+Math.round(Math.abs(g))+' %':'')+(p1||p2?' · Ampel '+(p1?'rot':'')+(p1&&p2?'/':'')+(p2?'gelb':'')+': Hinweise im Lagebericht':'')});
   SKY.ecken.push(new T.Vector3(x-w,0,z-w),new T.Vector3(x+w,h+L*5.4,z+w),new T.Vector3(x-w*2.2,h+L*3.4,z),new T.Vector3(x+w*2.2,h+L*3.4,z))});
  SKY.reihen=rows;
  if(nurF)skyBuehne(L,A,SKY.info[0].z+A*.9);   // Version 53: Bühne direkt vor dem Turm (andere Reihen sind aus), Kamera passt besser
@@ -1285,7 +1298,7 @@ function skyBeschriften(){if(!SKY)return;const L=abstand(),hh=L*.55;
   if(zusatz)vorne(marke(zusatz,I.x,I.h+L*3.15,I.z,hk*.5,'#2a3b5c')).center.set(.5,.5);
   vorne(marke(I.txt.replace(' · ⚠ Hinweise im Lagebericht',''),I.x,I.h+L*2.45,I.z,hh*.8,'#2a3b5c')).center.set(.5,.5);
   if(I.tp)marke(I.tp.txt,I.tp.x+I.tp.s*.45,I.tp.y+I.tp.s*.1,I.tp.z,hh*1.05,I.tp.auf?'#1f7a3c':'#b02a1a').center.set(0,.5)});
- skyBuehneBeschriften(L,hh);legendeOben(SKY.buehne?'<b>Aufgeklappt: '+esc(firmenName(SKY.buehne.f))+'</b> · Klick auf einen Sammelkörper = Objekte zeigen/verbergen · Klick auf den Turm oder Doppelklick ins Leere = alle Firmen':esc('Firmen-Skyline · Höhe = '+(D.skyline.titelHoehe||D.skyline.hoehe)+', Dachkante = '+D.skyline.farbe+' (rot < '+((D.skyline.farbeGrenzen||[10,25])[0])+', gelb < '+((D.skyline.farbeGrenzen||[10,25])[1])+'), Pfeil ↗/↘ = '+D.skyline.pfeil+', ⚠ = Hinweise der Handlungsliste (Klick = Lagebericht)')+'<br>Klick = Firma aufklappen · Doppelklick = Firma öffnen')}
+ skyBuehneBeschriften(L,hh);legendeOben(SKY.buehne?'<b>Aufgeklappt: '+esc(firmenName(SKY.buehne.f))+'</b> · Klick auf einen Sammelkörper = Objekte zeigen/verbergen · Klick auf den Turm oder Doppelklick ins Leere = alle Firmen':esc('Firmen-Skyline · Höhe = '+(D.skyline.titelHoehe||D.skyline.hoehe)+', Dachkante = '+D.skyline.farbe+' (rot < '+((D.skyline.farbeGrenzen||[10,25])[0])+', gelb < '+((D.skyline.farbeGrenzen||[10,25])[1])+', sonst blau), Pfeil ↗/↘ = '+D.skyline.pfeil+', Ampel rot/gelb = Hinweise der Handlungsliste (Klick = Lagebericht)')+'<br>Klick = Firma aufklappen · Doppelklick = Firma öffnen')}
 function trendPfeil(auf,s,x,y,z){const mat=new T.MeshStandardMaterial({color:auf?0x2e9e4f:0xd0402a,roughness:.35,metalness:.1}),a=auf?-Math.PI/4:-Math.PI*3/4;
  [new T.CylinderGeometry(s*.07,s*.07,s*.62,14).translate(0,-.19*s,0),new T.ConeGeometry(s*.2,s*.38,20).translate(0,.31*s,0)].forEach(gm=>{gm.rotateZ(a);const m=new T.Mesh(gm,mat);m.position.set(x,y,z);m.castShadow=true;skyG.add(m)});
  return{auf,s,x,y,z}}
@@ -1293,6 +1306,12 @@ function warnSchild(prio,anz,gr){const c=document.createElement('canvas');c.widt
  g.lineJoin='round';g.beginPath();g.moveTo(64,10);g.lineTo(120,112);g.lineTo(8,112);g.closePath();g.fillStyle='#ffffff';g.fill();g.lineWidth=14;g.strokeStyle=col;g.stroke();
  g.fillStyle='#1d2430';g.font='bold 62px system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText('!',64,76);
  const t=new T.CanvasTexture(c);t.encoding=T.sRGBEncoding;const sp=new T.Sprite(new T.SpriteMaterial({map:t,transparent:true,depthWrite:false,fog:false}));sp.scale.set(gr,gr,1);sp.renderOrder=15;return sp}
+// Version 62: Ampel als Schild (dreht sich zur Kamera): dunkles Gehäuse, rot leuchtet bei Einträgen Prio 1, gelb bei Prio 2, grün aus; Höhe gr
+function ampelSchild(rot,gelb,gr){const c=document.createElement('canvas');c.width=64;c.height=160;const g=c.getContext('2d'),rr=(x,y,w,h,r)=>{g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath()};
+ rr(4,4,56,152,14);g.fillStyle='#1f2633';g.fill();g.lineWidth=4;g.strokeStyle='#5a6472';g.stroke();
+ [[32,34,rot,'#ff3b30','#4a1a18'],[32,80,gelb,'#ffc21a','#4a3a12'],[32,126,false,'#3ad06a','#173a22']].forEach(([x,y,an,hell,dunkel])=>{if(an){const rg=g.createRadialGradient(x,y,2,x,y,22);rg.addColorStop(0,'#ffffff');rg.addColorStop(.35,hell);rg.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=rg;g.beginPath();g.arc(x,y,22,0,7);g.fill()}
+  g.beginPath();g.arc(x,y,16,0,7);g.fillStyle=an?hell:dunkel;g.fill();if(an){g.beginPath();g.arc(x-5,y-5,5,0,7);g.fillStyle='rgba(255,255,255,.7)';g.fill()}});
+ const t=new T.CanvasTexture(c);t.encoding=T.sRGBEncoding;const sp=new T.Sprite(new T.SpriteMaterial({map:t,transparent:true,depthWrite:false,fog:false}));sp.scale.set(gr*.4,gr,1);sp.renderOrder=15;return sp}
 // Version 51 (Wunsch des Nutzers): Doppelklick auf die Firma = kurze Animation (2 s): Turm wird durchsichtig, Kamera fliegt schnell auf ihn zu,
 // rasche Überblendung (Himmelsfarbe des Farbschemas) zur Kundenreise. Zeitgesteuert (unabhängig von der Bildrate); weitere Doppelklicks währenddessen ignoriert.
 let SKY_FLUG=null;
@@ -1978,7 +1997,7 @@ function meld(t){ladeKugel(false);$('leer').style.display='';$('leer').textConte
 // ---------- Leistung ----------
 let fps=0,fz=0,fT=performance.now(),messung=null;
 $('lt').onclick=()=>{messung={start:performance.now(),frames:0,gier:K.gier}};
-function status(){$('st').innerHTML=N.length.toLocaleString('de-DE')+' Objekte · '+E.length.toLocaleString('de-DE')+' Beziehungen'+(fps?' · '+fps+' fps':'')+(sim?' · Layout '+Math.round(sim.iter/sim.max*100)+' %':letzteSimDauer?' · Layout in '+(letzteSimDauer/1000).toFixed(1).replace('.',',')+' s':'')+(messung&&messung.erg?'<br>Messung: '+messung.erg:'')}
+function status(){$('st').innerHTML=N.length.toLocaleString('de-DE')+' Objekte · '+E.length.toLocaleString('de-DE')+' Beziehungen'+(fps?' · '+fps+' fps':'')+(sim?' · Layout '+Math.round(sim.iter/sim.max*100)+' %':letzteSimDauer?' · Layout in '+(letzteSimDauer/1000).toFixed(1).replace('.',',')+' s':'')+(messung&&messung.erg?'<br>Messung: '+messung.erg+(KG.mess?'<br>Ladekugel zuletzt: '+Math.round(KG.mess.bilder*1000/Math.max(1,KG.mess.ms))+' fps beim Platzen, längste Pause '+KG.mess.luecke+' ms':''):'')}   // Version 62: Ladekugel-Messung
 
 // ---------- Version 28: Unterricht wie in 3Deep (allgemein über das Datenformat, gleiche Themendateien) ----------
 // Schritte (revisionen, nodes[].revs/posRev, edges[].revs), Punktwolken (wolken mit drehen/strom/ausdehnen/zittern/flackern/farbLauf/ausblenden),
@@ -2244,11 +2263,14 @@ function strahlTick(t){const S=strahl,L=GEL?E.filter(k=>k.dir&&!k.revAus&&k.a.s>
 // ---------- Datenquellen: Adapter (postMessage), Beispiele ----------
 // ---------- Version 42 (Wunsch des Nutzers): Ladekugel wie in 3Deep (Darstellung 100–122), mit Zeitring für 4D ----------
 // Gelernt in 3Deep: erst nach 300 ms sichtbar (kurzes Laden blinkt nicht), dreht sich nicht, wächst wie eine Morula (Zellen bleiben gleich groß, ihre Zahl wächst;
-// Teilung 1→4, neue Punkte wandern von der Kantenmitte nach außen), Kern fest, Puls 2,5 s, Größe 48–224 px; am Ende zerplatzt sie in 250 ms in Splitter,
+// Teilung 1→4, neue Punkte wandern von der Kantenmitte nach außen), Kern fest, Puls 2,5 s, Größe 48–224 px; am Ende zerplatzt sie in 250 ms (seit Version 62: 450 ms) in Splitter,
 // die Uhr dafür startet erst mit dem ersten Bild nach dem Aufbau (der Aufbau blockiert den Browser kurz). Häkchen „Ladekugel“ (Standard an, gemerkt).
 // Neu in 4Deep: zarter Zeitring um die Kugel (fest, steht still), auf dem einmal je Puls ein Lichtpunkt mit Schweif umläuft. Steuerung allgemein über ladeKugel(an):
 // Adapter {quelle:'3deep-adapter',laedt:true|false}, CRM-ZIP, Themen per Webserver; laden() und Fehlermeldungen beenden sie.
-var KG={on:false,timer:0,raf:0,t0:0,aus:0};const KG_PULS=2.5,KG_R=80,KG_PLATZ=250,KG_RING=KG_R*1.55;
+// Version 62 (Wunsch des Nutzers): Zerplatzen 450 ms statt 250 ms (Splitter besser sichtbar), der Raum baut sich dahinter schon auf;
+// KG.mess = Bildrate während des Platzens (Bilder, längste Lücke in ms) zur Kontrolle, ob die Überschneidung ruckelt.
+var INTRO={on:false,aus:false,q:[],stop:null,bilder:0};   // Version 62: Intro in 3D (Zustand, Warteschlange der Adapter-Nachrichten)
+var KG={on:false,timer:0,raf:0,t0:0,aus:0,mess:null};const KG_PULS=2.5,KG_R=80,KG_PLATZ=450,KG_RING=KG_R*1.55;
 const KGEO=(()=>{const p=(1+Math.sqrt(5))/2,V=[[-1,p,0],[1,p,0],[-1,-p,0],[1,-p,0],[0,-1,p],[0,1,p],[0,-1,-p],[0,1,-p],[p,0,-1],[p,0,1],[-p,0,-1],[-p,0,1]].map(v=>{const l=Math.hypot(...v);return v.map(x=>x/l)}),
  F0=[[0,11,5],[0,5,1],[0,1,7],[0,7,10],[0,10,11],[1,5,9],[5,11,4],[11,10,2],[10,7,6],[7,1,8],[3,9,4],[3,4,2],[3,2,6],[3,6,8],[3,8,9],[4,9,5],[2,4,11],[6,2,10],[8,6,7],[9,8,1]],L=[{n:12,F:F0,par:[]}];let F=F0;
  for(let s_=0;s_<4;s_++){const M=new Map(),G=[],par=L[s_].par.slice();
@@ -2301,7 +2323,7 @@ function kugelPlatzen(){const c=$('kugel'),L=KG.letzt;cancelAnimationFrame(KG.ra
   [[Q[0],m[0],m[2]],[Q[1],m[1],m[0]],[Q[2],m[2],m[1]],[m[0],m[1],m[2]]].forEach(T3=>{const cx_=(T3[0][0]+T3[1][0]+T3[2][0])/3,cy_=(T3[0][1]+T3[1][1]+T3[2][1])/3,cz=(T3[0][2]+T3[1][2]+T3[2][2])/3,l=Math.hypot(cx_,cy_,cz)||1,d2=Math.hypot(cx_,cy_)||1;
    sp.push({x:ox+cx_,y:oy-cy_,dx:cx_/d2,dy:-cy_/d2,w:D2*(.55+.6*zz())+L.R,rz:(zz()-.5)*9,z:cz/l,vorn,lt:F.lt||0,T:T3.map(p=>[p[0]-cx_,-(p[1]-cy_)])})})});
  KG.platzt={t0:0,n:sp.length};const g=c.getContext('2d'),pr=v=>[ox+v[0],oy-v[1]];
- const tick=start=>{if(!KG.platzt)return;if(!start&&!KG.platzt.t0){KG.platzt.t0=performance.now();KG.aus=setTimeout(ende,KG_PLATZ+120)}const u=start?0:Math.max(0,Math.min(1,(performance.now()-KG.platzt.t0)/KG_PLATZ));g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,Wv,Hv);if(u>=1){ende();return}
+ const tick=start=>{if(!KG.platzt)return;if(!start&&!KG.platzt.t0&&!KG.platzt.komp){KG.platzt.komp=1;try{renderer.compile(scene,cam)}catch(_){}}const jz=performance.now();if(!start&&!KG.platzt.t0){KG.platzt.t0=jz;KG.aus=setTimeout(ende,KG_PLATZ+120);KG.mess={bilder:0,luecke:0,ms:0}}if(!start&&KG.mess){if(KG.platzt.tl)KG.mess.luecke=Math.max(KG.mess.luecke,Math.round(jz-KG.platzt.tl));KG.platzt.tl=jz;KG.mess.bilder++;KG.mess.ms=Math.round(jz-KG.platzt.t0)}const u=start?0:Math.max(0,Math.min(1,(performance.now()-KG.platzt.t0)/KG_PLATZ));g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,Wv,Hv);if(u>=1){ende();return}
   const e=u*(1.6-.6*u),al=1-u*u*u;
   if(u<.4){const r=L.R*(1+u*2),gr=g.createRadialGradient(ox,oy,0,ox,oy,r);gr.addColorStop(0,`rgba(255,255,255,${(.5*(1-u/.4)).toFixed(3)})`);gr.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=gr;g.fillRect(ox-r,oy-r,2*r,2*r)}
   // Zeitring weitet sich und verblasst
@@ -2316,13 +2338,138 @@ function kugelPlatzen(){const c=$('kugel'),L=KG.letzt;cancelAnimationFrame(KG.ra
 // Weitere Stände desselben Laufs (lauf <= gesperrter, auch ein noch ausstehender erster Stand nach laedt:true) werden verworfen.
 // Die Sperre endet mit dem nächsten neuen Laden (laedt:true bei Drop/„Laden“, sonst ein Stand mit höherer lauf-Kennung). Der Adapter selbst lädt im Hintergrund zu Ende.
 const AUF={hoch:null,laedtNeu:false,sperre:null};
-function eigeneWahl(){if(AUF.hoch==null&&!AUF.laedtNeu)return;AUF.sperre={lauf:AUF.hoch||0,offen:AUF.laedtNeu}}
-addEventListener('message',e=>{const m=e.data;if(!m||m.quelle!=='3deep-adapter')return;
+function eigeneWahl(){if(INTRO.q.length){INTRO.q.forEach(m=>{if(m.laedt===true)AUF.laedtNeu=true;if(m.daten&&m.lauf!=null){AUF.hoch=Math.max(AUF.hoch||0,m.lauf);AUF.laedtNeu=false}});INTRO.q=INTRO.q.filter(m=>!m.daten&&m.laedt==null)}   // Version 62: wie 3Deep – gesammelte Adapterdaten verwerfen
+ if(AUF.hoch==null&&!AUF.laedtNeu)return;AUF.sperre={lauf:AUF.hoch||0,offen:AUF.laedtNeu}}
+addEventListener('message',e=>{const m=e.data;if(!m||m.quelle!=='3deep-adapter')return;if(INTRO.on)INTRO.q.push(m);else adapterNachricht(m)});   // Version 62: während des Intros sammeln
+function adapterNachricht(m){
  if(m.laedt!=null){if(m.laedt){AUF.sperre=null;AUF.laedtNeu=true}ladeKugel(!!m.laedt);return}
  if(!m.daten)return;
  if(AUF.sperre){const s=AUF.sperre,l=m.lauf;if(l!=null&&(l<=s.lauf||s.offen)){if(s.offen&&l>s.lauf){s.lauf=l;s.offen=false}AUF.hoch=Math.max(AUF.hoch||0,l);AUF.laedtNeu=false;return}AUF.sperre=null}
  AUF.laedtNeu=false;if(m.lauf!=null)AUF.hoch=Math.max(AUF.hoch||0,m.lauf);
- const gleich=m.lauf!=null&&m.lauf===lauf&&N.length>0;lauf=m.lauf;$('ds').value='';laden(m.daten,{behalten:gleich})});
+ const gleich=m.lauf!=null&&m.lauf===lauf&&N.length>0;lauf=m.lauf;$('ds').value='';laden(m.daten,{behalten:gleich})}
+// ---------- Version 62 (Wunsch des Nutzers): Intro wie 3Deep (Darstellung 75–123), aber in echtem 3D (three.js, eigene Zeichenfläche) ----------
+// Gläserne Würfel über spiegelndem Boden, Türme links und rechts, Kamerafahrt 6 s, Schriftzug, Klick oder Esc überspringt, Überblendung 1,4 s in den Datenraum.
+// Szene, Farben und Kamerapfad aus 3Deep übernommen (dort Canvas 2D mit eigener Projektion): Flächen mit Farbverlauf und Helligkeit nach Lage,
+// Kristallflächen und innere Würfel als Linien, Spiegelbild = gespiegelte Kopie unter dem durchscheinenden Boden, Dunst am Horizont als Band um die Kamera.
+// Häkchen „Intro beim Start zeigen“ (localStorage '4d_intro'), „Musik im Intro“ ('4d_introMusik', Voreinstellung aus), Knopf „▶ Intro zeigen“.
+// Unter Testautomatisierung (navigator.webdriver) aus; tests/test-intro4d.js startet es gezielt. Adapter-Nachrichten während des Intros werden gesammelt
+// und danach der Reihe nach verarbeitet (wie 3Deep). Der Datenraum dahinter wird erst ab der Überblendung gezeichnet (keine zwei Zeichenflächen gleichzeitig).
+const INTRO_DAUER=6;
+function introAn(){try{return localStorage.getItem('4d_intro')!=='aus'}catch(_){return true}}
+function musikAn(){try{return localStorage.getItem('4d_introMusik')==='an'}catch(_){return false}}
+$('introan').checked=introAn();$('introan').onchange=e=>{try{localStorage.setItem('4d_intro',e.target.checked?'an':'aus')}catch(_){}};
+$('intromu').checked=musikAn();$('intromu').onchange=e=>{try{localStorage.setItem('4d_introMusik',e.target.checked?'an':'aus')}catch(_){}};
+$('intb').onclick=()=>{introStart(true)};
+// Musik unverändert aus 3Deep (Version 85–91): Knistern, Klangfläche B-Dur add9, Melodie „3Deeb“, im Browser erzeugt (Web Audio, keine Datei)
+const MELODIEN={neu:{flaeche:[116.54,174.61,233.08,261.63,349.23],toene:[[1.3,587.33],[2.3,1174.66],[2.8,1174.66],[3.3,1318.51],[3.8,1318.51],[4.3,932.33]]}};
+const MUSIK={ctx:null,ende:null,start:0,melodie:'neu',aus:3,off:null,geplant:[],plane:null};
+function introMusik(dauer,introZeit){const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;let ac;try{ac=new AC()}catch(_){return null}
+ MUSIK.ctx=ac;MUSIK.off=null;MUSIK.geplant=[];const MEL=MELODIEN[MUSIK.melodie]||MELODIEN.neu,F=MUSIK.aus,L=dauer+F,lp=ac.createBiquadFilter();lp.type='lowpass';lp.frequency.value=5200;lp.connect(ac.destination);
+ const sr=ac.sampleRate,buf=ac.createBuffer(1,Math.ceil(sr*L),sr),d=buf.getChannelData(0);let r=12345;const rn=()=>{r=(r*1103515245+12345)&0x7fffffff;return r/0x7fffffff};
+ for(let i=0;i<d.length;i++)d[i]=(rn()-.5)*.012;for(let k=0;k<L*55;k++){const p=Math.floor(rn()*d.length),a=(rn()<.12?.5:.16)*(rn()*.8+.2),n=Math.floor(sr*(.0006+rn()*.0018));for(let j=0;j<n&&p+j<d.length;j++)d[p+j]+=a*(rn()-.5)*Math.exp(-j/(n*.35))}
+ const huelle=(pa,pts,T0,n,off)=>{let v=pts[pts.length-1][1];for(let i=0;i<pts.length;i++){if(pts[i][0]>=off){v=i?pts[i-1][1]+(pts[i][1]-pts[i-1][1])*(off-pts[i-1][0])/(pts[i][0]-pts[i-1][0]):pts[0][1];break}}
+  pa.setValueAtTime(v,n);pts.forEach(([t,w])=>{if(t>off)pa.linearRampToValueAtTime(w,T0+t)})};
+ let bus=null,quellen=[],w0=0,n0=0,zu=false;
+ const plane=()=>{if(zu||ac.state!=='running')return;const jetzt=performance.now();
+  if(bus&&Math.abs((jetzt-w0)/1000-(ac.currentTime-n0))<.15)return;
+  if(bus){try{bus.disconnect()}catch(_){}quellen.forEach(q=>{try{q.stop()}catch(_){}})}
+  const n=ac.currentTime+.03,off=Math.max(0,Math.min(L,introZeit?introZeit():0)),T0=n-off;w0=jetzt;n0=ac.currentTime;quellen=[];MUSIK.off=off;MUSIK.start=T0;MUSIK.geplant=[];
+  bus=ac.createGain();bus.connect(lp);huelle(bus.gain,[[0,0],[1.2,.55],[dauer,.55],[L,0]],T0,n,off);
+  const kn=ac.createBufferSource();kn.buffer=buf;const bp=ac.createBiquadFilter();bp.type='bandpass';bp.frequency.value=2600;bp.Q.value=.5;const kg=ac.createGain();kg.gain.value=1.1;kn.connect(bp);bp.connect(kg);kg.connect(bus);kn.start(n,off);quellen.push(kn);
+  MEL.flaeche.forEach((f,i)=>[-3,3].forEach(c=>{const o=ac.createOscillator(),g=ac.createGain();o.type=i<2?'triangle':'sine';o.frequency.value=f;o.detune.value=c+i;huelle(g.gain,[[0,0],[2.2,.035/(1+i*.4)],[L,0]],T0,n,off);o.connect(g);g.connect(bus);o.start(n);o.stop(T0+L+.1);quellen.push(o)}));
+  MEL.toene.forEach(([t,f])=>{if(t>dauer||t<off)return;MUSIK.geplant.push({t,at:T0+t});[1,2.76].forEach((m,k)=>{const o=ac.createOscillator(),g=ac.createGain();o.type='sine';o.frequency.value=f*m;const t0=T0+t;g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(k?.012:.05,t0+.008);g.gain.exponentialRampToValueAtTime(.0001,t0+(k?.6:2.2));o.connect(g);g.connect(bus);o.start(t0);o.stop(t0+2.3);quellen.push(o)})})};
+ MUSIK.plane=plane;ac.onstatechange=plane;
+ MUSIK.ende=()=>{if(zu)return;zu=true;try{if(!bus||ac.state!=='running'){ac.close();return}const n=ac.currentTime;bus.gain.cancelScheduledValues(n);bus.gain.setValueAtTime(bus.gain.value,n);bus.gain.linearRampToValueAtTime(0,n+F);setTimeout(()=>{try{ac.close()}catch(_){}},F*1000+300)}catch(_){}};
+ try{ac.resume().then(plane,()=>{})}catch(_){}plane();return ac}
+const hsI=(i,j)=>{const x=Math.sin(i*12.9898+j*78.233)*43758.5453;return x-Math.floor(x)};
+function introStart(neu){if(!neu&&(!introAn()||navigator.webdriver))return;if(INTRO.on)return;
+ const wrap=document.createElement('div'),cvI=document.createElement('canvas');wrap.id='intro';wrap.appendChild(cvI);
+ wrap.insertAdjacentHTML('beforeend','<div class="it"><b>4Deep</b><span>Datenraum in Raum und Zeit</span></div>');document.body.appendChild(wrap);
+ let R;try{R=new T.WebGLRenderer({canvas:cvI,antialias:true,powerPreference:'high-performance'})}catch(_){wrap.remove();return}
+ INTRO.on=true;INTRO.aus=false;INTRO.bilder=0;R.setPixelRatio(Math.min(devicePixelRatio||1,2));   // lineare Ausgabe: Farben wie angegeben (wie Canvas 2D in 3Deep)
+ const S=new T.Scene(),CAM=new T.PerspectiveCamera(70,1,.3,1200),WEG=[];
+ const rs=()=>{R.setSize(innerWidth,innerHeight,false);CAM.aspect=innerWidth/innerHeight;CAM.updateProjectionMatrix()};rs();addEventListener('resize',rs);
+ // Himmel und Bodengrund als Rundum-Bild (Horizont in der Mitte), Verlauf wie 3Deep
+ {const c=document.createElement('canvas');c.width=4;c.height=1024;const g=c.getContext('2d'),gr=g.createLinearGradient(0,0,0,1024);
+  [[0,'#5f8ccc'],[.278,'#6893d0'],[.433,'#a9c4e8'],[.4995,'#d6e4f5'],[.5005,'#c9d9ef'],[.542,'#a9c1e4'],[.667,'#7e9fcf'],[1,'#7896c8']].forEach(x=>gr.addColorStop(x[0],x[1]));g.fillStyle=gr;g.fillRect(0,0,4,1024);
+  const t=new T.CanvasTexture(c);t.mapping=T.EquirectangularReflectionMapping;S.background=t;WEG.push(t)}
+ const mat=(o)=>{const m=new o.typ(Object.assign({transparent:true,depthWrite:false},o.p));WEG.push(m);return m};
+ // Würfel wie 3Deep: Mitte c, halbe Kanten e, Drehung rot(t) -> [Gier, Neigung], innere Kristallflächen
+ const B=[],ra=(i,j,a,b)=>a+(b-a)*hsI(i,j);
+ const kristall=(i,k)=>{const L=[];for(let m=0;m<k;m++){const ax=Math.floor(hsI(i,m*7+1)*3),p=ra(i,m*7+2,-.75,.75),a0=ra(i,m*7+3,-1,.2),a1=ra(i,m*7+4,a0+.4,1),b0=ra(i,m*7+5,-1,.2),b1=ra(i,m*7+6,b0+.4,1),
+   pt=(a,b)=>ax===0?[p,a,b]:ax===1?[a,p,b]:[a,b,p];L.push({p:[pt(a0,b0),pt(a1,b0),pt(a1,b1),pt(a0,b1)],d:hsI(i,m*7+7)<.35})}return L};
+ const box=(x,y,z,ex,ey,ez,rot,k,spieg)=>{const i=B.length;B.push({c:[x,y,z],e:[ex,ey,ez],rot,ln:kristall(i+11,k),sp:spieg!==false})};
+ box(0,15.5,-30,6.2,6.2,6.2,t=>[.42+t*.12,.1+.03*Math.sin(t*.7)],22);B[0].dicht=true;
+ box(-10.5,16.5,-22,1.1,1.6,1.1,t=>[t*.5+1,.4+.2*Math.sin(t)],3);box(-10,15,-22.5,1,1,1,t=>[t*.5+1.4,.6],2);
+ box(9,21,-34,1.8,1.6,1.8,t=>[.8+t*.3,.6],3);box(11.2,19.6,-33,1.5,1.5,1.5,t=>[.3-t*.25,.9],3);
+ box(8.6,10.8,-21,1.7,1.5,1.7,t=>[.7-t*.4,.5+.1*Math.sin(t*1.3)],3);
+ let q=0;for(const sd of[-1,1])for(let gx=0;gx<4;gx++)for(let gz=0;gz<11;gz++){q++;if(gx===0&&hsI(q,4)<.45)continue;const x=sd*(21+gx*4.3+ra(q,1,-.3,.3)),z=14-gz*4.4,ht=Math.floor(ra(q,3,1+gx,3+gx*2.2+(gz>6?1:0)));
+  for(let l=0;l<ht;l++){if(l>0&&hsI(q,l+20)<.18)continue;box(x,2.1+l*4.25,z,2.1,2.1,2.1,null,4,l<4)}
+  if(gx>1&&hsI(q,90)<.12){const e=ra(q,91,1.3,2);box(x,ra(q,92,26,36),z,e,e,e,null,3,false)}}
+ const FC=[[0,1,3,2],[4,6,7,5],[0,4,5,1],[2,3,7,6],[0,2,6,4],[1,5,7,3]],FN=[[-1,0,0],[1,0,0],[0,-1,0],[0,1,0],[0,0,-1],[0,0,1]],EK=[[0,1],[2,3],[4,5],[6,7],[0,2],[1,3],[4,6],[5,7],[0,4],[1,5],[2,6],[3,7]];
+ const ecke=(i,e,k)=>[(i&4?1:-1)*e[0]*k[0],(i&2?1:-1)*e[1]*k[1],(i&1?1:-1)*e[2]*k[2]];
+ // Flächenfarben (RGBA) je Ecke: Verlauf von Ecke 0 (hell) zu Ecke 2, Helligkeit nach Flächenlage (oben heller, links etwas heller) wie 3Deep
+ const flFarben=(A,o,nrm,dicht)=>{for(let f=0;f<6;f++){const n=nrm[f],lt=(dicht?1.5:1)*(.15+.2*Math.max(0,n[1])+.08*Math.max(0,-n[0])),C4=[[1,1,1,lt*2.2],[214/255,232/255,1,lt],[170/255,200/255,240/255,lt*1.4],[214/255,232/255,1,lt]];
+  for(let v=0;v<4;v++){const j=o+(f*4+v)*4;A[j]=C4[v][0];A[j+1]=C4[v][1];A[j+2]=C4[v][2];A[j+3]=Math.min(1,C4[v][3])}}};
+ const sammler=()=>({fp:[],fc:[],fi:[],ed:[],kw:[],kd:[],ib:[]});
+ const lege=(Z,b,ctr)=>{const e=b.e,P=[0,1,2,3,4,5,6,7].map(i=>{const v=ecke(i,e,[1,1,1]);return[v[0]+ctr[0],v[1]+ctr[1],v[2]+ctr[2]]}),o=Z.fp.length/3;
+  FC.forEach((fc,f)=>{fc.forEach(i=>Z.fp.push(...P[i]));const a=P[fc[0]],b1=P[fc[1]],c=P[fc[2]],u=[b1[0]-a[0],b1[1]-a[1],b1[2]-a[2]],w=[c[0]-a[0],c[1]-a[1],c[2]-a[2]],cr=[u[1]*w[2]-u[2]*w[1],u[2]*w[0]-u[0]*w[2],u[0]*w[1]-u[1]*w[0]],n=FN[f],s0=o+f*4;
+   if(cr[0]*n[0]+cr[1]*n[1]+cr[2]*n[2]>0)Z.fi.push(s0,s0+1,s0+2,s0,s0+2,s0+3);else Z.fi.push(s0,s0+2,s0+1,s0,s0+3,s0+2)});
+  const fc=new Array(96).fill(0);flFarben(fc,0,FN,b.dicht);Z.fc.push(...fc);
+  EK.forEach(([a,c])=>Z.ed.push(...P[a],...P[c]));
+  b.ln.forEach(L=>{const Q=L.p.map(p=>[p[0]*e[0]+ctr[0],p[1]*e[1]+ctr[1],p[2]*e[2]+ctr[2]]),Ziel=L.d?Z.kd:Z.kw;for(let k=0;k<4;k++)Ziel.push(...Q[k],...Q[(k+1)%4])});
+  (b.dicht?[[.8,.7,.85],[.6,.75,.5],[.42,.45,.6],[.25,.6,.3]]:[[.58,.62,.55]]).forEach(k=>{const I=[0,1,2,3,4,5,6,7].map(i=>{const v=ecke(i,e,k);return[v[0]+ctr[0],v[1]+ctr[1],v[2]+ctr[2]]});EK.forEach(([a,c])=>Z.ib.push(...I[a],...I[c]))})};
+ const linGeo=a=>{const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(a,3));WEG.push(g);return g};
+ // Gruppe aus einem Sammler: k = Deckkraft (1 = Würfel, .42 = Spiegelbild), dicht = Mittelwürfel (kräftiger)
+ const bauen=(Z,k,dicht,ro)=>{const G=new T.Group(),g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(Z.fp,3));g.setAttribute('color',new T.Float32BufferAttribute(Z.fc,4));g.setIndex(Z.fi);WEG.push(g);
+  const hinten=new T.Mesh(g,mat({typ:T.MeshBasicMaterial,p:{color:0xe2efff,opacity:.06*k*(dicht?1.5:1),side:T.BackSide}})),vorn=new T.Mesh(g,mat({typ:T.MeshBasicMaterial,p:{vertexColors:true,opacity:k,side:T.FrontSide}}));
+  hinten.renderOrder=ro;vorn.renderOrder=ro+1;G.add(hinten,vorn);
+  [[Z.kd,0x2c4f80,.32],[Z.kw,0xffffff,dicht?.7:.5],[Z.ib,0xffffff,dicht?.45:.35],[Z.ed,0xf4f9ff,.85]].forEach(([a,c,o],j)=>{if(!a.length)return;const l=new T.LineSegments(linGeo(a),mat({typ:T.LineBasicMaterial,p:{color:c,opacity:o*k}}));l.renderOrder=ro+2+j;G.add(l)});
+  G.traverse(o=>{o.frustumCulled=false});return G};
+ // Spiegelwelt (y gespiegelt) zuerst, dann Boden, Linien, Dunst, dann die Würfel
+ const MIR=new T.Group();MIR.scale.y=-1;S.add(MIR);
+ const FEST=sammler(),FESTSP=sammler(),BEW=[];
+ B.forEach(b=>{if(b.rot){const Z=sammler();lege(Z,b,[0,0,0]);const g1=bauen(Z,1,b.dicht,40),g2=bauen(Z,.42,b.dicht,0);g1.position.set(...b.c);g2.position.set(...b.c);S.add(g1);if(b.sp)MIR.add(g2);
+   BEW.push({b,g:[g1,g2],fc:g1.children[1].geometry.attributes.color})}
+  else{lege(FEST,b,b.c);if(b.sp)lege(FESTSP,b,b.c)}});
+ S.add(bauen(FEST,1,false,30));MIR.add(bauen(FESTSP,.42,false,0));
+ // durchscheinender Boden über dem Spiegelbild: Deckkraft nach Blickwinkel unter dem Horizont (wie der Bodenschimmer in 3Deep), je Bild neu
+ const BX=48,BZ=140,bg=new T.BufferGeometry(),bp=[],bi=[],zW=j=>60-500*Math.pow(j/BZ,1.6);
+ for(let j=0;j<=BZ;j++)for(let i=0;i<=BX;i++)bp.push(-240+480*i/BX,0,zW(j));for(let j=0;j<BZ;j++)for(let i=0;i<BX;i++){const a=j*(BX+1)+i;bi.push(a,a+BX+1,a+1,a+1,a+BX+1,a+BX+2)}
+ bg.setAttribute('position',new T.Float32BufferAttribute(bp,3));const bc=new T.Float32BufferAttribute(new Float32Array((BX+1)*(BZ+1)*4),4);bg.setAttribute('color',bc);bg.setIndex(bi);WEG.push(bg);
+ const boden=new T.Mesh(bg,mat({typ:T.MeshBasicMaterial,p:{vertexColors:true,side:T.DoubleSide}}));boden.renderOrder=10;boden.frustumCulled=false;S.add(boden);
+ const BST=[[0,205,220,242,.75],[.3,180,202,235,.25],[1,120,155,205,.12]],bst=u=>{u=Math.max(0,Math.min(1,u));const k=u<.3?0:1,a=BST[k],b=BST[k+1],s=(u-a[0])/(b[0]-a[0]);return[0,1,2,3].map(i=>a[i+1]+(b[i+1]-a[i+1])*s)};
+ // Fugen (Raster) und Bodenplatten wie 3Deep
+ {const p=[],c=[],li=(x1,z1,x2,z2,al)=>{p.push(x1,.01,z1,x2,.01,z2);c.push(40/255,75/255,130/255,al,40/255,75/255,130/255,al)};
+  for(let x=-96;x<=96;x+=8)li(x,40,x,-420,.09);for(let z=40;z>-420;z-=8)li(-200,z,200,z,.1*Math.max(0,1-(30-z)/300));
+  const g=linGeo(p);g.setAttribute('color',new T.Float32BufferAttribute(c,4));const l=new T.LineSegments(g,mat({typ:T.LineBasicMaterial,p:{vertexColors:true}}));l.renderOrder=11;l.frustumCulled=false;S.add(l);
+  const fp=[],fc2=[],fi=[];for(let i=0;i<90;i++){const x=ra(i,300,-70,70),z=ra(i,301,-300,40),w=ra(i,302,2,14),d=ra(i,303,.3,1.2),dk=hsI(i,304)<.6,o=fp.length/3,cc=dk?[35/255,65/255,115/255,.16]:[1,1,1,.28];
+   fp.push(x,.02,z,x+w,.02,z,x+w,.02,z-d,x,.02,z-d);for(let k=0;k<4;k++)fc2.push(...cc);fi.push(o,o+1,o+2,o,o+2,o+3)}
+  const g2=new T.BufferGeometry();g2.setAttribute('position',new T.Float32BufferAttribute(fp,3));g2.setAttribute('color',new T.Float32BufferAttribute(fc2,4));g2.setIndex(fi);WEG.push(g2);
+  const m2=new T.Mesh(g2,mat({typ:T.MeshBasicMaterial,p:{vertexColors:true,side:T.DoubleSide}}));m2.renderOrder=12;m2.frustumCulled=false;S.add(m2)}
+ // Dunst am Horizont: offenes Band rund um die Kamera (über Himmel und Boden, unter den Würfeln)
+ const dunst=(()=>{const R0=400,n=64,p=[],c=[],ix=[],ring=[[Math.tan(5.2*Math.PI/180),0],[0,.55],[-Math.tan(3.5*Math.PI/180),0]];
+  ring.forEach(([tn,al],r)=>{for(let i=0;i<=n;i++){const a=i/n*Math.PI*2;p.push(Math.cos(a)*R0,tn*R0,Math.sin(a)*R0);c.push(232/255,241/255,252/255,al)}});
+  for(let r=0;r<2;r++)for(let i=0;i<n;i++){const a=r*(n+1)+i;ix.push(a,a+n+1,a+1,a+1,a+n+1,a+n+2)}
+  const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(p,3));g.setAttribute('color',new T.Float32BufferAttribute(c,4));g.setIndex(ix);WEG.push(g);
+  const m=new T.Mesh(g,mat({typ:T.MeshBasicMaterial,p:{vertexColors:true,side:T.DoubleSide,depthTest:false}}));m.renderOrder=20;m.frustumCulled=false;S.add(m);return m})();
+ let t0=null,ende=false;
+ const fertig=()=>{if(ende)return;ende=true;INTRO.aus=true;dirty=true;wrap.classList.add('aus');if(MUSIK.ende){MUSIK.ende();MUSIK.ende=null}
+  setTimeout(()=>{wrap.remove();removeEventListener('resize',rs);WEG.forEach(x=>{try{x.dispose()}catch(_){}});try{R.dispose();R.forceContextLoss()}catch(_){}INTRO.on=false;INTRO.aus=false;INTRO.stop=null;dirty=true;const mq=INTRO.q;INTRO.q=[];mq.forEach(adapterNachricht)},1450)};
+ INTRO.stop=fertig;wrap.addEventListener('click',fertig);
+ INTRO.zeit=()=>t0==null?0:(performance.now()-t0)/1000;
+ if(musikAn()){const ac=introMusik(INTRO_DAUER,INTRO.zeit);if(ac)setTimeout(()=>{if(ende||ac.state==='running')return;const bt=document.createElement('button');bt.className='ton';bt.textContent='♪ Ton an';bt.title='Musik einschalten (der Browser verlangt dafür einen Klick)';
+  bt.onclick=e=>{e.stopPropagation();ac.resume().then(()=>{bt.remove();if(MUSIK.plane)MUSIK.plane()},()=>{})};wrap.appendChild(bt)},250)}
+ const nv=new T.Vector3(),ziel=new T.Vector3();
+ const zeichne=t=>{const e=1-Math.pow(1-Math.min(1,t/(INTRO_DAUER+.6)),2),Cx=0,Cy=6+2.5*e,Cz=48-32*e,Y=.07*Math.sin(t*.55)-.04,P=.1-.035*e,cp=Math.cos(P);
+  CAM.position.set(Cx,Cy,Cz);ziel.set(Cx-Math.sin(Y)*cp,Cy+Math.sin(P),Cz-Math.cos(Y)*cp);CAM.lookAt(ziel);
+  BEW.forEach(W=>{const a=W.b.rot(t);W.g.forEach(g=>g.rotation.set(a[1],a[0],0,'XYZ'));
+   const nrm=FN.map(n=>{nv.set(...n).applyEuler(W.g[0].rotation);return[nv.x,nv.y,nv.z]});flFarben(W.fc.array,0,nrm,W.b.dicht);W.fc.needsUpdate=true});
+  // Boden: Blickwinkel unter dem Horizont -> Anteil bis zum unteren Bildrand (u) -> Farbe und Deckkraft
+  const unten=Math.max(.05,CAM.fov/2*Math.PI/180-P),A=bc.array;for(let k=0,j=0;k<bp.length;k+=3,j+=4){const d=Math.hypot(bp[k]-Cx,bp[k+2]-Cz),c=bst(Math.atan2(Cy,d)/unten);A[j]=c[0]/255;A[j+1]=c[1]/255;A[j+2]=c[2]/255;A[j+3]=c[3]}bc.needsUpdate=true;
+  dunst.position.set(Cx,Cy,Cz);R.render(S,CAM);INTRO.bilder++};
+ const lauf=now=>{if(!wrap.isConnected)return;requestAnimationFrame(lauf);if(INTRO.halt!=null){zeichne(INTRO.halt);return}if(t0==null)t0=now;const t=(now-t0)/1000;if(t>=INTRO_DAUER)fertig();zeichne(t)};requestAnimationFrame(lauf)}   // INTRO.halt = feste Zeit (nur Tests/Bilder)
+addEventListener('keydown',e=>{if(e.key==='Escape'&&INTRO.on&&INTRO.stop)INTRO.stop()});
 // ---------- Version 55: Datenraum „Demo: Elektroauto (fiktiv)“, unverändert aus 3Deep Darstellung 148 (demoData, anreichern, foto, skizze; umbenannt) ----------
 // Eigener Zufallsgenerator wie in 3Deep (rnd3/s3), damit IDs, Namen und Zuordnungen genau gleich sind (Sprechtext und Folien).
 let s3=7;const rnd3=()=>{s3|=0;s3=s3+0x6D2B79F5|0;let t=Math.imul(s3^s3>>>15,1|s3);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
@@ -2759,46 +2906,46 @@ const dmNamen=L=>[...new Set(L.map(n=>n.name))].map(x=>'<b>'+esc(x)+'</b>').join
 const dmKetteInfo=C=>{const M=[...new Set((C.m&&C.m.pfade||[]).flat())];return{term:M.filter(n=>n!==C.P&&n.ts!=null&&n.te-n.ts<TAG/2),pers:M.filter(n=>n!==C.P&&/person/.test(n.ty)),
  lief:M.filter(n=>PJ&&PJ.N[n.i].adj.some(a=>a.e.lief)&&n.ts==null),iss:M.filter(n=>/issue/i.test(n.ty)&&zust(n.o.state)!=='released')}};
 const dmFall=C=>'<b>'+esc(C.it.n.n)+'</b> · '+esc(C.it.kat)+'<br><span class="m">'+esc(C.it.tx)+'</span>';
-const DEMO_PROJEKT={titel:'Demo: Projekt (fiktiv)',tempo:1.7,stationen:[   // tempo: Faktor auf alle Wartezeiten (Lesezeit), Gesamtdauer ca. 6 min
+const DEMO_PROJEKT={titel:'Demo: Projekt (fiktiv)',tempo:1.7,stationen:[   // tempo: Faktor auf alle Wartezeiten (Lesezeit), Gesamtdauer ca. 5 min (Version 62: von 6 auf 5 min gekürzt, vor allem Einstieg und Kamerafahrt)
  {id:'einstieg',titel:'Projekt im Raum',sprech:'[Datenraum „Projekt (fiktiv)“, Projektplan]',schritte:[
   {art:'text',ms:1,text:'<b>Teil 4: Projektmanagement</b><br><span class="m">Ein Projekt, das automatisch analysiert wird</span>'},
   {art:'daten',raum:'projekt',blende:true,ms:300},
-  {art:'layout',layout:'plan',ms:9000,text:()=>{const z=t=>N.filter(n=>n.ty===t).length;return'<b>Datenraum „Projekt (fiktiv)“</b><br><span class="m">Entwicklung eines Elektroautos: '+z('phase')+' Phasen, '+z('task')+' Tasks, '+z('gate')+' Gates, '+z('meilenstein')+' Meilensteine · Layout „Projektplan“</span>'}}]},
+  {art:'layout',layout:'plan',ms:5000,text:()=>{const z=t=>N.filter(n=>n.ty===t).length;return'<b>Datenraum „Projekt (fiktiv)“</b><br><span class="m">Entwicklung eines Elektroautos: '+z('phase')+' Phasen, '+z('task')+' Tasks, '+z('gate')+' Gates, '+z('meilenstein')+' Meilensteine · Layout „Projektplan“</span>'}}]},
  {id:'zeitachse',titel:'Zeitachse',sprech:'[Kamerafahrt entlang der Zeitachse]',schritte:[
-  {art:'zeitflug',dauer:22,ms:1500,text:'<b>Zeitachse</b>: Die Zeit läuft nach rechts – Kamerafahrt vom Konzept bis zum Serienanlauf<br><span class="m">Jede Phase ist ein Band, darin die Tasks als Dauerbalken mit ihrem gemeldeten Fortschritt (dunkler Teil)</span>'}]},
+  {art:'zeitflug',dauer:12,ms:1000,text:'<b>Zeitachse</b>: Die Zeit läuft nach rechts – Kamerafahrt vom Konzept bis zum Serienanlauf<br><span class="m">Jede Phase ist ein Band, darin die Tasks als Dauerbalken mit ihrem gemeldeten Fortschritt (dunkler Teil)</span>'}]},
  {id:'heute',titel:'Heute',sprech:'[Heute-Ebene]',schritte:[
-  {art:'heute',ms:9000,text:()=>'Die <b>rote Ebene ist heute</b> ('+deD(HEUTE)+')<br><span class="m">Was links davon endet, sollte erledigt sein; was sie schneidet, läuft gerade</span>'}]},
+  {art:'heute',ms:7000,text:()=>'Die <b>rote Ebene ist heute</b> ('+deD(HEUTE)+')<br><span class="m">Was links davon endet, sollte erledigt sein; was sie schneidet, läuft gerade</span>'}]},
  {id:'kritisch',titel:'Kritischer Pfad',sprech:'[kritischer Pfad, Frage an den Projektleiter]',schritte:[
-  {art:'krit',ms:9000,text:()=>'<b>Kritischer Pfad</b> (rot): '+N.filter(n=>n.krit).length+' Objekte ohne Puffer<br><span class="m">Jeder Tag Verzug hier verschiebt das Projektende · im Widget kommen die Daten live aus Project Management</span>'},
-  {art:'alle'},{art:'text',ms:6000,text:'Der Plan sieht ordentlich aus.<br><b>Aber wo muss ich als Projektleiter eingreifen?</b>'}]},
+  {art:'krit',ms:7500,text:()=>'<b>Kritischer Pfad</b> (rot): '+N.filter(n=>n.krit).length+' Objekte ohne Puffer<br><span class="m">Jeder Tag Verzug hier verschiebt das Projektende · im Widget kommen die Daten live aus Project Management</span>'},
+  {art:'alle'},{art:'text',ms:5000,text:'Der Plan sieht ordentlich aus.<br><b>Aber wo muss ich als Projektleiter eingreifen?</b>'}]},
  {id:'liste',titel:'Handlungsliste',sprech:'[Handlungsliste, Belastbarkeit]',schritte:[
-  {art:'liste',ms:9000,text:()=>'<b>Handlungsliste (Projekt)</b><br><span class="m">Gerechnet aus Terminen, Status, Abhängigkeiten, Zuständigkeiten und dem Reifegrad der Deliverables: '+PJ.einzel+' Punkte zum Eingreifen, nach Dringlichkeit sortiert</span>'},
-  {art:'text',ms:9000,text:()=>'<b>Belastbarkeit</b> jeder Meldung: '+PJ.B.belegt+' belegt · '+PJ.B['widersprüchlich']+' widersprüchlich · '+PJ.B['nicht prüfbar']+' nicht prüfbar<br><span class="m">Passt der gemeldete Fortschritt zum Reifegrad dessen, was der Task liefern soll?</span>'}]},
+  {art:'liste',ms:8000,text:()=>'<b>Handlungsliste (Projekt)</b><br><span class="m">Gerechnet aus Terminen, Status, Abhängigkeiten, Zuständigkeiten und dem Reifegrad der Deliverables: '+PJ.einzel+' Punkte zum Eingreifen, nach Dringlichkeit sortiert</span>'},
+  {art:'text',ms:8000,text:()=>'<b>Belastbarkeit</b> jeder Meldung: '+PJ.B.belegt+' belegt · '+PJ.B['widersprüchlich']+' widersprüchlich · '+PJ.B['nicht prüfbar']+' nicht prüfbar<br><span class="m">Passt der gemeldete Fortschritt zum Reifegrad dessen, was der Task liefern soll?</span>'}]},
  {id:'winter',titel:'Kritischer Pfad verspätet',sprech:'[Wintererprobung, Kette, Profilkarte]',schritte:[
   {art:'punkt',signal:/Kritischer Pfad/,name:'Wintererprobung',ms:1,text:dmFall},
-  {art:'text',ms:9000,text:C=>{const k=dmKetteInfo(C);return'Klick = Flug zum Task, die <b>Kette</b> leuchtet<br><span class="m">Davon hängt ab: '+(dmNamen(k.term)||'–')+' · zuständig: '+(dmNamen(k.pers)||'niemand')+'</span>'}},
-  {art:'profil',ziel:{merke:'P'},ms:7000,text:'<b>Profilkarte</b>: Termine, Fortschritt und der Handlungsbedarf als Attribut'},{art:'profilZu'}]},
+  {art:'text',ms:7500,text:C=>{const k=dmKetteInfo(C);return'Klick = Flug zum Task, die <b>Kette</b> leuchtet<br><span class="m">Davon hängt ab: '+(dmNamen(k.term)||'–')+' · zuständig: '+(dmNamen(k.pers)||'niemand')+'</span>'}},
+  {art:'profil',ziel:{merke:'P'},ms:6000,text:'<b>Profilkarte</b>: Termine, Fortschritt und der Handlungsbedarf als Attribut'},{art:'profilZu'}]},
  {id:'engpass',titel:'Engpass Person',sprech:'[G. Neumann, Engpass, Auslastung]',schritte:[
   {art:'punkt',signal:/Engpass Person/,name:'G. Neumann',ms:1,text:dmFall},
-  {art:'text',ms:9000,text:C=>'<b>'+esc(C.P.name)+'</b> trägt gerade '+C.it.eng.length+' Tasks gleichzeitig<br><span class="m">'+dmNamen(C.it.eng.map(x=>x.src))+(C.it.eng.some(x=>x.krit)?' · rot: auf dem kritischen Pfad':'')+'</span>'},
-  {art:'profil',ziel:{merke:'P'},ms:7000,text:C=>'Profilkarte: <b>Auslastung</b> '+esc(C.P.o.meta.Auslastung||'')+'<br><span class="m">Unten auf der Karte: „Ausfall durchspielen“</span>'},{art:'profilZu'}]},
+  {art:'text',ms:7500,text:C=>'<b>'+esc(C.P.name)+'</b> trägt gerade '+C.it.eng.length+' Tasks gleichzeitig<br><span class="m">'+dmNamen(C.it.eng.map(x=>x.src))+(C.it.eng.some(x=>x.krit)?' · rot: auf dem kritischen Pfad':'')+'</span>'},
+  {art:'profil',ziel:{merke:'P'},ms:6000,text:C=>'Profilkarte: <b>Auslastung</b> '+esc(C.P.o.meta.Auslastung||'')+'<br><span class="m">Unten auf der Karte: „Ausfall durchspielen“</span>'},{art:'profilZu'}]},
  {id:'ausfall',titel:'Ausfall 4 Wochen',sprech:'[Ausfall vier Wochen, Balken gleiten]',schritte:[
   {art:'ausfall',person:'G. Neumann',wo:4,ms:12000,text:C=>{const A=AUS;return'Was, wenn <b>'+esc(A.p.n)+'</b> vier Wochen ausfällt?<br><span class="m">Seine offenen Tasks ruhen, die Abhängigkeiten ziehen nach: Die Balken gleiten an ihren neuen Platz, blass bleibt der alte Stand · Projektende <b>'+(A.ende?'+'+A.ende+' Tage':'unverändert')+'</b>'+(A.term.length?' · später: '+A.term.slice(0,4).map(x=>esc(x.n.n)).join(', '):'')+'</span>'}}]},
  {id:'rang',titel:'Wer darf nicht ausfallen?',sprech:'[Rangliste]',schritte:[
-  {art:'rang',ms:10000,text:()=>{const R0=RANG[0];return'<b>Wer darf nicht ausfallen?</b> Für jede Person ein Ausfall von 2 Wochen<br><span class="m">'+(R0&&R0.ende?'Nur bei <b>'+esc(R0.p.n)+'</b> verschiebt sich das Projektende (+'+R0.ende+' Tage). Hier braucht es eine Vertretung oder Entlastung, bevor es knapp wird':'Bei keiner Person verschiebt sich das Projektende')+'</span>'}},
+  {art:'rang',ms:8500,text:()=>{const R0=RANG[0];return'<b>Wer darf nicht ausfallen?</b> Für jede Person ein Ausfall von 2 Wochen<br><span class="m">'+(R0&&R0.ende?'Nur bei <b>'+esc(R0.p.n)+'</b> verschiebt sich das Projektende (+'+R0.ende+' Tage). Hier braucht es eine Vertretung oder Entlastung, bevor es knapp wird':'Bei keiner Person verschiebt sich das Projektende')+'</span>'}},
   {art:'ausfallAus',ms:3500}]},
  {id:'gate',titel:'Gate 2: Design Freeze',sprech:'[Gate-Reife, Ampel]',schritte:[
   {art:'punkt',signal:/Widerspruch/,name:'Gate 2: Design Freeze',ms:1,text:dmFall},
-  {art:'text',ms:9000,text:C=>{const k=dmKetteInfo(C),O=k.lief.filter(d=>zust(d.o.state)!=='released');return'<b>Gate-Reife</b>: der Weg vom Gate zu jedem Deliverable, das noch nicht freigegeben ist<br><span class="m">Offen: '+(O.map(d=>'<b>'+esc(d.name)+'</b> ('+esc(d.o.state||'ohne Reifegrad')+')').join(', ')||'–')+(k.iss.length?' · offene Issues daran: '+dmNamen(k.iss):'')+'</span>'}},
-  {art:'profil',ziel:{merke:'P'},ms:8000,text:C=>{const R=C.P.reife||{};return'Das Gate wurde durchlaufen, obwohl nur <b>'+(R.rel||0)+' von '+(R.tot||0)+' Deliverables</b> freigegeben sind<br><span class="m">Im Projektplan steht die Ampel unter jedem Gate: '+(R.rel||0)+'/'+(R.tot||0)+' frei</span>'}},{art:'profilZu'}]},
+  {art:'text',ms:7500,text:C=>{const k=dmKetteInfo(C),O=k.lief.filter(d=>zust(d.o.state)!=='released');return'<b>Gate-Reife</b>: der Weg vom Gate zu jedem Deliverable, das noch nicht freigegeben ist<br><span class="m">Offen: '+(O.map(d=>'<b>'+esc(d.name)+'</b> ('+esc(d.o.state||'ohne Reifegrad')+')').join(', ')||'–')+(k.iss.length?' · offene Issues daran: '+dmNamen(k.iss):'')+'</span>'}},
+  {art:'profil',ziel:{merke:'P'},ms:7000,text:C=>{const R=C.P.reife||{};return'Das Gate wurde durchlaufen, obwohl nur <b>'+(R.rel||0)+' von '+(R.tot||0)+' Deliverables</b> freigegeben sind<br><span class="m">Im Projektplan steht die Ampel unter jedem Gate: '+(R.rel||0)+'/'+(R.tot||0)+' frei</span>'}},{art:'profilZu'}]},
  {id:'faelle',titel:'Weitere Fälle',sprech:'[Batteriemanagement-Software überfällig, Widerspruch Elektroantrieb]',schritte:[
   {art:'punkt',signal:/Überfällig/,name:'Batteriemanagement-Software',ms:1,text:dmFall},
-  {art:'text',ms:8000,text:'Fast fertig gemeldet, aber seit Wochen über dem Termin<br><span class="m">Die letzten Prozent dauern oft am längsten: nachfragen, was wirklich fehlt</span>'},
+  {art:'text',ms:7000,text:'Fast fertig gemeldet, aber seit Wochen über dem Termin<br><span class="m">Die letzten Prozent dauern oft am längsten: nachfragen, was wirklich fehlt</span>'},
   {art:'punkt',signal:/Widerspruch/,name:'Konstruktion Elektroantrieb',ms:1,text:dmFall},
-  {art:'text',ms:9000,text:C=>{const k=dmKetteInfo(C);return'Gemeldet ist <b>nicht gleich erledigt</b><br><span class="m">Deliverables: '+(k.lief.map(d=>'<b>'+esc(d.name)+'</b> ('+esc(d.o.state||'ohne Reifegrad')+')').join(', ')||'–')+(k.iss.length?' · offene Issues daran: '+dmNamen(k.iss):'')+'</span>'}}]},
+  {art:'text',ms:8000,text:C=>{const k=dmKetteInfo(C);return'Gemeldet ist <b>nicht gleich erledigt</b><br><span class="m">Deliverables: '+(k.lief.map(d=>'<b>'+esc(d.name)+'</b> ('+esc(d.o.state||'ohne Reifegrad')+')').join(', ')||'–')+(k.iss.length?' · offene Issues daran: '+dmNamen(k.iss):'')+'</span>'}}]},
  {id:'schluss',titel:'Schluss',sprech:'[Rundflug, Schluss]',schritte:[
   {art:'masZu'},
-  {art:'heim',dauer:3.5,dreh:.5,ms:9000,text:'<b>Projektanalyse in Raum und Zeit</b><br><span class="m">Nur aus Daten, die ohnehin da sind: Handlungsliste, Belastbarkeit, Gate-Reife, Engpass und Ausfall – jeder Punkt mit dem Beleg im Raum</span>'},
+  {art:'heim',dauer:3.5,dreh:.5,ms:7000,text:'<b>Projektanalyse in Raum und Zeit</b><br><span class="m">Nur aus Daten, die ohnehin da sind: Handlungsliste, Belastbarkeit, Gate-Reife, Engpass und Ausfall – jeder Punkt mit dem Beleg im Raum</span>'},
   {art:'heim',dauer:3,dreh:-.5,ms:4000,text:'Ende der Vorführung'}]}]};
 // Schritte der Projekt-Demo
 function dmPlanBlick(x,o){const P=PLAN;if(!P)return null;o=o||{};const y=(P.row*2+P.yU)/2;return{ziel:new T.Vector3(x,o.y!=null?o.y:y,o.z||0),dist:o.dist||(P.row*2.6-P.yU)*1.15,gier:o.gier!=null?o.gier:K.gier,nick:o.nick!=null?o.nick:K.nick}}
@@ -2912,7 +3059,7 @@ async function dmSchritt(s){const C=DM.ctx,ms=s.ms||0;
   case'achsen':{const i=AXP.findIndex(p=>s.vorlage.test(p.name));schliesseProfil();waehle(-1);if(i>=0){axVorlage(i);$('ly').value='achsen';setzeLayout('achsen',false);dmFahrt(dmBlick(null,{gier:s.gier!=null?s.gier:K.gier,nick:.22}),s.dauer||4)}
    demoCap(dmText(s.text));break}
   case'zeitflug':{if(!PLAN)break;schliesseProfil();waehle(-1);DM.pfad=null;const P=PLAN,xa=P.X(P.t0)+P.row*4,xb=P.X(P.t1)-P.row*4,d=P.row*16,b=dmPlanBlick(xa,{dist:d,gier:-.55,nick:.14});
-   demoCap(dmText(s.text));dmFahrt(b,3);await dmW(3200);const zt=N.filter(n=>n.ts!=null&&!istBand(n.ty)),ym=(u,v)=>{const L=zt.filter(n=>n.ziel.x>=u&&n.ziel.x<=v);return L.length?L.reduce((q,n)=>q+n.ziel.y,0)/L.length:b.ziel.y},w=(xb-xa)*.3;
+   demoCap(dmText(s.text));dmFahrt(b,2.2);await dmW(2300);const zt=N.filter(n=>n.ts!=null&&!istBand(n.ty)),ym=(u,v)=>{const L=zt.filter(n=>n.ziel.x>=u&&n.ziel.x<=v);return L.length?L.reduce((q,n)=>q+n.ziel.y,0)/L.length:b.ziel.y},w=(xb-xa)*.3;
    DM.zf={xa,xb,ya:ym(xa-w,xa+w),yb:ym(xb-w,xb+w),t:0,dauer:(s.dauer||20)*((DM.ablauf&&DM.ablauf.tempo)||1)};b.ziel.y=DM.zf.ya;dmFahrt(b,1.2);await dmW(1300);
    const ok=dmLaeuft();while(DM.zf&&DM.zf.t<1){await new Promise(z=>setTimeout(z,60));ok()}DM.zf=null;break}
   case'heute':{if(!PLAN)break;demoCap(dmText(s.text));dmFahrt(dmPlanBlick(PLAN.X(HEUTE),{dist:PLAN.row*22,gier:.85,nick:.22}),3.5);break}
@@ -2964,7 +3111,7 @@ function schleife(jetzt){requestAnimationFrame(schleife);const dt=Math.min(.1,(j
  if(messung&&!messung.erg){K.gier=messung.gier+(jetzt-messung.start)/5000*Math.PI*2;messung.frames++;dirty=true;if(jetzt-messung.start>=5000){messung.erg=Math.round(messung.frames/5)+' fps im Mittel ('+N.length.toLocaleString('de-DE')+' Objekte, Schatten '+($('schatten').checked&&N.length<=12000?'an':'aus')+')';K.gier=messung.gier}}
  smTick(dt,jetzt);uTick(jetzt);demoTick(dt);const b=bewegen(dt);if(K.flug)dirty=true;leuchten();markerSetzen(jetzt);if(wkTick(jetzt/1000))dirty=true;haloTick();if(figTick(jetzt/1000,dt))dirty=true;if(strahlTick(jetzt/1000))dirty=true;
  if(ST.on&&ST.msgT&&jetzt>ST.msgT){ST.msgT=0;NM.neu=true}
- const gemalt=b||dirty;if(gemalt&&!kontextWeg){kameraSetzen();zeichnen();fz++;dirty=false}
+ const gemalt=b||dirty;if(gemalt&&!kontextWeg&&!(INTRO.on&&!INTRO.aus)){kameraSetzen();zeichnen();fz++;dirty=false}
  namenZeichnen(jetzt,dt,gemalt);if(gemalt&&prof.i>=0)profLage();
  if(jetzt-fT>1000){fps=fz;fz=0;fT=jetzt;status()}
 }
@@ -2974,6 +3121,7 @@ $('kugelan').checked=kugelAn();$('kugelan').onchange=e=>{try{localStorage.setIte
 {const el=document.getElementById('3deep-daten');if(el){try{const d=JSON.parse(el.textContent);lauf=null;laden(d.daten&&d.daten.nodes?d.daten:d)}catch(x){meld('Eingebettete Daten fehlerhaft: '+x.message)}}}
 // Meldung an den Adapter wie datenraum3d.html (Ausnahme (2) der Grundregel)
 if(window.parent!==window)parent.postMessage({quelle:'3deep',bereit:true},'*');
+try{introStart()}catch(x){console.error(x)}   // Version 62: Intro beim Start
 window.__4dStart=false;
 window.__4deep={stereo:{ST,stereoEin,stereoAus},sm:{SM,smReport,smTick,smErlaubt},laden,setzeLayout,zustand:()=>({ketten:KET.length,verzug:verzugN,gueltig:N.filter(n=>n.gueltig&&n.kette).length,heute:HEUTE,layoutMs:letzteSimDauer,worker:!!(sim&&sim.w),n:N.length,e:E.length,layout,sim:!!sim,hatZeit,tCur,tMin,tMax,sicht:N.filter(n=>n.sZiel>0).length,fps,messung}),setzeZeit:t=>{tCur=t;zeitAnwenden()},waehle,heim,VERSION};
 </script>
