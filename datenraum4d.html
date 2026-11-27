@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="64">
+<meta name="4deep-darstellung" content="65">
 <title>4Deep – Datenraum in Raum und Zeit</title>
 <!-- 4Deep – Datenraum in Raum und Zeit (begonnen als Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026; Produkt seit 26.11.2026, Version 55): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -48,7 +48,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
 #zt input{flex:1}#zt button{background:#16213a;color:var(--tx);border:1px solid var(--rand);border-radius:6px;padding:4px 10px;cursor:pointer;font:inherit}
 #zjahr{min-width:170px;text-align:right;font-weight:600;color:var(--ak)}
 #chr{right:10px;top:10px;width:390px;max-height:calc(100% - 120px);overflow:auto;display:none;z-index:15;font-size:12px}#chr h2{font-size:15px;margin:0 18px 6px 0}#chr .x{position:absolute;right:8px;top:6px;cursor:pointer;color:var(--mu);font-size:16px}
-#mas{right:10px;top:10px;width:420px;max-height:calc(100% - 120px);overflow:auto;display:none;z-index:15;font-size:12px}#mas h2{font-size:15px;margin:0 18px 6px 0}#mas[data-art="lage"],#mas[data-art="mas"],#mas[data-art="hin"]{zoom:1.25;max-height:calc((100% - 120px)/1.25)}/* Version 51 (Wunsch des Nutzers): Lagebericht, Handlungsliste und Hinweis 125 % – Anweisungen für die Geschäftsführung groß und deutlich */#mas .x{position:absolute;right:8px;top:6px;cursor:pointer;color:var(--mu);font-size:16px}
+#mas{right:10px;top:10px;width:420px;max-height:calc(100% - 120px);overflow:auto;display:none;z-index:15;font-size:12px}#mas h2{font-size:15px;margin:0 18px 6px 0}#mas[data-art="lage"],#mas[data-art="mas"]:not([data-pj="1"]),#mas[data-art="hin"]{zoom:1.25;max-height:calc((100% - 120px)/1.25)}/* Version 51 (Wunsch des Nutzers): Lagebericht, Handlungsliste und Hinweis 125 % – Anweisungen für die Geschäftsführung groß und deutlich */body.dmpj #zt{display:none!important}/* Version 65 (Wunsch des Nutzers): Zeitleiste während „Demo Projekt“ aus; Handlungsliste Projekt in normaler Schriftgröße */#mas .x{position:absolute;right:8px;top:6px;cursor:pointer;color:var(--mu);font-size:16px}
 #chr select{background:#16213a;color:var(--tx);border:1px solid var(--rand);border-radius:6px;padding:3px;font:inherit;margin-bottom:6px}#chr .sum{border:1px solid var(--rand);border-radius:6px;padding:5px 7px;margin-bottom:6px;line-height:1.5}
 #mas select{background:#16213a;color:var(--tx);border:1px solid var(--rand);border-radius:6px;padding:3px;font:inherit;margin-bottom:6px}#mas .aus,#prof .aus{margin-top:8px;padding:7px;border:1px solid #ff8c1a;border-radius:6px;line-height:1.5}#mas .rang{margin-top:10px}#mas .aus button,#prof .aus button{width:auto;display:inline-block;padding:3px 8px;margin:0}#mas .aus button:disabled,#prof .aus button:disabled{opacity:.4;cursor:default}#mas .ev.on{background:#2a3a60}#mas .sum{border:1px solid var(--rand);border-radius:6px;padding:5px 7px;margin-bottom:6px;line-height:1.5}
 #chr .ev{display:grid;grid-template-columns:76px 1fr;gap:1px 6px;padding:4px 3px;border-top:1px solid #1c2740;cursor:pointer;border-radius:4px}#chr .ev:hover{background:#1c2a48}#chr .ev .d{color:var(--mu);white-space:nowrap}#chr .ev .a{font-weight:600}#chr .ev .e{grid-column:2;color:var(--mu)}#chr .ok{color:#3fbf7f}#chr .nok{color:#ff6b5e}
@@ -138,7 +138,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 64 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 65 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="chr"></div><div class="pn" id="mas"></div><div class="pn" id="prof"></div><div class="pn" id="dcap"></div><div id="dfade"></div><div id="profb"></div>
@@ -1171,7 +1171,7 @@ function zeigeProfil(i){prof.i=i;
 function schliesseProfil(){prof.i=-1;$('prof').style.display='none';$('profb').style.display='none'}
 function profLage(){if(prof.i<0)return;const n=N[prof.i],el=$('prof');if(!n){schliesseProfil();return}const q=proj(n,{}),w=el.offsetWidth||340,h=el.offsetHeight||300;
  const sicht=q.z<1&&q.z>-1&&n.s>.05;el.style.opacity=sicht?1:.35;
- const ra=q.R+12;let x=q.x+ra;if(x+w>innerWidth-8&&q.x-ra-w>=8)x=q.x-ra-w;x=Math.max(8,Math.min(innerWidth-w-8,x));const y=Math.max(8,Math.min(innerHeight-h-8,q.y-20));
+ const ra=q.R+12;let x=q.x+ra;if(x+w>innerWidth-8&&q.x-ra-w>=8)x=q.x-ra-w;x=Math.max(8,Math.min(innerWidth-w-8,x));let y=Math.max(8,Math.min(innerHeight-h-8,q.y-20));if(document.body.classList.contains('dmpj')&&innerWidth>900){x=innerWidth-w-8;y=8}   /* Version 65: in der Demo Projekt fest am rechten Rand, die Bildmitte bleibt frei */
  el.style.left=x+'px';el.style.top=y+'px';
  const pb=$('profb');if(pb.style.display==='block'){const bw=pb.offsetWidth,bh=pb.offsetHeight;let bx=x+18-bw;if(bx<4)bx=Math.min(innerWidth-bw-4,x+w-18);pb.style.left=bx+'px';pb.style.top=Math.max(4,y+34-bh)+'px'}}
 
@@ -1206,7 +1206,7 @@ function chronikZeigen(){const L=(D&&D.chronik||[]).map(e=>Object.assign({},e,{m
 $('chrb').onclick=()=>{const el=$('chr');if(el.style.display==='block')el.style.display='none';else{$('mas').style.display='none';chronikZeigen()}};
 // Version 22: Handlungsliste (daten.massnahmen [{prio,rolle,signal,text,ids,beleg,t}]), nach Priorität; Filter nach Rolle; Klick springt reihum zu den betroffenen Objekten
 let MAS_R='alle',MAS_Q='alle';const MAS_I={};
-function massnahmenZeigen(){const L=(D&&D.massnahmen||[]).filter(m=>m&&(m.text||m.signal)).map((m,i)=>Object.assign({},m,{_i:i,prio:Math.max(1,Math.min(3,+m.prio||3))})).sort((a,b)=>a.prio-b.prio||String(b.t||'').localeCompare(String(a.t||'')));const el=$('mas');el.dataset.art='mas';
+function massnahmenZeigen(){const L=(D&&D.massnahmen||[]).filter(m=>m&&(m.text||m.signal)).map((m,i)=>Object.assign({},m,{_i:i,prio:Math.max(1,Math.min(3,+m.prio||3))})).sort((a,b)=>a.prio-b.prio||String(b.t||'').localeCompare(String(a.t||'')));const el=$('mas');el.dataset.art='mas';el.dataset.pj=PJ?'1':'';
  const rollen=[...new Set(L.map(m=>m.rolle).filter(Boolean))].sort();if(MAS_R!=='alle'&&!rollen.includes(MAS_R))MAS_R='alle';const qn=[...new Set(L.map(m=>m.quelle||'Regel'))];if(!qn.includes(MAS_Q))MAS_Q='alle';const S=L.filter(m=>(MAS_R==='alle'||m.rolle===MAS_R)&&(MAS_Q==='alle'||(m.quelle||'Regel')===MAS_Q)&&(!FOKUS||masFirma(m)===firmenName(FOKUS)));
  const np=[1,2,3].map(p=>S.filter(m=>m.prio===p).length),PN=['','hoch','mittel','niedrig'];
  el.innerHTML='<span class="x" id="masx">✕</span><h2>Handlungsliste'+(FOKUS?' · '+esc(firmenName(FOKUS)):'')+'</h2><select id="masr"><option value="alle">alle Rollen</option>'+rollen.map(r=>'<option'+(r===MAS_R?' selected':'')+'>'+esc(r)+'</option>').join('')+'</select>'+(qn.length>1?' <select id="masq"><option value="alle">alle Quellen</option>'+qn.map(q=>'<option'+(q===MAS_Q?' selected':'')+'>'+esc(q)+'</option>').join('')+'</select>':'')+(D.massnahmenStand?'<div class="m" style="color:var(--mu)">'+esc(D.massnahmenStand)+'</div>':'')+
@@ -1285,7 +1285,8 @@ function gebaeudeBauen(G,stil){const grp=new T.Group(),V2=p=>new T.Vector2(p[0],
 // der passenden Firma zuordnen: Firmennummer (Objekt-ID, Nummer vor „ · “ im Namen oder ein Attributwert), sonst die ausgewählte Firma.
 const GEB_STIL={mat:new T.MeshStandardMaterial({color:0xe9eef5,roughness:.4,metalness:.15,side:T.DoubleSide}),kante:new T.LineBasicMaterial({color:0x2f4f8a,transparent:true,opacity:.55})};
 function gebFirma(G,L,typ){if(typ===undefined)typ=D&&D.skyline&&D.skyline.typ;const k=String(G.firma||'').trim();L=L||N.map(n=>({id:n.id,name:n.name,ty:n.ty,meta:n.o.meta,n}));
- const C=L.filter(x=>!typ||(x.ty||x.type)===typ);if(k){const f=C.find(x=>String(x.id)===k||String(x.name||'').split(' · ')[0].trim()===k||Object.values(x.meta||{}).some(v=>String(v).trim()===k));if(f)return f}
+ const C=L.filter(x=>!typ||(x.ty||x.type)===typ),such=k=>C.find(x=>String(x.id)===k||String(x.name||'').split(' · ')[0].trim()===k||Object.values(x.meta||{}).some(v=>String(v).trim()===k));if(k){const f=such(k);if(f)return f}
+ if(!k&&G._datei){const kd=String(G._datei).split(/[\\/]/).pop().split(/[.\s(]/)[0].trim(),f=kd&&such(kd);if(f)return f}   /* Version 65: Feld „firma“ leer → Firmennummer aus dem Dateinamen (z. B. CO001038.4deep-gebaeude.json) */
  return!k&&G.name?C.find(x=>String(x.name||'')===G.name||String(x.name||'').split(' · ').slice(1).join(' · ')===G.name)||null:null}
 function gebaeudeZuNodes(nodes,liste,typ){let z=0;liste.forEach(G=>{const f=gebFirma(G,nodes,typ||null);if(f){f.gebaeude=G;z++}});return z}
 function gebaeudeLaden(liste){const ok=[],ohne=[];liste.forEach(G=>{if(!gebaeudePruefen(G)){ohne.push((G&&G.name)||'?');return}let f=gebFirma(G);f=f?f.n:null;
@@ -1699,7 +1700,7 @@ $('jl').onclick=()=>$('jf').click();
 $('jf').onchange=e=>{const f=e.target.files[0];if(f)leseDatei(f);e.target.value=''};
 addEventListener('dragover',e=>e.preventDefault());
 addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer.files&&e.dataTransfer.files[0];if(f)leseDatei(f)});
-function leseDatei(f){if(DM.on)demoStop();if(/\.zip$/i.test(f.name)){leseZip(f);return}const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);if(istMassnahmenDatei(j)){massnahmenLaden(j);return}if(j&&j.format==='4deep-gebaeude'){gebaeudeLaden([j]);return}   /* Version 63 */eigeneWahl();lauf=null;laden(j.daten&&j.daten.nodes?j.daten:j)}catch(e){meld('Datei ist kein gültiges JSON: '+e.message)}};r.readAsText(f)}
+function leseDatei(f){if(DM.on)demoStop();if(/\.zip$/i.test(f.name)){leseZip(f);return}const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);if(istMassnahmenDatei(j)){massnahmenLaden(j);return}if(j&&j.format==='4deep-gebaeude'){j._datei=f.name;gebaeudeLaden([j]);return}   /* Version 63 */eigeneWahl();lauf=null;laden(j.daten&&j.daten.nodes?j.daten:j)}catch(e){meld('Datei ist kein gültiges JSON: '+e.message)}};r.readAsText(f)}
 $('ds').onchange=e=>waehleRaum(e.target.value);
 $('ubtn').onclick=()=>{if(U)uBeenden();else uStart(0)};$('wks').onchange=e=>wkWahl(e.target.value);$('fbs').onchange=e=>fbSetzen(e.target.value);
 $('rvr').oninput=e=>rvSetzen(RV.ids[+e.target.value]);$('rvz').onclick=()=>rvSetzen(RV.ids[Math.max(0,RV.ids.indexOf(RV.akt)-1)]);$('rvv').onclick=()=>rvSetzen(RV.ids[Math.min(RV.ids.length-1,RV.ids.indexOf(RV.akt)+1)]);
@@ -1727,7 +1728,7 @@ async function leseZip(f){
   // Version 30: neues Exportformat mit Unterordnern je Firma (…/<Firma>/busses/…, …/<Firma>/rels/…), auch ZIP im ZIP; Objekte doppelt in mehreren Ordnern nur einmal, mit allen Ordnern im Feld „Export-Ordner“
   const lies=async(ein,vor,tiefe)=>{for(const e of ein){
    if(/\.zip$/i.test(e.name)&&tiefe<2){try{await lies(await zipLesen((await zipEntpacken(e)).slice().buffer),vor+e.name.replace(/\.zip$/i,'')+'/',tiefe+1)}catch(_){}continue}
-   if(/\.4deep-gebaeude\.json$/i.test(e.name)){try{let t=dec.decode(await zipEntpacken(e));if(t.charCodeAt(0)===0xfeff)t=t.slice(1);GEB.push(JSON.parse(t))}catch(_){}continue}   // Version 63: Gebäude-Beschreibungen im ZIP
+   if(/\.4deep-gebaeude\.json$/i.test(e.name)){try{let t=dec.decode(await zipEntpacken(e));if(t.charCodeAt(0)===0xfeff)t=t.slice(1);const g=JSON.parse(t);if(g&&typeof g==='object')g._datei=e.name;GEB.push(g)}catch(_){}continue}   // Version 63: Gebäude-Beschreibungen im ZIP
    if(!/\.json$/i.test(e.name))continue;const teile=(vor+e.name).split('/');const ib=teile.indexOf('busses'),ir=teile.indexOf('rels'),ix=ib>=0&&(ir<0||ib<ir)?ib:ir,art=ix<0?'':ix===ib?'b':'r';
    if(!art&&ein.filter(x=>!/\.4deep-gebaeude\.json$/i.test(x.name)).length>1)continue;/* Version 63: Gebäudedateien zählen nicht mit */let t=dec.decode(await zipEntpacken(e));if(t.charCodeAt(0)===0xfeff)t=t.slice(1);let o;try{o=JSON.parse(t)}catch(_){continue}
    if(!art){json4d=o;continue}
@@ -3000,15 +3001,16 @@ const DEMO_PROJEKT={titel:'Demo: Projekt (fiktiv)',tempo:1.7,stationen:[   // te
   {art:'heim',dauer:3,dreh:-.5,ms:4000,text:'Ende der Vorführung'}]}]};
 // Schritte der Projekt-Demo
 function dmPlanBlick(x,o){const P=PLAN;if(!P)return null;o=o||{};const y=(P.row*2+P.yU)/2;return{ziel:new T.Vector3(x,o.y!=null?o.y:y,o.z||0),dist:o.dist||(P.row*2.6-P.yU)*1.15,gier:o.gier!=null?o.gier:K.gier,nick:o.nick!=null?o.nick:K.nick}}
+function dmMasWeg(){$('mas').style.display='none';demoCap(DM.cap)}   /* Version 65: Handlungsliste nur kurz zeigen */
 function dmMasAuf(){$('chr').style.display='none';if($('mas').style.display!=='block'||$('mas').dataset.art!=='mas')massnahmenZeigen()}
 function dmPunktEl(s){const L=[...document.querySelectorAll('#mas .ev[data-k]')];return L.find(e=>{const t=e.textContent;return t.includes(s.name)&&s.signal.test(t)})||null}
 async function dmPunkt(s,C){dmMasAuf();const el=dmPunktEl(s);if(!el)throw new Error('Demo: Punkt nicht gefunden: '+s.name);const m=D.massnahmen.find(x=>x.quelle==='Projekt'&&x.text.indexOf(s.name+':')===0&&s.signal.test(x.signal));
  C.m=m;C.it=HL[m.hl];C.P=byId[m.ids[0]];if(MAS_K!=null){DM.intern=true;try{masKetteAus()}finally{DM.intern=false}}
  el.scrollIntoView({block:'nearest'});el.style.outline='2px solid #ffd166';demoCap(dmText(s.text));await dmW(1500);
- DM.intern=true;try{DM.fahrt=null;el.click()}finally{DM.intern=false}await dmW(3200);el.style.outline=''}
+ DM.intern=true;try{DM.fahrt=null;el.click()}finally{DM.intern=false}await dmW(3200);el.style.outline='';dmMasWeg()}
 const DM={on:false,id:0,paused:false,cap:'',sp:null,ctx:{},fahrt:null,zr:null,dreh:0,pfad:null};
 function demoCap(txt){DM.cap=txt||'';const c=$('dcap'),z=DM.on&&DM.paused;
- {const ms=$('mas'),pn=$('pn');if(ms.style.display==='block'&&innerWidth>900){const a=pn.getBoundingClientRect().right+10,b=ms.getBoundingClientRect().left-10;c.style.left=a+'px';c.style.transform='none';c.style.width=Math.max(300,b-a)+'px';c.style.minWidth='0'}else{c.style.left=c.style.transform=c.style.width=c.style.minWidth=''}}   // Version 61: Textkasten zwischen Bedienfeld und Handlungsliste
+ {const pf=$('prof'),ms=(document.body.classList.contains('dmpj')&&pf.style.display==='block')?pf:$('mas'),pn=$('pn');if(ms.style.display==='block'&&innerWidth>900){const a=pn.getBoundingClientRect().right+10,b=ms.getBoundingClientRect().left-10;c.style.left=a+'px';c.style.transform='none';c.style.width=Math.max(300,b-a)+'px';c.style.minWidth='0'}else{c.style.left=c.style.transform=c.style.width=c.style.minWidth=''}}   // Version 61: Textkasten zwischen Bedienfeld und Handlungsliste
  c.style.display=DM.cap||z?'block':'none';
  c.innerHTML=DM.cap+(DM.zr?'<div class="m" id="dczr"></div>':'')+(z?(DM.cap?'<br>':'')+'<span style="color:#ffd166;font-weight:700">⏸ Pausiert – P oder „Weiter“ zum Fortsetzen</span>':'');if(DM.zr)dmZrText()}
 // Wartezeit in ms, zählt nur ohne Pause; bricht ab, wenn die Vorführung endet (Test ersetzt dmWarte im Zeitraffer)
@@ -3098,8 +3100,8 @@ async function dmSchritt(s){const C=DM.ctx,ms=s.ms||0;
    if(s.schluss){demoCap(dmText(s.schluss.text));await dmW(s.schluss.ms||4000)}return}
   case'flug':{const n=dmKnoten(s.ziel);if(!n)throw new Error('Demo: Ziel nicht gefunden: '+JSON.stringify(s.ziel,(k,v)=>v instanceof RegExp?String(v):v));if(s.merke)C[s.merke]=n;
    if(s.text)demoCap(dmText(s.text));waehle(n.i);dmFahrt(dmBlick([n],{nah:s.nah||11,dreh:s.dreh||0}),s.dauer||3);await dmW((s.dauer||3)*1000+300);break}
-  case'profil':{const n=dmKnoten(s.ziel);if(s.text)demoCap(dmText(s.text));if(n){waehle(n.i);zeigeProfil(n.i)}break}
-  case'profilZu':schliesseProfil();break;
+  case'profil':{const n=dmKnoten(s.ziel);if(n){waehle(n.i);zeigeProfil(n.i);profLage()}if(s.text)demoCap(dmText(s.text));break}
+  case'profilZu':schliesseProfil();demoCap(DM.cap);break;
   case'umfeld':{const I=dmKnoten(s.ziel),M=dmUmfeld(I);if(s.merke)C[s.merke]=M;waehle(-1);demoCap(dmText(s.text));await dmW(1600);dmAusblenden(M);dmFahrt(dmBlick(null,{dreh:.35}),s.dauer||3);break}
   case'kette':{const a=dmKnoten(s.start);dmAusblenden(null);const R=dmKette(a,s.kette);Object.assign(C,{pfade:R.pfade.length,objekte:R.nodes.size,stufe1:R.stufe1,ende:R.ende});C.kette=R;
    schliesseProfil();waehle(-1);dmAusblenden(R.nodes);DM.pfad=R.segs;dmFahrt(dmBlick(null,{dreh:-.3}),s.dauer||3);demoCap(dmText(s.text));break}
@@ -3119,19 +3121,19 @@ async function dmSchritt(s){const C=DM.ctx,ms=s.ms||0;
   case'punkt':await dmPunkt(s,C);break;
   case'ausfall':{const n=N.find(x=>x.name===s.person);if(!n)throw new Error('Demo: Person nicht gefunden: '+s.person);dmMasAuf();DM.intern=true;try{masKetteAus();ausfallAn(n,s.wo||4)}finally{DM.intern=false}
    demoCap(dmText(s.text));dmFahrt(dmBlick([...AUS.d.keys()].map(i=>N[i]),{gier:-.1,nick:.08,weit:1.35}),3);const w=$('masaus');if(w)w.scrollIntoView({block:'nearest'});break}
-  case'rang':{dmMasAuf();const g=$('masaus')&&$('masaus').querySelector('.rang');if(g){g.scrollIntoView({block:'nearest'});g.style.outline='2px solid #ffd166'}demoCap(dmText(s.text));if(ms)await dmW(ms);if(g)g.style.outline='';return}
+  case'rang':{dmMasAuf();const g=$('masaus')&&$('masaus').querySelector('.rang');if(g){g.scrollIntoView({block:'nearest'});g.style.outline='2px solid #ffd166'}demoCap(dmText(s.text));if(ms)await dmW(ms);if(g)g.style.outline='';dmMasWeg();return}
   case'ausfallAus':{DM.intern=true;try{ausfallAus(false)}finally{DM.intern=false}dmFahrt(dmBlick(null,{gier:-.12,nick:.08}),3);break}
   case'masZu':{DM.intern=true;try{masKetteAus();if(AUS)ausfallAus(true)}finally{DM.intern=false}$('mas').style.display='none';DM.pfad=null;waehle(-1);break}
   case'kennzahl':{const n=dmBeste(s.beste);if(!n)break;if(s.merke)C[s.merke]=n;waehle(n.i);demoCap(dmText(s.text));dmFahrt(dmBlick([n],{nah:22,dreh:s.dreh||0}),4.5,.18);await dmW(4700);zeigeProfil(n.i);await dmW(ms);schliesseProfil();waehle(-1);return}
  }
  if(ms)await dmW(ms)}
 async function demoAbspielen(A){if(DM.on)return demoStop();
- DM.on=true;DM.paused=false;DM.id++;DM.ctx={};DM.ablauf=A;DM.station=-1;$('dmb').textContent='■ Demo stoppen';$('dmp').textContent='⏸ Pause (P)';$('dmp').style.display='';$('dmpj').style.display='none';
+ DM.on=true;DM.paused=false;DM.id++;DM.ctx={};DM.ablauf=A;document.body.classList.toggle('dmpj',A===DEMO_PROJEKT);DM.station=-1;$('dmb').textContent='■ Demo stoppen';$('dmp').textContent='⏸ Pause (P)';$('dmp').style.display='';$('dmpj').style.display='none';
  if(U)uStop(true);
  try{for(let i=0;i<A.stationen.length;i++){DM.station=i;const st=A.stationen[i];for(const s of st.schritte)await dmSchritt(s)}demoStop()}
  catch(x){if(x!=='stop'){demoStop();meldeFehler(x)}}}
 function meldeFehler(x){console.error(x);const l=$('leer');l.style.display='';l.style.color='#ff6b6b';l.textContent='Fehler in der Vorführung: '+(x&&x.message||x)}
-function demoStop(){if(!DM.on)return;const proj=DM.ablauf===DEMO_PROJEKT;DM.zf=null;if(AUS)ausfallAus(true);if(MAS_K!=null)masKetteAus();if(proj)$('mas').style.display='none';DM.on=false;DM.paused=false;DM.sp=null;DM.id++;DM.fahrt=null;DM.dreh=0;DM.pfad=null;if(DM.zr){DM.zr=null;tCur=Infinity}
+function demoStop(){if(!DM.on)return;document.body.classList.remove('dmpj');const proj=DM.ablauf===DEMO_PROJEKT;DM.zf=null;if(AUS)ausfallAus(true);if(MAS_K!=null)masKetteAus();if(proj)$('mas').style.display='none';DM.on=false;DM.paused=false;DM.sp=null;DM.id++;DM.fahrt=null;DM.dreh=0;DM.pfad=null;if(DM.zr){DM.zr=null;tCur=Infinity}
  N.forEach(n=>n.dmAus=false);if(N.length)zeitAnwenden();$('dfade').style.opacity=0;demoCap('');schliesseProfil();waehle(-1);
  $('dmb').textContent='▶ Demo abspielen';$('dmp').style.display='none';$('dmpj').style.display=''}
 $('dmb').onclick=()=>demoAbspielen(DEMO_EAUTO);$('dmpj').onclick=()=>demoAbspielen(DEMO_PROJEKT);
