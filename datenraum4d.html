@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="54">
-<title>4Deep Machbarkeitsstudie</title>
-<!-- 4Deep, Stufe 1 (Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
+<meta name="4deep-darstellung" content="56">
+<title>4Deep – Datenraum in Raum und Zeit</title>
+<!-- 4Deep – Datenraum in Raum und Zeit (begonnen als Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026; Produkt seit 26.11.2026, Version 55): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
      daher ohne Änderung am Adapter nutzbar: im Widget unter „Adresse von datenraum3d.html“ die Adresse dieser Datei eintragen.
      Vierte Dimension: Zeitregler (start/end der Objekte und Beziehungen, sonst Attribut „Erstellt“/„Geändert“). -->
@@ -60,6 +60,8 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
 #prof .x{position:absolute;right:8px;top:6px;cursor:pointer;color:var(--mu);font-size:16px}#prof button{margin-top:8px;padding:5px 8px;background:#16213a;color:var(--tx);border:1px solid var(--rand);border-radius:6px;cursor:pointer}
 #profb{position:fixed;display:none;z-index:21;pointer-events:none;filter:drop-shadow(0 6px 9px rgba(0,0,0,.45))}#profb img{display:block;border-radius:6px}
 #profb .txt{max-width:280px;padding:10px 14px;background:#fff8e6;color:#1a2433;border-radius:8px;font:600 15px/1.35 system-ui,sans-serif;white-space:pre-wrap;overflow-wrap:anywhere}
+#dcap{left:50%;top:10px;transform:translateX(-50%);width:min(700px,calc(100% - 540px));min-width:340px;display:none;z-index:13;font-size:14px;line-height:1.45;pointer-events:none}#dcap .m{color:var(--mu);font-size:12.5px}#dczr{margin-top:4px;font-variant-numeric:tabular-nums}
+#dfade{position:fixed;inset:0;background:#0d1424;opacity:0;pointer-events:none;transition:opacity .6s ease;z-index:9}
 #tip{position:fixed;pointer-events:none;background:rgba(0,0,0,.75);padding:3px 7px;border-radius:5px;font-size:12px;display:none;white-space:nowrap}
 #st{position:fixed;right:10px;bottom:10px;color:var(--tx);background:var(--pn);border-radius:6px;padding:3px 8px;font-size:11px;text-align:right}
 #hint{color:var(--mu);font-size:10.5px;line-height:1.4;margin-top:8px;border-top:1px solid var(--rand);padding-top:6px}
@@ -71,12 +73,13 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
 <canvas id="cv"></canvas><canvas id="nm"></canvas><canvas id="kugel" width="1" height="1"></canvas>
 <div id="leer">Datenraum wählen oder JSON-Datei hierher ziehen …</div>
 <div class="pn" id="pn">
- <h1>4Deep</h1><div class="u">Machbarkeitsstudie WebGL · Raum + Zeit</div>
+ <h1>4Deep</h1><div class="u">Datenraum in Raum und Zeit</div>
  <label>Datenraum</label>
- <select id="ds"><option value="">Datenraum wählen …</option><option value="demo">Produktentwicklung (fiktiv, 18 Monate)</option>
+ <select id="ds"><option value="">Datenraum wählen …</option><option value="eauto">Demo: Elektroauto (fiktiv)</option><option value="demo">Produktentwicklung (fiktiv, 18 Monate)</option><option value="kauf">Kaufmännisch (fiktiv)</option>
   <option value="stress:2000">Leistungstest 2 000 Objekte</option>
   <option value="stress:10000">Leistungstest 10 000 Objekte</option><option value="stress:30000">Leistungstest 30 000 Objekte</option>
   <optgroup label="Unterricht (über Webserver)"><option value="thema:supernova">Supernova Typ Ia</option><option value="thema:hastings">Schlacht von Hastings (1066)</option></optgroup></select>
+ <div style="display:flex;gap:4px"><button id="dmb" title="Vorführung mit dem Elektroauto (ca. 5 min): Eingriff mit Maus, Taste oder SpaceMouse pausiert, P = Pause/Weiter, Esc = beenden">▶ Demo abspielen</button><button id="dmp" style="display:none;width:auto;white-space:nowrap">⏸ Pause (P)</button></div>
  <button id="jl" title="4Deep-JSON oder CRM-Export als ZIP (wird nur im Browser umgewandelt)">Datei laden (JSON / CRM-ZIP) …</button><input type="file" id="jf" accept=".json,.zip,application/json,application/zip" hidden>
  <button id="ubtn" style="display:none" title="Unterricht: Stationen mit Text, Frage und Antwort (← → wechseln, A = Antwort, Esc = beenden)">▶ Unterricht</button>
  <div id="rvw" style="display:none"><label id="rvl">Ablauf</label><div class="rvz"><button id="rvz">◀</button><input type="range" id="rvr" min="0" max="0" value="0"><button id="rvv">▶</button></div><div id="rvt" class="m"></div></div>
@@ -123,10 +126,10 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 54 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 56 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
-<div class="pn" id="chr"></div><div class="pn" id="mas"></div><div class="pn" id="prof"></div><div id="profb"></div>
+<div class="pn" id="chr"></div><div class="pn" id="mas"></div><div class="pn" id="prof"></div><div class="pn" id="dcap"></div><div id="dfade"></div><div id="profb"></div>
 <div id="tip"></div><div id="legende"></div>
 <div class="pn" id="utxt"></div><div class="pn" id="ufr"></div><div class="pn" id="ust"></div><div id="uhin"></div><div class="pn" id="ustart"></div>
 <div id="st"></div>
@@ -686,7 +689,7 @@ let AXP=[],AXS={p:0,k:['','',''],log:[false,false,false],inv:[false,false,false]
 const axLinien=new T.Group();scene.add(axLinien);const skyG=new T.Group();skyG.visible=false;scene.add(skyG);let SKY=null,FZ=null,FOKUS=null;   // Version 34: Firmen-Skyline
 function numv(v){if(v==null)return NaN;if(typeof v==='number')return v;let t=String(v).trim();if(!t)return NaN;
  if(/^\d{4}-\d\d-\d\d(T|$)/.test(t)){const d=Date.parse(t);return isNaN(d)?NaN:d}
- t=t.replace(/\s*(€|EUR|%|h|Std\.?|Tage?)$/i,'').replace(/\s/g,'');
+ t=t.replace(/\s*(€|EUR|%|h|Std\.?|Tage?|Monate?)$/i,'').replace(/\s/g,'');
  if(/^[-+]?\d{1,3}(\.\d{3})*(,\d+)?$/.test(t)||/^[-+]?\d+,\d+$/.test(t))return parseFloat(t.replace(/\./g,'').replace(',','.'));
  if(/^[-+]?\d+(\.\d+)?$/.test(t))return parseFloat(t);return NaN}
 function istDatumWert(v){return typeof v==='string'&&/^\d{4}-\d\d-\d\d/.test(v.trim())}
@@ -762,7 +765,7 @@ function beschriften(){legendeOben('');schrift.children.slice().forEach(c=>{schr
    const p=n=>String(n).padStart(2,'0');marke(st<1?p(d.getUTCMonth()+1)+'/'+d.getUTCFullYear():String(d.getUTCFullYear()),zeitX(t),b.min.y-L*.8,b.max.z+L,h*1.2,'#ff9f1c').center.set(.5,.5)}}}
 
 // ---------- Zeit anwenden ----------
-function sichtbar(n){return !n.skyAus&&!n.fokAus&&!n.revAus&&!n.wkAus&&!typAus[n.ty]&&!n.axAus&&!(isFinite(n.t0)&&n.t0>tCur)}
+function sichtbar(n){return !n.dmAus&&!n.skyAus&&!n.fokAus&&!n.revAus&&!n.wkAus&&!typAus[n.ty]&&!n.axAus&&!(isFinite(n.t0)&&n.t0>tCur)}
 function vergangen(n){return isFinite(n.t1)&&isFinite(tCur)&&n.t1<tCur}   // „alle Zeiten“: nichts blass (Version 12)
 function zeitAnwenden(){
  const blass=$('vergangen').checked,ref=Math.min(tCur,HEUTE),da=t=>!(isFinite(t)&&t>tCur);
@@ -829,12 +832,13 @@ let welt={c:new T.Vector3(),r:30};
 // ---------- Kamera (Steuerung wie CATIA in datenraum3d.html) ----------
 const K={ziel:new T.Vector3(),gier:-.6,nick:.45,dist:80,zZiel:new T.Vector3(),zDist:80,flug:false,zGier:null};
 let heimSpaeter=false,heimNachSim=false,heimT=0;
-function nutzerSteuert(){heimSpaeter=false;heimNachSim=false;K.flug=false;K.zGier=null}
+function nutzerSteuert(){demoEingriff();heimSpaeter=false;heimNachSim=false;K.flug=false;K.zGier=null}
 // Version 18: Einpassen nach Bildformat (Breite und Höhe getrennt) in die freie Fläche neben Bedienfeld und Zeitleiste
 function freieFlaeche(){const W=cv.clientWidth||innerWidth,H=cv.clientHeight||innerHeight;let x0=0,x1=W,y0=0,y1=H;
  const pn=$('pn'),zt=$('zt');
  if(pn&&W>700){const r=pn.getBoundingClientRect();if(r.width>0&&r.right<W*.4)x0=r.right+8}
  if(zt&&getComputedStyle(zt).display!=='none'){const r=zt.getBoundingClientRect();if(r.top>H*.5)y1=r.top-6}
+ {const dc=$('dcap');if(dc&&dc.style.display==='block'){const r=dc.getBoundingClientRect();if(r.bottom>0&&r.bottom<H*.3)y0=Math.max(y0,r.bottom+6)}}   // Version 56: Textkasten der Vorführung
  return{W,H,x0,x1,y0,y1}}
 function heim(){if(sim){heimNachSim=true}const z=heimZiel(null);if(!z)return;K.zZiel.copy(z.c);K.zDist=z.d;K.flug=true;neu()}
 // Version 28: Ziel für eine Liste von Objekten (mit Radius) oder alle sichtbaren samt Punktwolke
@@ -1418,7 +1422,7 @@ $('jl').onclick=()=>$('jf').click();
 $('jf').onchange=e=>{const f=e.target.files[0];if(f)leseDatei(f);e.target.value=''};
 addEventListener('dragover',e=>e.preventDefault());
 addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer.files&&e.dataTransfer.files[0];if(f)leseDatei(f)});
-function leseDatei(f){if(/\.zip$/i.test(f.name)){leseZip(f);return}const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);if(istMassnahmenDatei(j)){massnahmenLaden(j);return}eigeneWahl();lauf=null;laden(j.daten&&j.daten.nodes?j.daten:j)}catch(e){meld('Datei ist kein gültiges JSON: '+e.message)}};r.readAsText(f)}
+function leseDatei(f){if(DM.on)demoStop();if(/\.zip$/i.test(f.name)){leseZip(f);return}const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);if(istMassnahmenDatei(j)){massnahmenLaden(j);return}eigeneWahl();lauf=null;laden(j.daten&&j.daten.nodes?j.daten:j)}catch(e){meld('Datei ist kein gültiges JSON: '+e.message)}};r.readAsText(f)}
 $('ds').onchange=e=>waehleRaum(e.target.value);
 $('ubtn').onclick=()=>{if(U)uBeenden();else uStart(0)};$('wks').onchange=e=>wkWahl(e.target.value);$('fbs').onchange=e=>fbSetzen(e.target.value);
 $('rvr').oninput=e=>rvSetzen(RV.ids[+e.target.value]);$('rvz').onclick=()=>rvSetzen(RV.ids[Math.max(0,RV.ids.indexOf(RV.akt)-1)]);$('rvv').onclick=()=>rvSetzen(RV.ids[Math.min(RV.ids.length-1,RV.ids.indexOf(RV.akt)+1)]);
@@ -1752,8 +1756,10 @@ function crmKennzahlen(nodes,edges,byId){const nb=crmNachbarn(edges);
   co._u12=u12;co._uv=uv;co.meta=Object.assign(K,co.meta)})}
 
 document.querySelectorAll('select,input[type=checkbox],input[type=range]').forEach(el=>el.addEventListener('change',()=>el.blur()));
-function waehleRaum(v){eigeneWahl();lauf=null;
+function waehleRaum(v){if(DM.on)demoStop();eigeneWahl();lauf=null;
  if(v==='demo')laden(demoDaten());
+ else if(v==='eauto')laden(elektroautoDaten());   // Version 55: Elektroauto wie in 3Deep, mit Zeitverlauf
+ else if(v==='kauf')laden(kaufDaten());   // Version 56: kaufmännischer Datenraum wie in 3Deep
  else if(v.startsWith('stress:'))laden(stressDaten(+v.slice(7)));
  else if(v.startsWith('thema:')){const name=v.slice(6);const pfade=['themen/'+name+'.json','3deep-widget/themen/'+name+'.json'];
   ladeKugel(true);const versuch=i=>{if(i>=pfade.length){meld('Thema nicht erreichbar (nur über einen Webserver, nicht per Doppelklick).');return}
@@ -2108,6 +2114,263 @@ addEventListener('message',e=>{const m=e.data;if(!m||m.quelle!=='3deep-adapter')
  if(AUF.sperre){const s=AUF.sperre,l=m.lauf;if(l!=null&&(l<=s.lauf||s.offen)){if(s.offen&&l>s.lauf){s.lauf=l;s.offen=false}AUF.hoch=Math.max(AUF.hoch||0,l);AUF.laedtNeu=false;return}AUF.sperre=null}
  AUF.laedtNeu=false;if(m.lauf!=null)AUF.hoch=Math.max(AUF.hoch||0,m.lauf);
  const gleich=m.lauf!=null&&m.lauf===lauf&&N.length>0;lauf=m.lauf;$('ds').value='';laden(m.daten,{behalten:gleich})});
+// ---------- Version 55: Datenraum „Demo: Elektroauto (fiktiv)“, unverändert aus 3Deep Darstellung 148 (demoData, anreichern, foto, skizze; umbenannt) ----------
+// Eigener Zufallsgenerator wie in 3Deep (rnd3/s3), damit IDs, Namen und Zuordnungen genau gleich sind (Sprechtext und Folien).
+let s3=7;const rnd3=()=>{s3|=0;s3=s3+0x6D2B79F5|0;let t=Math.imul(s3^s3>>>15,1|s3);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+function eaBasis(){s3=7;
+ const types={folder:{color:'#e6d2a6',size:6,shape:'folder',label:'Bookmark-Folder'},asm:{color:'#4f8cff',size:3.36,label:'Baugruppe'},part:{color:'#2fc4ad',size:1.96,label:'Einzelteil (CAD)'},pdf:{color:'#e5534b',size:1.3,shape:'book',label:'Spezifikation (PDF)'},ppt:{color:'#f08a3c',size:.9,label:'Attachment'},dwg:{color:'#9aa5b1',size:1.8,label:'Zeichnung'},mk:{color:'#d67bd9',size:.8,label:'Markup / Review'},issue:{color:'#ff4d6d',size:2.2,shape:'torus',label:'Issue'},person:{color:'#5fcf3f',size:2.2,shape:'bust',label:'Person'},task:{color:'#f2c400',size:1.4,shape:'dodecahedron',label:'Aufgabe'}};
+ const relTypes={struktur:{label:'Baugruppenlink (enthält)',color:'#2f3f5c',directed:false},inhalt:{label:'Enthalten in Bookmark',color:'#b07a10',directed:true},spec:{label:'Spezifikationslink',color:'#b8403a',directed:true},praes:{label:'Attachment-Link',color:'#c76a1c',directed:true},zeichnung:{label:'Zeichnungslink',color:'#5d6975',directed:true},markup:{label:'Markup/Review',color:'#a24fa6',directed:true},betrifft:{label:'Issue betrifft (Affected Item)',color:'#c2255c',directed:true},kontext:{label:'Issue-Kontext (Context)',color:'#2e8fb8',directed:true},aufgabe:{label:'Aufgabe für',color:'#b59500',directed:true},zuweisung:{label:'Zugewiesen an',color:'#3a8f2f',directed:true}};
+ const nodes=[],edges=[];const add=(type,name,meta)=>{const id='n'+nodes.length;nodes.push({id,type,name,meta});return id};const link=(from,to,type)=>edges.push({from,to,type});
+ const st=['In Arbeit','Freigegeben','In Prüfung'],ps=['A. Bauer','B. Keller','C. Weber','D. Hoffmann','E. Schulz','F. Wagner','G. Neumann','H. Krause'];
+ const F=add('folder','Bookmark: E-Fahrzeug-Review',{Owner:'Projektleitung',Erstellt:'2026-10-12'});
+ // Vier Hauptbaugruppen (2 bis 4 Ebenen); nur die ersten drei liegen im Bookmark. Jede Unterbaugruppe hat 2 bis 20 Teile.
+ const HB=[['Fahrwerk',true,[['Vorderachse',12,[['Bremsanlage vorn',5]]],['Hinterachse',9],['Lenkung',3]]],
+  ['Elektroantrieb',true,[['E-Motor',7,[['Leistungselektronik',14,[['Wechselrichter-Modul',20]]]]],['Thermomanagement',6]]],
+  ['Hochvoltbatterie',true,[['Zellmodule',18],['Batteriemanagement',8]]],
+  ['Interieur',false,[['Cockpit',2,[['Zentraldisplay',11]]],['Sitze',6]]]];
+ const prods=[],haupt=[];let pi=0;
+ const teile=(b,k)=>{for(let m=0;m<k;m++){const nm=(++pi===41?'Temperatursensor':'Teil')+' P-'+(1000+pi),p=add('part',nm,{Revision:'A',Status:st[Math.floor(rnd3()*3)],Werkstoff:['Stahl','Aluminium','PA66','Titan'][Math.floor(rnd3()*4)],Masse:(rnd3()*9+.2).toFixed(1)+' kg'});link(p,b,'struktur');prods.push(p);
+  if(rnd3()<.5)link(add('pdf','Spec '+nm+'.pdf',{Dateityp:'PDF',Version:'1.'+Math.floor(rnd3()*5)}),p,'spec');
+  if(rnd3()<.15)link(add('ppt','Präsentation '+nm+'.pptx',{Dateityp:'PowerPoint'}),p,'praes');
+  if(rnd3()<.35)link(add('dwg','Zeichnung '+nm,{Dateityp:'CATDrawing'}),p,'zeichnung');
+  if(rnd3()<.15)link(add('mk','Markup '+nm,{Dateityp:'Markup'}),p,'markup')}};
+ const ub=(list,parent,ebene)=>list.forEach(([nm,k,kinder])=>{const b=add('asm',nm,{Revision:'A',Status:st[(pi+ebene)%3],Ebene:String(ebene)});link(b,parent,'struktur');prods.push(b);teile(b,k);if(kinder)ub(kinder,b,ebene+1)});
+ HB.forEach(([nm,imBm,kinder],i)=>{const a=add('asm',nm,{Revision:'B',Status:st[i%3],Ebene:'1',Rolle:'Hauptbaugruppe'});if(imBm)link(a,F,'inhalt');prods.push(a);haupt.push(a);ub(kinder,a,2)});
+ const pers=ps.map(n=>add('person',n,{Abteilung:['Konstruktion','Test','Qualität','Einkauf'][Math.floor(rnd3()*4)]}));const iss=[];
+ const IB=['Zentraldisplay fällt bei Kälte kurz aus','Sitzverstellung schwergängig','Bremsscheibe vorn: Korrosion, weil fast nur rekuperiert wird','Batteriemodul: Zelltemperatur beim Schnellladen über Grenzwert','Kühlplatte: Undichtigkeit am Anschluss','Lenkung: Spiel im Lenkgetriebe','Wechselrichter: EMV-Störung auf dem Prüfstand','Zellmodul: Verschraubung fehlt'];
+ for(let i=0;i<8;i++){const is=add('issue','Issue #'+(200+i),{Beschreibung:IB[i],Priorität:['Hoch','Mittel','Niedrig'][i%3],Status:['Offen','In Bearbeitung'][i%2]});
+  let z;if(i<2)z=haupt[3];else do{z=prods[Math.floor(rnd3()*prods.length)]}while(haupt.includes(z)); // genau zwei Issues an einer Hauptbaugruppe (Interieur)
+  link(is,z,'betrifft');iss.push(is)}
+ const AB=['Halterung des Zentraldisplays prüfen und Kältetest wiederholen','Sitzschiene vermessen, Reibwerte mit Lieferant klären','Korrosionsbild auswerten, Beschichtung der Bremsscheibe prüfen','Thermomodell der Zellmodule prüfen, Ladekurve anpassen','Kühlplatte am Prototyp abdrücken, Dichtung tauschen','Lenkgetriebe zerlegen und Lagerspiel dokumentieren','EMV-Messung nach Filteränderung wiederholen','Montageplan prüfen und Schraubroboter korrigieren','Displaytest in der Klimakammer durchführen, Ergebnis an Elektronik','Schmierung der Sitzschiene prüfen, Änderungsantrag vorbereiten','Prüfbericht für Bremsanlage freigeben','Kühlplatte im Dauerlauf erneut testen'];
+ for(let i=0;i<12;i++){const k=add('task','Aufgabe '+(i+1),{Beschreibung:AB[i],Fällig:'2026-12-'+String(1+i*2).padStart(2,'0')});link(k,iss[i%8],'aufgabe');link(k,pers[(i*3)%8],'zuweisung')}
+ {const k=add('task','Aufgabe 13',{Beschreibung:'Ursache der Korrosion mit Lieferant klären, Gegenmaßnahme festlegen',Fällig:'2026-12-20'});link(k,iss[2],'aufgabe');link(k,pers[0],'zuweisung')} // zweites Issue für A. Bauer (Demo-Schluss)
+ {const p=nodes.find(n=>n.name==='Temperatursensor P-1041'),b=nodes.find(n=>n.name==='Bremsanlage vorn');link(p.id,b.id,'struktur');p.meta.Verwendung='Gleichteil: Leistungselektronik und Bremsanlage vorn'} // Gleichteil in zwei Baugruppen (Demo: Struktur aufwärts)
+ // Attachments auch an Baugruppen (hängen wie Spezifikationen am Produkt); ohne rnd3(), damit die übrige Zufallsfolge gleich bleibt
+ [['Fahrwerk','Design Review Fahrwerk'],['Elektroantrieb','Projektstatus Elektroantrieb'],['Hochvoltbatterie','Sicherheitskonzept Hochvoltbatterie'],['Interieur','Design Review Interieur'],['Leistungselektronik','Kostenanalyse Leistungselektronik'],['Zellmodule','Lieferantenvergleich Zellmodule']].forEach(([b,t])=>{const a=nodes.find(n=>n.type==='asm'&&n.name===b);link(add('ppt',t+'.pptx',{Dateityp:'PowerPoint'}),a.id,'praes')});
+ // Version 81: Foto-Attachments (png/jpg) mit Bild im Rahmen 250–500 px; Issues zeigen ihren Titel statt eines Vorschaubilds (ohne rnd3())
+ [['Bremsanlage vorn','Foto Prüfstand Bremsscheibe.jpg',640,420],['Zellmodule','Foto Kühlplatte Anschluss.png',200,160],['Zentraldisplay','Foto Kältetest Display.jpg',900,600]].forEach(([b,t,w,h])=>{const a=nodes.find(n=>n.type==='asm'&&n.name===b),id=add('ppt',t,{Dateityp:/png$/.test(t)?'PNG-Bild':'JPEG-Bild'}),o=nodes.find(n=>n.id===id);o.img=eaFoto(t,w,h);o.imgFoto=true;link(id,a.id,'praes')});
+ nodes.forEach(n=>{if(n.type==='issue')n.imgText=n.meta.Beschreibung});
+ let ti=0;nodes.forEach(n=>{delete n.meta.Status;if(n.type==='person')return;const x=rnd3();n.state=(n.type==='task'||n.type==='issue')?['To do','In Work','To do','Released','To do','In Work'][ti++%6]:(x<.3?'In Work':x<.55?'Frozen':x<.93?'Released':'Obsolete')});
+ {const ob=nodes.filter(n=>n.state==='Obsolete');ob.forEach((n,i)=>{if(i>0&&i<ob.length-1)n.state='Released'})}
+ eaAnreichern(nodes);return{types,relTypes,nodes,edges,spacing:9.408,maxObjects:nodes.length}}
+function eaAnreichern(nodes){ // fiktive Stammdaten für die Demo-Datenräume (Profilkarte); bestehende Werte bleiben
+ const sv=s3;s3=99;const R=n=>Math.floor(rnd3()*n),pk=a=>a[R(a.length)],dt=()=>(2024+R(3))+'-'+String(1+R(10)).padStart(2,'0')+'-'+String(1+R(28)).padStart(2,'0'),us=['A. Bauer','B. Keller','C. Weber','D. Hoffmann','E. Schulz','F. Wagner','G. Neumann'];
+ nodes.forEach(n=>{const m=n.meta=n.meta||{},put=(k,v)=>{if(m[k]==null)m[k]=v};if(n.type==='person'){put('E-Mail',n.name.toLowerCase().replace(/[^a-z]+/g,'.').replace(/^\.|\.$/g,'')+'@beispiel.de');put('Rolle',pk(['Konstrukteur','Prüfer','Projektleiter','Einkauf','Qualitätsmanager']));put('Standort',pk(['München','Stuttgart','Wolfsburg','Graz']));put('Telefon','+49 89 '+(1000+R(8999)));put('Sprache',pk(['de','en']));put('Mitglied seit',dt());put('Organisation','Beispiel AG');put('Kostenstelle','KST-'+(100+R(900)));put('Vertretung',pk(us));put('Aktiv','Ja');return}
+  {const c=dt(),d2=dt();put('Erstellt',c<d2?c:d2);put('Geändert',c<d2?d2:c)}put('Erstellt von',pk(us));put('Geändert von',pk(us));put('Projekt',pk(['Alpha','Beta','Gamma']));put('Organisation','Beispiel AG');put('Sicherheitsklasse',pk(['Intern','Vertraulich','Öffentlich']));put('Version',(1+R(4))+'.'+R(10));put('Beschreibung',n.name+' – Beispieldatensatz');put('Sprache',pk(['de','en']));put('Gesperrt',n.state==='Frozen'?'Ja':'Nein');
+  if(n.type==='part'||n.type==='asm'){put('Werkstoff',pk(['Stahl','Aluminium','PA66']));put('Masse',(R(900)/10+.1).toFixed(1)+' kg');put('Lieferant',pk(['Intern','Zulieferer 1','Zulieferer 2']));put('Norm',pk(['DIN','ISO','Werksnorm']));put('Prüfstatus',pk(['offen','bestanden','Nacharbeit']));if(!n.img)n.img=eaSkizze(n.name,n.type==='asm')}
+  else if(n.type==='pdf'||n.type==='ppt'||n.type==='dwg'){R(990);R(60); /* früher Dateigröße und Seiten (weggelassen, Zufallsfolge bleibt) */put('Format',n.type==='dwg'?'A'+(R(4)):n.type==='ppt'?'16:9':'A4');put('Check-in',dt())}
+  else{put('Aufwand',(1+R(40))+' h');put('Kategorie',pk(['Technik','Qualität','Einkauf','Dokumentation']));put('Priorität',pk(['Hoch','Mittel','Niedrig']))}});s3=sv}
+// Vorschaubilder (Version 72): Knotenfeld img = Bildadresse (https:, data:image/, blob: oder relativ). Die Profilkarte zeigt es freigestellt daneben.
+// Demo-Foto (SVG, fest je Name): Werkstatt-Szene mit Bauteil, Maßstab und Bildunterschrift
+function eaFoto(name,w,h){let x=2166136261;for(const ch of String(name))x=Math.imul(x^ch.charCodeAt(0),16777619)>>>0;const r=k=>((x>>>k)&255)/255,hu=Math.round(190+40*r(3)),cx=w*(.4+.2*r(5)),cy=h*.55,rr=Math.min(w,h)*(.24+.08*r(9));
+ const t=String(name).replace(/^Foto /,'').replace(/\.(png|jpe?g)$/i,'').replace(/[<&>]/g,'');
+ const svg=`<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}' viewBox='0 0 ${w} ${h}'><defs><linearGradient id='b' x2='0' y2='1'><stop offset='0' stop-color='hsl(${hu},18%,78%)'/><stop offset='1' stop-color='hsl(${hu},12%,42%)'/></linearGradient><radialGradient id='m' cx='.35' cy='.3'><stop offset='0' stop-color='#f4f6f8'/><stop offset='.6' stop-color='#9aa3ad'/><stop offset='1' stop-color='#4b535c'/></radialGradient></defs>`+
+  `<rect width='${w}' height='${h}' fill='url(#b)'/><rect y='${h*.72}' width='${w}' height='${h*.28}' fill='hsl(${hu},8%,30%)'/><ellipse cx='${cx}' cy='${cy+rr*.95}' rx='${rr*1.2}' ry='${rr*.22}' fill='rgba(0,0,0,.35)'/>`+
+  `<circle cx='${cx}' cy='${cy}' r='${rr}' fill='url(#m)'/><circle cx='${cx}' cy='${cy}' r='${rr*.32}' fill='#3a4048'/>`+[0,1,2,3,4].map(k=>{const a=k*1.2566;return`<circle cx='${cx+Math.cos(a)*rr*.62}' cy='${cy+Math.sin(a)*rr*.62}' r='${rr*.07}' fill='#2a2f35'/>`}).join('')+
+  `<rect x='${w*.72}' y='${h*.2}' width='${w*.05}' height='${h*.5}' fill='#e8d34a'/>`+[0,1,2,3,4].map(k=>`<rect x='${w*.72}' y='${h*.2+k*h*.1}' width='${w*.05}' height='${h*.05}' fill='#222'/>`).join('')+
+  `<rect x='0' y='${h-30}' width='${w}' height='30' fill='rgba(0,0,0,.55)'/><text x='12' y='${h-10}' font-family='sans-serif' font-size='15' fill='#fff'>${t}</text></svg>`;
+ return 'data:image/svg+xml,'+encodeURIComponent(svg)}
+function eaSkizze(name,asm){let h=2166136261;for(const ch of String(name))h=Math.imul(h^ch.charCodeAt(0),16777619)>>>0;
+ const r=()=>{h^=h<<13;h>>>=0;h^=h>>>17;h^=h<<5;h>>>=0;return h/4294967296};r();r();
+ const hue=[212,200,26,218,188,38][Math.floor(r()*6)],sat=Math.round(asm?10+r()*10:8+r()*20),C=l=>`hsl(${hue},${sat}%,${Math.round(l)}%)`;
+ const kreis=(x,y,q,n=28)=>Array.from({length:n},(_,i)=>[x+q*Math.cos(i/n*6.2832),y+q*Math.sin(i/n*6.2832)]),rect=(x,y,w,d)=>[[x,y],[x+w,y],[x+w,y+d],[x,y+d]];
+ const rad=(ra,ri,z)=>Array.from({length:z*4},(_,i)=>{const a=i/(z*4)*6.2832,q=i%4<2?ra:ri;return[q*Math.cos(a),q*Math.sin(a)]});
+ const TL=[()=>[{p:rad(3,2.45,12),z:0,h:1.1,l:[[0,0,.9]]}],
+  ()=>[{p:kreis(0,0,1.7),z:0,h:.8},{p:kreis(0,0,.8),z:.8,h:5,l:[[0,0,.3]]}],
+  ()=>[{p:rect(-2.5,-1.7,5,3.4),z:0,h:2,l:[[-1.2,0,.55],[1.2,0,.55]]}],
+  ()=>[{p:rect(-2.5,-1.5,5,3),z:0,h:.6,l:[[.9,0,.5]]},{p:rect(-2.5,-1.5,.6,3),z:.6,h:3}],
+  ()=>[{p:kreis(0,0,3),z:0,h:.7,l:[0,1,2,3].map(i=>[2.25*Math.cos(i*1.5708+.785),2.25*Math.sin(i*1.5708+.785),.35])},{p:kreis(0,0,1.6),z:.7,h:2,l:[[0,0,.8]]}],
+  ()=>[{p:rect(-3,-2,6,4),z:0,h:.35},{p:rect(-2.2,-1.4,1.6,1.6),z:.35,h:.6},{p:rect(.3,-1.5,2,1.2),z:.35,h:.9},{p:rect(-1,.6,2.6,.9),z:.35,h:.4}]];
+ const ort=(L,x,y,z,f)=>L.map(o=>({p:o.p.map(a=>[x+a[0]*f,y+a[1]*f]),z:z+o.z*f,h:o.h*f,l:(o.l||[]).map(a=>[x+a[0]*f,y+a[1]*f,a[2]*f]),m:[x,y]}));
+ // Version 99 (Wunsch des Nutzers): eigene Skizzen für Temperatursensor (Fühlerspitze, Sechskant, Steckergehäuse) und E-Motor (Klemmenkasten, Stator mit Kühlrippen, Lagerschild, Welle)
+ const SP=/temperatursensor/i.test(name)?()=>[{p:kreis(0,0,.32,16),z:0,h:3.4},{p:kreis(0,0,1.3,6),z:3.4,h:.9},{p:kreis(0,0,.9),z:4.3,h:1.7},{p:rect(-.55,-.35,1.1,.7),z:6,h:.7,l:[[0,0,.18]]}]
+  :/(^|[^a-z])e-?motor|elektromotor/i.test(name)?()=>[{p:rect(-4,-1,1.4,2),z:.9,h:2},{p:kreis(0,0,2.85,40),z:0,h:.5},{p:rad(2.7,2.45,32),z:.5,h:3.1},{p:kreis(0,0,2.85,40),z:3.6,h:.5,l:[0,1,2,3].map(i=>[1.85*Math.cos(i*1.5708+.785),1.85*Math.sin(i*1.5708+.785),.22])},{p:kreis(0,0,.5,20),z:4.1,h:1.9}]:null;
+ const G=[];if(SP)G.push(SP());else if(asm){G.push([{p:rect(-5.6,-4.6,11.2,9.2),z:0,h:.8,l:[[-4.6,-3.6,.3],[4.6,-3.6,.3],[-4.6,3.6,.3],[4.6,3.6,.3]],m:[0,0]}]);const a=Math.floor(r()*6),b=(a+1+Math.floor(r()*5))%6;let c=(b+1+Math.floor(r()*5))%6;if(c===a)c=(c+1)%6;
+  [[a,-2.5,-1.9],[b,2.5,-1.7],[c,0,2.4]].forEach(([i,x,y])=>G.push(ort(TL[i](),x,y,.8,.62)));const g0=G.shift();G.sort((u,v)=>u[0].m[0]+u[0].m[1]-v[0].m[0]-v[0].m[1]);G.unshift(g0)}
+ else G.push(TL[Math.floor(r()*6)]());
+ const k=10,P=(x,y,z)=>[(x-y)*.866*k,(x+y)*.5*k-z*k],B=[1e9,1e9,-1e9,-1e9],pt=q=>{B[0]=Math.min(B[0],q[0]);B[1]=Math.min(B[1],q[1]);B[2]=Math.max(B[2],q[0]);B[3]=Math.max(B[3],q[1]);return q[0].toFixed(1)+','+q[1].toFixed(1)};
+ let o='';const poly=(Q,f,s,w)=>{o+=`<polygon points="${Q.map(pt).join(' ')}" fill="${f}" stroke="${s||f}" stroke-width="${w||.4}" stroke-linejoin="round"/>`};
+ G.forEach(L=>L.slice().sort((u,v)=>u.z-v.z).forEach(q=>{const p=q.p,z0=q.z,z1=q.z+q.h;let A=0;p.forEach((a,i)=>{const b=p[(i+1)%p.length];A+=a[0]*b[1]-b[0]*a[1]});const sg=A>0?1:-1;
+  p.map((a,i)=>{const b=p[(i+1)%p.length];let nx=(b[1]-a[1])*sg,ny=-(b[0]-a[0])*sg;const nl=Math.hypot(nx,ny)||1;nx/=nl;ny/=nl;return{a,b,nx,ny,d:a[0]+a[1]+b[0]+b[1]}}).filter(e=>e.nx+e.ny>0).sort((u,v)=>u.d-v.d)
+   .forEach(e=>poly([P(e.a[0],e.a[1],z0),P(e.b[0],e.b[1],z0),P(e.b[0],e.b[1],z1),P(e.a[0],e.a[1],z1)],C(42+20*e.nx)));
+  poly(p.map(a=>P(a[0],a[1],z1)),C(76),C(34),.6);(q.l||[]).forEach(l=>poly(kreis(l[0],l[1],l[2],20).map(a=>P(a[0],a[1],z1)),C(24),C(20),.4))}));
+ const m=3,w=B[2]-B[0]+2*m,hh=B[3]-B[1]+2*m,f=150/Math.max(w,hh);
+ return'data:image/svg+xml,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${(B[0]-m).toFixed(1)} ${(B[1]-m).toFixed(1)} ${w.toFixed(1)} ${hh.toFixed(1)}" width="${Math.round(w*f)}" height="${Math.round(hh*f)}">${o}</svg>`)}
+// Zeitebene für 4Deep (Version 55): rund 18 Monate Konzept → Prototyp → Serie bis heute. Ändert keine IDs, Namen oder Zuordnungen aus 3Deep;
+// neu sind nur Revision A der vier Hauptbaugruppen (ID …_A) und die geschlossenen Vorgänger-Issues #190–#199 (ID h190 …) mit ihren Aufgaben. Ohne rnd(): Streuung über den Namen.
+function elektroautoDaten(){const D_=eaBasis(),nodes=D_.nodes,edges=D_.edges,tag=864e5,heute=HEUTE,T0=heute-540*tag,d=t=>new Date(t).toISOString().slice(0,10);
+ const hz=t=>{let x=2166136261;for(const ch of String(t))x=Math.imul(x^ch.charCodeAt(0),16777619)>>>0;return x/4294967296};
+ const by=new Map(nodes.map(n=>[n.id,n])),T=new Map(),E1=new Map(),setz=(n,a,b)=>{T.set(n.id,Math.min(a,heute-tag));if(b!=null)E1.set(n.id,b)};
+ const phase=t=>t<T0+150*tag?'Konzept':t<T0+360*tag?'Prototyp':'Serie';
+ const eltern=new Map();edges.forEach(e=>{if(e.type==='struktur'&&!eltern.has(e.from))eltern.set(e.from,e.to)});
+ const an=(typ,n)=>edges.filter(e=>e.type===typ&&e.from===n.id).map(e=>by.get(e.to));
+ // Produktstruktur: Hauptbaugruppen im Konzept, Unterbaugruppen je Ebene später, Teile im Prototyp
+ const HB=nodes.filter(n=>n.type==='asm'&&n.meta.Ebene==='1');HB.forEach((n,i)=>setz(n,T0+(i*6+hz(n.name)*6)*tag));
+ const ebene=n=>+(n.meta.Ebene||0);nodes.filter(n=>n.type==='asm'&&ebene(n)>1).sort((a,b)=>ebene(a)-ebene(b)).forEach(n=>{const p=T.get(eltern.get(n.id));setz(n,Math.max(p,T0+((ebene(n)-1)*28+hz(n.name)*25)*tag)+5*tag)});
+ nodes.filter(n=>n.type==='part').forEach(n=>{const p=T.get(eltern.get(n.id));setz(n,Math.min(p+(25+hz(n.name)*130)*tag,T0+330*tag))});
+ nodes.filter(n=>n.type==='person').forEach((n,i)=>setz(n,T0+(i*9)*tag));
+ const F=nodes.find(n=>n.type==='folder');setz(F,Date.UTC(2026,9,12));
+ // Dokumente nach ihrem Objekt: Spec bald, Zeichnung später, Markup als Review der Zeichnung, Attachments an Baugruppen in der Serie, Fotos vom Prüfstand
+ const nach=(n,ziel,v,b)=>setz(n,T.get(ziel.id)+(v+hz(n.name)*b)*tag);
+ nodes.filter(n=>n.type==='pdf').forEach(n=>nach(n,an('spec',n)[0],8,40));
+ nodes.filter(n=>n.type==='dwg').forEach(n=>nach(n,an('zeichnung',n)[0],35,70));
+ nodes.filter(n=>n.type==='mk').forEach(n=>{const z=an('markup',n)[0],dw=nodes.find(x=>x.type==='dwg'&&an('zeichnung',x)[0]===z);nach(n,dw||z,dw?15:60,45)});
+ nodes.filter(n=>n.type==='ppt').forEach(n=>{const z=an('praes',n)[0];if(n.imgFoto)setz(n,T0+(390+hz(n.name)*90)*tag);else if(z.type==='asm')setz(n,Math.max(T.get(z.id)+30*tag,T0+(370+hz(n.name)*140)*tag));else nach(n,z,20,60)});
+ // Issues #200–#207 entstehen von Ende Prototyp bis Serie und sind offen (wie in 3Deep); Aufgaben beginnen kurz nach ihrem Issue
+ nodes.filter(n=>n.type==='issue').forEach((n,i)=>setz(n,Math.max(T.get(an('betrifft',n)[0].id)+20*tag,T0+(330+i*22+hz(n.name)*12)*tag)));
+ nodes.filter(n=>n.type==='task').forEach(n=>nach(n,an('aufgabe',n)[0],3,12));
+ // Revision A der Hauptbaugruppen: im Konzept begonnen, im Prototyp von Revision B abgelöst (Revisionslink B → A); Reifegrad Obsolete, damit B ab ihrem Beginn gilt (gültig = neueste freigegebene, sonst neueste)
+ const neu=[],neuK=[],relTypes=D_.relTypes;relTypes.revision={label:'Revision (Nachfolger von)',color:'#ff9f1c',directed:true};
+ HB.forEach((n,i)=>{const tA=T.get(n.id),tB=T0+(250+i*20+hz(n.name)*15)*tag,a={id:n.id+'_A',type:'asm',name:n.name,state:'Obsolete',img:n.img,meta:Object.assign({},n.meta,{Revision:'A',Beschreibung:n.name+' – Revision A (Konzeptstand)'})};
+  neu.push(a);T.set(a.id,tA);E1.set(a.id,tB);T.set(n.id,tB);neuK.push({from:n.id,to:a.id,type:'revision'});
+  edges.filter(e=>e.to===n.id&&e.type==='struktur').forEach(e=>{if(T.get(e.from)<tB-tag)neuK.push({from:e.from,to:a.id,type:'struktur',_bis:tB});e._ab=tB})});   // Bookmark entsteht erst in der Serie: Revision A ohne Bookmark-Link
+ // Geschlossene Vorgänger-Issues #190–#199 im Prototyp: entstehen, werden bearbeitet und geschlossen (mit erledigter Aufgabe)
+ const HI=['Vorderachse: Geräusch beim Einlenken','Zellmodul: Maßabweichung Gehäuse','Kühlkreislauf: Luft im System nach Befüllung','Wechselrichter: Überhitzung im Dauertest','Hinterachse: Lagerspiel zu groß','Zentraldisplay: Reflexionen bei Sonne','Bremsanlage vorn: Belag quietscht','Batteriemanagement: Fehlmeldung Isolationswächter','Lenkung: Lenkmoment zu hoch','Sitze: Bezug wirft Falten'];
+ const parts=nodes.filter(n=>n.type==='part'),pers=nodes.filter(n=>n.type==='person');
+ HI.forEach((b,i)=>{const t0=T0+(170+i*17+hz(b)*10)*tag,t1=t0+(25+hz(b+'x')*40)*tag,ok=parts.filter(p=>T.get(p.id)<t0-10*tag),z=ok[Math.floor(hz(b+'z')*ok.length)]||parts[0];
+  const is={id:'h'+(190+i),type:'issue',name:'Issue #'+(190+i),state:'Released',imgText:b+' (behoben)',meta:{Beschreibung:b,Priorität:['Hoch','Mittel','Niedrig'][i%3],Status:'Geschlossen',Geschlossen:d(t1)}};
+  const k={id:'h'+(190+i)+'_a',type:'task',name:'Aufgabe '+(190+i),state:'Released',meta:{Beschreibung:'Ursache klären und abstellen: '+b,Fällig:d(t1),Erledigt:d(t1)}};
+  neu.push(is,k);T.set(is.id,t0);E1.set(is.id,t1);T.set(k.id,t0+3*tag);E1.set(k.id,t1-2*tag);
+  neuK.push({from:is.id,to:z.id,type:'betrifft'},{from:k.id,to:is.id,type:'aufgabe'},{from:k.id,to:pers[(i*5+1)%pers.length].id,type:'zuweisung'})});
+ eaAnreichern(neu);nodes.push(...neu);edges.push(...neuK);
+ // Termine schreiben; Erstellt/Geändert/Phase passend zum Zeitverlauf (überschreibt die Zufallsdaten aus anreichern)
+ nodes.forEach(n=>{const t0=T.get(n.id),t1=E1.get(n.id);if(t0==null)return;n.start=d(t0);if(t1!=null)n.end=d(t1);
+  if(n.type!=='person'){n.meta.Erstellt=d(t0);n.meta.Geändert=d(t1!=null?t1:t0+hz(n.id+'g')*(heute-t0));n.meta.Phase=phase(t0)}});
+ edges.forEach(e=>{const a=T.get(e.from),b=T.get(e.to);let t=Math.max(a!=null?a:-Infinity,b!=null?b:-Infinity);if(e._ab!=null){t=Math.max(t,e._ab);delete e._ab}if(isFinite(t))e.start=d(t);
+  const en=(e.type==='revision'?[]:[E1.get(e.from),E1.get(e.to)]).concat(e._bis!=null?[e._bis]:[]).filter(x=>x!=null);if(en.length)e.end=d(Math.min(...en));delete e._bis});
+ return Object.assign(D_,{name:'Demo: Elektroauto (fiktiv)'})}
+// ---------- Version 56: Datenraum „Kaufmännisch (fiktiv)“ unverändert aus 3Deep (kaufData, Darstellung 148), Zufall rnd3 wie 3Deep (gleiche Kunden und Werte) ----------
+function kaufBasis(){const R=n=>Math.floor(rnd3()*n),pk=a=>a[R(a.length)],rr=(a,b)=>a+(b-a)*rnd3();
+ const tsd=v=>String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g,'.'),fE=v=>tsd(v)+' €',fP=v=>Math.round(v)+' %',fPs=v=>(v>0?'+':'')+Math.round(v)+' %';
+ const dt=(y0,y1)=>(y0+R(y1-y0+1))+'-'+String(1+R(12)).padStart(2,'0')+'-'+String(1+R(28)).padStart(2,'0');
+ const plusM=m=>{const d=new Date(2026,10,10);d.setMonth(d.getMonth()+m);return d.toISOString().slice(0,10)};
+ const types={firma:{color:'#f5b942',size:7,shape:'gebaeude',label:'Eigene Firma',role:'sun',tier:'oktopus'},
+  kunde:{color:'#4f8cff',size:2.5,shape:'dodecahedron',label:'Kundenfirma',role:'earth',tier:'fischG'},
+  ma:{color:'#5fcf3f',size:1.8,shape:'bust',label:'Mitarbeiter (eigene)',role:'ship',tier:'seepferd'},
+  km:{color:'#a7d98a',size:1.1,shape:'bust',label:'Kundenmitarbeiter (Lizenznutzer)',role:'comet',tier:'seepferd'},
+  produkt:{color:'#d67bd9',size:2.6,shape:'book',label:'Software-Produkt',role:'station',tier:'muschel'},
+  lkauf:{color:'#2fc4ad',size:1.6,shape:'box',label:'Lizenz (Kauf)',role:'asteroid',tier:'fisch'},
+  lmiete:{color:'#f08a3c',size:1.6,shape:'torus',label:'Lizenz (Miete/Abo)',role:'ice',tier:'einsiedler'},
+  projekt:{color:'#e5534b',size:2.4,shape:'box',label:'Projekt / Dienstleistung',role:'ringed',tier:'krebs'}};
+ const relTypes={kauft:{label:'kauft bei',color:'#b07a10',directed:false},arbeitet:{label:'arbeitet bei',color:'#3a8f2f',directed:false},
+  gehoert:{label:'Lizenz gehört',color:'#2f3f5c',directed:false},betreut:{label:'betreut (Account Manager)',color:'#2563b8',directed:true},
+  instanz:{label:'Lizenz für Produkt',color:'#a24fa6',directed:true},zugewiesen:{label:'zugewiesen an',color:'#c76a1c',directed:true},
+  fuer:{label:'Projekt für',color:'#c2255c',directed:true},team:{label:'arbeitet im Projekt',color:'#5d6975',directed:true},sortiment:{label:'im Sortiment von',color:'#8e6bd8',directed:true}};
+ const nodes=[],edges=[];const add=(type,name,meta,o)=>{const id='k'+nodes.length;nodes.push(Object.assign({id,type,name,meta},o||{}));return id};const link=(from,to,type)=>edges.push({from,to,type});
+ const sz=(v,ref,dmax,dmin)=>+Math.max(dmin,dmax*Math.sqrt(Math.max(0,v)/ref)).toFixed(2); // Durchmesser ~ Wurzel(Wert): Fläche wächst mit dem Wert
+ const F=add('firma','Beispiel Software GmbH',{Rolle:'Eigene Firma (Vertrieb von Software-Lizenzen, Dienstleistungen, Implementierung)',Sitz:'Frankfurt am Main',Gründung:'2009',Geschäftsjahr:'2026'},{size:7});
+ // Produkte: [Name, Kategorie, Hersteller, Kaufpreis je Platz, Miete je Platz und Jahr (0 = nur Kauf), nur Miete?, abgekündigt?]
+ const PR=[['CAD Konstruktion Pro','Konstruktion','Hersteller A',9800,3400],['CAD Konstruktion Basis','Konstruktion','Hersteller A',4200,1500,false,true],['PDM Datenmanagement','Datenmanagement','Hersteller B',6500,2300],
+  ['Simulation Suite','Berechnung','Hersteller C',14500,5200],['Viewer & Markup','Visualisierung','Hersteller A',900,320],['Projektplanung Cloud','Projektmanagement','Hersteller B',0,1100,true],
+  ['Technische Dokumentation','Dokumentation','Hersteller C',5200,1900],['Analyse & Reporting','Analyse','Hersteller B',3100,1100]];
+ const prod=PR.map(p=>({p,id:null,lic:0,plaetze:0,ums:0}));
+ // Eigene Mitarbeiter
+ const MAN=[['K. Albrecht','Geschäftsführung','Geschäftsführung','Frankfurt'],['L. Brandt','Account Manager','Vertrieb','Hamburg','Nord'],['M. Claasen','Account Manager','Vertrieb','München','Süd'],['N. Dorn','Account Manager','Vertrieb','Köln','West'],
+  ['O. Ehlers','Account Manager','Vertrieb','Leipzig','Ost'],['P. Franke','Account Manager','Vertrieb','Frankfurt','Mitte'],['R. Gruber','Account Manager','Vertrieb','Wien','Österreich/Schweiz'],
+  ['S. Hartmann','Projektleiter','Projekte','Frankfurt'],['T. Ilić','Projektleiter','Projekte','München'],['U. Jansen','Projektleiter','Projekte','Hamburg'],
+  ['V. Kühn','Berater','Beratung','Frankfurt'],['W. Lorenz','Berater','Beratung','München'],['X. Meier','Berater','Beratung','Köln'],['Y. Nowak','Berater','Beratung','Leipzig'],['Z. Otto','Berater','Beratung','Hamburg'],['A. Peters','Berater','Beratung','Wien'],
+  ['B. Quandt','Support','Support','Frankfurt'],['C. Roth','Support','Support','Leipzig']];
+ const mas=MAN.map(m=>({m,id:null,kunden:[],ums:0,db:0,tage:0}));
+ // Kunden: [Name, Branche, Region, Ort]
+ const KN=[['Alpental Maschinenbau GmbH','Maschinenbau','Süd','Kempten'],['Brückner Antriebstechnik AG','Automobilzulieferer','Süd','Ingolstadt'],['Cordes Medizintechnik GmbH','Medizintechnik','Nord','Kiel'],['Donautal Energie AG','Energie','Süd','Regensburg'],
+  ['Elbwerk Fahrzeugteile GmbH','Automobilzulieferer','Ost','Dresden'],['Falkenstein Luftfahrtsysteme GmbH','Luft- und Raumfahrt','Nord','Bremen'],['Grünfeld Haushaltsgeräte KG','Konsumgüter','West','Gütersloh'],['Hansen Windkraft GmbH','Energie','Nord','Husum'],
+  ['Isarblick Robotik GmbH','Elektronik','Süd','Freising'],['Jadebucht Schiffstechnik GmbH','Maschinenbau','Nord','Wilhelmshaven'],['Kaltenbach Werkzeugbau GmbH','Maschinenbau','West','Lüdenscheid'],['Lindner Kunststofftechnik GmbH','Automobilzulieferer','Mitte','Fulda'],
+  ['Moosach Labortechnik GmbH','Medizintechnik','Süd','München'],['Neckarwerk Getriebebau AG','Automobilzulieferer','Süd','Heilbronn'],['Oberland Verpackungsmaschinen GmbH','Maschinenbau','Süd','Rosenheim'],['Pfälzer Pumpenwerke GmbH','Maschinenbau','West','Kaiserslautern'],
+  ['Querfurt Elektronik GmbH','Elektronik','Ost','Halle'],['Rheinauen Sensorik GmbH','Elektronik','West','Bonn'],['Saaletal Präzisionsteile GmbH','Automobilzulieferer','Ost','Jena'],['Taunus Aerostrukturen GmbH','Luft- und Raumfahrt','Mitte','Wiesbaden'],
+  ['Uckermark Solartechnik GmbH','Energie','Ost','Prenzlau'],['Vogtland Textilmaschinen GmbH','Maschinenbau','Ost','Plauen'],['Weserbergland Landtechnik GmbH','Maschinenbau','Nord','Hameln'],['Xantener Fördertechnik GmbH','Maschinenbau','West','Xanten'],
+  ['Ybbstal Hydraulik GmbH','Maschinenbau','Österreich/Schweiz','Waidhofen'],['Zollern Orthopädietechnik GmbH','Medizintechnik','Süd','Hechingen'],['Allgäuer Sportgeräte GmbH','Konsumgüter','Süd','Sonthofen'],['Bergische Armaturen KG','Maschinenbau','West','Remscheid'],
+  ['Chiemgau Möbelsysteme GmbH','Konsumgüter','Süd','Traunstein'],['Rheintal Steuerungstechnik AG','Elektronik','Österreich/Schweiz','St. Gallen']];
+ // Umsatz der letzten 12 Monate: wenige große, viele kleine Kunden (20.000 bis 500.000 €)
+ const nK=KN.length,UZ=[];for(let i=0;i<nK;i++)UZ.push(Math.round(20000*Math.pow(25,Math.pow(i/(nK-1),2.1))/100)*100);UZ[nK-1]=500000;UZ[0]=20000;
+ for(let i=nK-1;i>0;i--){const j=R(i+1);[UZ[i],UZ[j]]=[UZ[j],UZ[i]]}
+ const kun=KN.map((k,i)=>({k,U:UZ[i],id:null,lic:[],proj:[],km:[],L:0,P:0,dbL:0,dbP:0,rab:0}));const SU=kun.reduce((a,c)=>a+c.U,0);
+ // Rabattniveau: große Kunden erhalten mehr Rabatt, dadurch sinkt die Marge
+ kun.forEach(c=>{c.rab=Math.min(.2,.03+.14*Math.sqrt(c.U/500000)+rr(-.03,.05));c.mL=Math.max(.06,.34-c.rab+rr(-.04,.04))});
+ // Projekte: 20 Stück, bevorzugt bei größeren Kunden
+ const PA=['Implementierung','Datenmigration','Schulung','Beratung','Support-Paket','Prozessanalyse'],PS=[];
+ for(let j=0;j<20;j++){let c;do{let x=rnd3()*SU*1.0;c=kun.find(cc=>(x-=cc.U)<0)||kun[0]}while(c.proj.length>=3);
+  const st=j<3?'Angebot':j<12?'Läuft':'Abgeschlossen',p={c,st,art:j%5===0?'Implementierung':pk(PA)};c.proj.push(p);PS.push(p)}
+ kun.forEach(c=>{const hatP=c.proj.some(p=>p.st!=='Angebot');c.pL=hatP?rr(.45,.8):1;c.L=Math.round(c.U*c.pL);c.P=c.U-c.L});
+ // Lizenzen je Kunde (proportional zum Umsatz), Erlös der letzten 12 Monate = Lizenzumsatz des Kunden
+ const LZ=[],nL=96;let lnr=1000;
+ const neueLizenz=(own,erl,o)=>{o=o||{};const pi=o.pi!=null?o.pi:R(PR.length),P=PR[pi],miete=P[5]||(P[3]===0)||(o.miete!=null?o.miete:rnd3()<.5),floating=P[0]!=='Viewer & Markup'&&rnd3()<.4;let wert,jw,lauf,rest,neu=false;
+  if(miete){jw=erl;lauf=pk([12,24,36]);wert=jw*lauf/12;rest=1+R(lauf)}else{neu=rnd3()<.3;wert=neu?erl/1.2:erl/.2;jw=wert*.2;lauf=0;rest=1+R(12)}
+  const ref=miete?P[4]:P[3],pl=Math.max(1,Math.round((miete?jw:wert)/(ref*(1-(own.rab||0))))),ausl=Math.min(1,Math.max(.15,rr(.35,1.15))),gen=Math.min(pl,Math.max(pl>1?1:0,Math.round(pl*ausl)));
+  const L={own,pi,miete,floating,wert,jw,lauf,rest,neu,pl,gen,erl,nr:++lnr,st:o.st||'Aktiv'};LZ.push(L);return L};
+ kun.forEach(c=>{const k=Math.max(1,Math.round(nL*c.U/SU)),w=[];for(let j=0;j<k;j++)w.push(rr(.5,1.5));const sw=w.reduce((a,b)=>a+b,0);
+  w.forEach(x=>c.lic.push(neueLizenz(c,c.L*x/sw)))});
+ // Vertragsstatus der Lizenzen: einige gekündigt (laufen aus), eine abgelaufen, einige Angebote
+ {const mi=LZ.filter(L=>L.miete).sort((a,b)=>a.gen/a.pl-b.gen/b.pl);mi.slice(0,5).forEach(L=>{L.st='Gekündigt';L.rest=Math.min(L.rest,1+R(3))})}
+ {const c=kun.find(cc=>cc.U<60000)||kun[0],L=neueLizenz(c,9000,{pi:1,miete:false,st:'Abgelaufen'});L.rest=0;L.gen=0;L.erl=0;c.lic.push(L)}
+ for(let j=0;j<6;j++){const c=kun[R(nK)],L=neueLizenz(c,rr(.1,.35)*c.U,{st:'Angebot'});L.erl=0;L.rest=null;L.gen=0;c.lic.push(L)}
+ // Interne Lizenzen (gehören der eigenen Firma)
+ const intern=[];for(let j=0;j<4;j++){const L=neueLizenz({U:0,rab:0,intern:true},PR[[0,2,3,4][j]][4]*(1+R(3)),{pi:[0,2,3,4][j],miete:true});L.erl=0;intern.push(L)}
+ // Projekte berechnen: abgerechneter Betrag der letzten 12 Monate = Dienstleistungsumsatz des Kunden
+ PS.forEach(p=>{const c=p.c,akt=c.proj.filter(q=>q.st!=='Angebot');p.ts=1150+50*R(7);p.pm=rr(24,40);
+  if(p.st==='Angebot'){p.ab=0;p.A=Math.round(rr(.15,.45)*c.U/100)*100;p.fs=0;p.bv=0}
+  else{p.ab=c.P/akt.length;p.fs=p.st==='Abgeschlossen'?100:Math.round(rr(15,85));const share=p.st==='Abgeschlossen'?rr(.45,1):p.fs/100*rr(.8,1);p.A=Math.round(p.ab/share/100)*100;
+   const ueb=rnd3()<.35?rr(10,45):rr(-12,8);p.bv=Math.max(5,Math.round(p.fs*(1+ueb/100)))}
+  p.abw=p.bv-p.fs;p.mg=p.st==='Angebot'?p.pm:p.pm-Math.max(0,p.abw)*.9+Math.min(0,p.abw)*-.3;p.pt=Math.round(p.A/p.ts);c.dbP+=p.ab*p.mg/100});
+ // eigene Mitarbeiter anlegen
+ mas.forEach((x,i)=>{const [nm,ro,ab,so,rg]=x.m,meta={Rolle:ro,Abteilung:ab,Standort:so};if(rg)meta.Region=rg;
+  meta['E-Mail']=nm.toLowerCase().replace(/[^a-zäöüćß]+/g,'.').replace(/^\.|\.$/g,'')+'@beispiel-software.de';meta.Eintritt=dt(2010,2025);meta.Telefon='+49 69 '+(2000+R(7999));
+  x.id=add('ma',nm,meta);link(x.id,F,'arbeitet')});
+ // Knoten: Kunden
+ const am=r=>mas.find(m=>m.m[4]===r),seg=u=>u>=250000?'A':u>=80000?'B':'C';
+ kun.forEach((c,i)=>{const [nm,br,rg,ort]=c.k,w=Math.round(rr(-35,60)),uv=Math.round(c.U/(1+w/100)/100)*100;c.dbL=c.L*c.mL;const db=c.dbL+c.dbP,mg=db/c.U*100,zf=Math.max(2,Math.min(10,Math.round(rr(4,10)+(w<-15?-2:0)))),op=rnd3()<.7?Math.round(c.U*rr(0,.18)/100)*100:0;
+  const ri=w<-15||zf<=4?'hoch':w<5||zf<=6?'mittel':'niedrig';c.ri=ri;const a=am(rg);a.kunden.push(c);a.ums+=c.U;a.db+=db;c.am=a;
+  c.id=add('kunde',nm,{Branche:br,Region:rg,Ort:ort,Kundensegment:seg(c.U),'Umsatz 12 Monate':fE(c.U),'Umsatz Vorjahr':fE(uv),'Wachstum ggü. Vorjahr':fPs(w),'Marge':fP(mg),'Deckungsbeitrag':fE(db),
+   'Umsatz Lizenzen':fE(c.L),'Umsatz Dienstleistung':fE(c.P),'Anzahl Lizenzen':String(c.lic.filter(L=>L.st!=='Angebot').length),'Account Manager':a.m[0],'Kündigungsrisiko':ri,'Zufriedenheit (1–10)':String(zf),
+   'Offene Posten':fE(op),'Zahlungsmoral':op>c.U*.12?'schleppend':pk(['pünktlich','pünktlich','pünktlich','meist pünktlich']),'Rabattstufe':fP(c.rab*100),'Kunde seit':String(2010+R(15)),
+   'Vertragsart':pk(['Rahmenvertrag','Rahmenvertrag','Einzelverträge'])},{size:sz(c.U,500000,6,1.1),state:'Aktiv'});
+  link(c.id,F,'kauft');link(a.id,c.id,'betreut')});
+ {const gf=mas[0];kun.filter(c=>c.U>=300000).forEach(c=>link(gf.id,c.id,'betreut'))} // Top-Kunden zusätzlich von der Geschäftsführung betreut
+ // Vertragsstatus der Kunden
+ {const so=kun.slice().sort((a,b)=>b.U-a.U);[so[2],so[7],so[15]].forEach(c=>nodes.find(n=>n.id===c.id).state='In Verhandlung');const g=kun.filter(c=>c.ri==='hoch');if(g.length)nodes.find(n=>n.id===g[0].id).state='Gekündigt'}
+ // Produkte
+ LZ.forEach(L=>{const x=prod[L.pi];x.ums+=L.erl;if(L.st!=='Angebot'){x.lic++;x.plaetze+=L.pl}});
+ prod.forEach((x,i)=>{const P=x.p;x.id=add('produkt',P[0],{Kategorie:P[1],Hersteller:P[2],'Kaufpreis je Platz':P[3]?fE(P[3]):'nur Miete','Miete je Platz und Jahr':fE(P[4]),'Lizenzen im Bestand':String(x.lic),'Plätze gesamt':String(x.plaetze),'Produktumsatz 12 Monate':fE(Math.max(0,x.ums))},{state:P[6]?'Abgekündigt':'Im Verkauf'});link(x.id,F,'sortiment')});
+ const umax=Math.max(...prod.map(x=>x.ums));prod.forEach(x=>{nodes.find(n=>n.id===x.id).size=sz(Math.max(0,x.ums),umax,4,1.4)});
+ // Kundenmitarbeiter (Lizenznutzer)
+ const VN=['A','B','C','D','E','F','G','H','J','K','L','M','N','P','R','S','T','V','W'],NN=['Adler','Becker','Engel','Fischer','Graf','Hahn','Jung','Kaiser','Lang','Möller','Nagel','Pohl','Ritter','Sauer','Thiel','Ulrich','Vogel','Winter','Ziegler','Busch','Dietrich','Frank','Haas','Kraus','Lehmann'],FU=['Konstrukteur/in','Berechnungsingenieur/in','Projektleiter/in','IT-Administration','Einkauf','Technische Redaktion','Qualitätsmanagement'];
+ let kmn=0;const nKM=50,used=new Set();
+ kun.forEach(c=>{const k=Math.max(1,Math.round(nKM*c.U/SU));for(let j=0;j<k;j++){let nm;do{nm=pk(VN)+'. '+pk(NN)}while(used.has(nm));used.add(nm);kmn++;
+  const id=add('km',nm,{Firma:c.k[0],Funktion:j===0?'Einkauf':pk(FU),Rolle:j===0?'Hauptansprechpartner':'Lizenznutzer',Branche:c.k[1],Region:c.k[2],'Letzte Anmeldung':'2026-'+String(8+R(3)).padStart(2,'0')+'-'+String(1+R(28)).padStart(2,'0'),'Schulung besucht':rnd3()<.6?'Ja':'Nein'});
+  c.km.push(id);link(id,c.id,'arbeitet')}});
+ // Lizenzen anlegen
+ const maB=mas.filter(m=>m.m[1]==='Berater');
+ LZ.forEach((L,i)=>{const P=PR[L.pi],c=L.own,owner=c.intern?'Beispiel Software GmbH (intern)':c.k[0],meta={Produkt:P[0],Lizenzart:L.miete?'Miete/Abo':'Kauf',Lizenzmodell:L.floating?'Floating':'Named User',
+   Laufzeit:L.miete?L.lauf+' Monate':'unbefristet','Lizenzwert':fE(L.wert),'Jahreswert':fE(L.jw),'Plätze':String(L.pl),'Genutzte Plätze':String(L.gen),'Auslastung':fP(L.gen/L.pl*100)};
+  if(L.rest!=null)meta['Restlaufzeit']=L.rest+' Monate';meta['Inhaber']=owner;if(!c.intern){meta.Branche=c.k[1];meta.Region=c.k[2]}
+  meta['Preis je Platz']=fE((L.miete?L.jw:L.wert)/L.pl);meta['Umsatz 12 Monate (Lizenz)']=fE(L.erl);
+  if(L.miete){meta.Vertragsbeginn=plusM(-(L.lauf-(L.rest||0)));meta.Vertragsende=plusM(L.rest||0)}else{meta.Kaufdatum=L.neu?plusM(-R(11)-1):dt(2016,2024);meta['Wartung bis']=plusM(L.rest||0);meta['Wartung je Jahr']=fE(L.wert*.2)}
+  if(L.st==='Angebot'){meta['Angebot gültig bis']=plusM(1+R(3));delete meta['Genutzte Plätze'];delete meta.Auslastung}
+  L.id=add(L.miete?'lmiete':'lkauf','L-'+L.nr+' '+P[0],meta,{size:sz(L.wert,150000,3.6,.7),state:L.st});
+  link(L.id,c.intern?F:c.id,'gehoert');link(L.id,prod[L.pi].id,'instanz');
+  if(!L.floating&&L.st!=='Angebot'){const pool=c.intern?maB.map(m=>m.id):c.km;const k=Math.min(pool.length,L.gen,1+R(2));const off=R(pool.length);for(let j=0;j<k;j++)link(L.id,pool[(off+j)%pool.length],'zugewiesen')}});
+ // Projekte anlegen
+ const PL=mas.filter(m=>m.m[1]==='Projektleiter');
+ PS.forEach((p,i)=>{const c=p.c,pl=PL[i%3],st={Angebot:'Angebot','Läuft':'Läuft',Abgeschlossen:'Abgeschlossen'}[p.st],beg=p.st==='Angebot'?plusM(1+R(3)):plusM(-(2+R(12)));
+  p.id=add('projekt','PRJ-'+(2401+i)+' '+p.art+' '+c.k[0].split(' ')[0],{Kunde:c.k[0],Projektart:p.art,'Auftragswert':fE(p.A),'Abgerechnet 12 Monate':fE(p.ab),'Fortschritt':fP(p.fs),'Budgetverbrauch':fP(p.bv),'Budget über Plan':fPs(p.abw),'Marge (Projekt)':fP(p.mg),
+   Personentage:String(p.pt),Tagessatz:fE(p.ts),Projektleiter:pl.m[0],Start:beg,Ende:p.st==='Abgeschlossen'?plusM(-R(3)):plusM(1+R(9)),Branche:c.k[1],Region:c.k[2]},{size:sz(p.A,400000,4.5,.9),state:st});
+  link(p.id,c.id,'fuer');link(pl.id,p.id,'team');pl.tage+=p.pt*.3;const tb=1+R(3),o=R(maB.length);for(let j=0;j<tb;j++){link(maB[(o+j)%maB.length].id,p.id,'team');maB[(o+j)%maB.length].tage+=p.pt*.7/tb}});
+ // Kennzahlen der eigenen Mitarbeiter
+ mas.forEach(x=>{const n=nodes.find(nn=>nn.id===x.id),m=n.meta;if(x.m[1]==='Account Manager'){m['Betreute Kunden']=String(x.kunden.length);m['Betreuter Umsatz']=fE(x.ums);m['Marge betreute Kunden']=fP(x.db/x.ums*100);m['Zielerreichung']=fP(rr(80,125))}
+  if(x.m[1]==='Berater'||x.m[1]==='Projektleiter'){m['Auslastung (Personal)']=fP(Math.min(98,45+x.tage/4));m.Tagessatz=fE(x.m[1]==='Berater'?1150+50*R(4):1350+50*R(3))}});
+ // Eigene Firma: Kennzahlen
+ {const n=nodes[0],U=kun.reduce((a,c)=>a+c.U,0),DB=kun.reduce((a,c)=>a+c.dbL+c.dbP,0);Object.assign(n.meta,{'Gesamtumsatz 12 Monate':fE(U),'davon Lizenzen':fE(kun.reduce((a,c)=>a+c.L,0)),'davon Dienstleistung':fE(kun.reduce((a,c)=>a+c.P,0)),'Deckungsbeitrag gesamt':fE(DB),'Ø Marge':fP(DB/U*100),Kunden:String(nK),Mitarbeiter:String(mas.length),'Lizenzen im Bestand':String(LZ.filter(L=>L.st!=='Angebot').length)})}
+ const axes=[{name:'Kundenportfolio: Umsatz · Marge · Wachstum',x:'Umsatz 12 Monate',y:'Marge',z:'Wachstum ggü. Vorjahr',note:'Nur Kundenfirmen. Rechts = viel Umsatz, oben = hohe Marge, vorne = wachsend. Rechts oben vorne liegen die besten Kunden. Rechts unten: viel Umsatz, aber wenig Marge (meist hohe Rabatte). Hinten: Umsatz schrumpft, Kunden ansprechen.'},
+  {name:'Kundenportfolio, Umsatz logarithmisch',x:'Umsatz 12 Monate',y:'Marge',z:'Wachstum ggü. Vorjahr',xlog:true,note:'Wie Kundenportfolio, aber Umsatz auf logarithmischer Skala: Die vielen kleinen Kunden rücken auseinander und sind besser zu unterscheiden.'},
+  {name:'Umsatz diagonal (rechts vorne viel) · Marge oben',x:'Umsatz 12 Monate',y:'Marge',z:'Umsatz 12 Monate',note:'Nur Kundenfirmen. Viel Umsatz = rechts vorne, wenig Umsatz = links hinten, hohe Marge = oben.'},
+  {name:'Lizenz-Verlängerungsradar: Jahreswert · Auslastung · Restlaufzeit',x:'Jahreswert',y:'Auslastung',z:'Restlaufzeit',zinv:true,note:'Alle Lizenzen (Kauf: Restlaufzeit der Wartung). Rechts = hoher Jahreswert, oben = gut genutzt, vorne = Vertrag läuft bald aus. Rechts unten vorne: viel Geld, wenig genutzt, Verlängerung steht an, also Kündigungsgefahr. Rechts oben vorne: Verlängerung und Aufstockung anbieten.'},
+  {name:'Projekt-Ampel: Auftragswert · Marge · Budget über Plan',x:'Auftragswert',y:'Marge (Projekt)',z:'Budget über Plan',note:'Alle Projekte. Rechts = großer Auftrag, oben = hohe Marge, vorne = mehr Budget verbraucht als Fortschritt erreicht. Rechts unten vorne: große Projekte, die aus dem Ruder laufen.'},
+  {name:'Account Manager: betreuter Umsatz · Marge · Anzahl Kunden',x:'Betreuter Umsatz',y:'Marge betreute Kunden',z:'Betreute Kunden',note:'Nur Account Manager. Rechts = viel betreuter Umsatz, oben = hohe Marge, vorne = viele Kunden.'}];
+ const chains=[{name:'Lizenzen des Kunden und ihre Nutzer',start:'kunde',chain:'gehoert< zugewiesen>'},{name:'Wer betreut den Kunden?',start:'kunde',chain:'betreut<'},{name:'Projekte des Kunden und Projektteam',start:'kunde',chain:'fuer< team<'},
+  {name:'Betreute Kunden und deren Lizenzen',start:'ma',chain:'betreut> gehoert<'},{name:'Projekte und deren Kunden',start:'ma',chain:'team> fuer>'},
+  {name:'Wer nutzt das Produkt? (Lizenz → Nutzer → Firma)',start:'produkt',chain:'instanz< zugewiesen> arbeitet>'},{name:'Lizenzen des Nutzers und Produkte',start:'km',chain:'zugewiesen< instanz>'}];
+ return{types,relTypes,nodes,edges,chains,axes,layout:'achsen',attr:'Branche',spacing:13,stateTitle:'Vertragsstatus',
+  stateNames:{todo:'Angebot',work:'In Verhandlung / läuft',released:'Aktiv / abgeschlossen / im Verkauf',frozen:'Gekündigt (läuft aus)',obsolete:'Abgelaufen / abgekündigt'},maxObjects:nodes.length}}
+function kaufDaten(){const sv=s3;s3=23;try{return kaufBasis()}finally{s3=sv}}
 function demoDaten(){
  // Produktentwicklung über 18 Monate: Baugruppen/Bauteile entstehen, Revisionen lösen einander ab, Issues öffnen und schließen sich
  s=4242;const heute=HEUTE,T0=heute-540*864e5,tag=864e5,nodes=[],edges=[];const d=t=>new Date(t).toISOString().slice(0,10);
@@ -2177,6 +2440,198 @@ function namenMalen(W,H){nmC.font=NMFONT;nmC.textAlign='center';nmC.textBaseline
   nmC.strokeStyle='rgba(255,255,255,.88)';nmC.strokeText(n._nt,x,q.y-q.R-8);nmC.fillStyle=n.i===sel?'#b35c00':'#0e2a4a';nmC.fillText(n._nt,x,q.y-q.R-8)});nmC.globalAlpha=1;
 }
 
+// ---------- Version 56: Vorführung „▶ Demo abspielen“ (wie 3Deep, Elektroauto-Demo; Sprechtext_3Deep.md Teile 1–3 als Drehbuch) ----------
+// Ablauf als Datenstruktur (DEMO_EAUTO.stationen[].schritte[]), abgespielt von demoAbspielen(); wiederverwendbar für weitere Vorführungen (z. B. Projekt-Demo).
+// Schritte (art): daten {raum, blende} · text {text, ms} · zeitreise {phasen[{ab (Tage ab Beginn), text, s}], schluss} · flug {ziel, dauer, nah, dreh, text, merke}
+// · profil {ziel, ms, text} · profilZu · umfeld {ziel, merke, text, ms} · kette {start, kette, text, ms} · alle · heim {dauer, ms, text} · layout {layout, text, ms, gier, nick}
+// · achsen {vorlage (RegExp auf den Namen), gier, text, ms} · kennzahl {beste {Schlüssel: Gewicht}, dreh, text, ms}.
+// Ziele: Name (exakt), {name:RegExp}, {merke:'X'} oder {nachbar:'X', rel:'Beziehungstyp'}; Texte mit Platzhaltern {X} (Name), {X.Feld} (meta), {wert}.
+// Bedienung wie 3Deep Version 99: Eingriff (Maus, Rad, Taste, SpaceMouse, Bedienfeld) pausiert; „Weiter“ (P) stellt Kamera samt Fahrt, Auswahl, Profilkarte,
+// Layout, Kennzahlen-Vorlage, Zeitpunkt, Ausblendung und Pfade wieder her. Esc oder der Knopf beenden. Kamerafahrten weich (Anfahren/Abbremsen, auf Wunsch im Bogen).
+const DEMO_EAUTO={titel:'Demo: Elektroauto (fiktiv)',tempo:1.22,stationen:[   // tempo: Faktor auf alle Wartezeiten (Lesezeit), Gesamtdauer ca. 5 min
+ {id:'einstieg',titel:'Einstieg',sprech:'[Startansicht „Demo: Elektroauto (fiktiv)“]',schritte:[
+  {art:'daten',raum:'eauto'},
+  {art:'text',ms:5500,text:'<b>Datenraum „Demo: Elektroauto (fiktiv)“</b><br><span class="m">Ein Elektroauto: Fahrwerk, Elektroantrieb, Hochvoltbatterie und Interieur mit Teilen, Dokumenten, Issues, Aufgaben und Personen</span>'}]},
+ {id:'zeitreise',titel:'Zeitreise',sprech:'[Zeitregler läuft über 18 Monate: Objekte entstehen, Issues gehen auf und zu]',schritte:[
+  {art:'text',ms:3500,text:'<b>Zeitreise</b>: 18 Monate Entwicklung im Zeitraffer<br><span class="m">Die vierte Dimension in 4Deep ist die Zeit</span>'},
+  {art:'zeitreise',dreh:.5,phasen:[
+   {ab:0,s:10,text:'<b>Konzept</b><br><span class="m">Hauptbaugruppen, Unterbaugruppen und das Team entstehen</span>'},
+   {ab:150,s:12,text:'<b>Prototyp</b><br><span class="m">Teile, Spezifikationen und Zeichnungen entstehen · Issues gehen auf und werden geschlossen (sie verblassen)</span>'},
+   {ab:300,s:6,text:'<b>Neue Revision</b> der Hauptbaugruppen<br><span class="m">Revision B löst A ab, die alte Revision rückt nach hinten · bisher {zu} Issues geschlossen</span>'},
+   {ab:360,s:10,text:'<b>Serie</b><br><span class="m">Fotos und Attachments kommen dazu · neue Issues #200–#207 gehen auf</span>'}],
+   schluss:{ms:4500,text:'<b>Heute</b>: {objekte} Objekte<br><span class="m">{zu} Issues erledigt, {offen} offen · jede Änderung hat ihren Zeitpunkt</span>'}}]},
+ {id:'bookmark',titel:'Bookmark und Profilkarte',sprech:'[Anflug Bookmark, Profilkarte]',schritte:[
+  {art:'flug',ziel:{name:/^Bookmark/},merke:'F',dauer:4,text:'Anflug auf den <b>Bookmark-Folder</b>'},
+  {art:'profil',ziel:{merke:'F'},ms:5500,text:'<b>Profilkarte</b> des Bookmarks: Stammdaten und Beziehungen'}]},
+ {id:'interieur',titel:'Interieur-Umfeld',sprech:'[Schwenk auf Interieur, nur ihr Umfeld bleibt sichtbar]',schritte:[
+  {art:'profilZu'},
+  {art:'flug',ziel:'Interieur',merke:'I',dauer:3.5,dreh:-.5,text:'Schwenk auf die Hauptbaugruppe <b>Interieur</b><br><span class="m">Sie liegt nicht im Bookmark</span>',ms:1200},
+  {art:'umfeld',ziel:{merke:'I'},merke:'M',dauer:3,ms:7000,text:'Alles, was mit <b>Interieur</b> verbunden ist, bis zur untersten Ebene<br><span class="m">Alle anderen Objekte werden ausgeblendet ({M} von {gesamt} bleiben)</span>'}]},
+ {id:'issue',titel:'Issue → Aufgabe → Person',sprech:'[Issue #200, Aufgabe 1, A. Bauer]',schritte:[
+  {art:'flug',ziel:'Issue #200',merke:'IS',dauer:3,ms:2500,text:'<b>{IS}</b> betrifft Interieur<br><span class="m">{IS.Beschreibung}</span>'},
+  {art:'flug',ziel:{nachbar:'IS',rel:'aufgabe'},merke:'TK',dauer:2.5,text:'Zugehörige Aufgabe: <b>{TK}</b>'},
+  {art:'profil',ziel:{merke:'TK'},ms:6500,text:'<b>Profilkarte der Aufgabe</b> mit Beschreibung'},
+  {art:'profilZu'},
+  {art:'flug',ziel:{nachbar:'TK',rel:'zuweisung'},merke:'PE',dauer:3,text:'Zugewiesen an: <b>{PE}</b>'},
+  {art:'profil',ziel:{merke:'PE'},ms:4500}]},
+ {id:'linkchain',titel:'Linkchain',sprech:'[Linkchain ab A. Bauer]',schritte:[
+  {art:'profilZu'},
+  {art:'text',ms:4500,text:'<b>Linkchain-Analyse</b> ab <b>{PE}</b><br><span class="m">Pfad durch die Beziehungen: </span><b style="font-family:monospace">zuweisung&lt; aufgabe&gt; betrifft&gt;</b>'},
+  {art:'kette',start:{merke:'PE'},kette:'zuweisung< aufgabe> betrifft>',dauer:3,ms:6500,text:'Nur noch Aufgaben, Issues und betroffene Bauteile/Baugruppen von <b>{PE}</b><br><span class="m">Die Lichtpunkte laufen in Pfadrichtung · {pfade} Pfad(e), {objekte} Objekte</span>'},
+  {art:'text',ms:7000,text:'<span style="font-family:monospace"><b>zuweisung&lt;</b></span> Aufgaben, die der Person zugewiesen sind<br><span style="font-family:monospace"><b>aufgabe&gt;</b></span> deren Issue · <span style="font-family:monospace"><b>betrifft&gt;</b></span> betroffenes Bauteil oder Baugruppe'}]},
+ {id:'verbaut',titel:'Wo ist P-1041 verbaut?',sprech:'[Temperatursensor P-1041, Struktur aufwärts]',schritte:[
+  {art:'alle'},
+  {art:'heim',dauer:2.5,ms:3000,text:'Wo ist ein Teil überall verbaut?'},
+  {art:'flug',ziel:'Temperatursensor P-1041',merke:'GT',dauer:3.5,dreh:.6,text:'Wo ist ein Teil überall verbaut?<br><span class="m">Anflug auf <b>{GT}</b></span>'},
+  {art:'profil',ziel:{merke:'GT'},ms:4500,text:'<b>{GT}</b> ist ein Gleichteil'},
+  {art:'profilZu'},
+  {art:'text',ms:4500,text:'<b>Linkchain „Struktur aufwärts (beliebig tief)“</b> ab <b>{GT}</b><br><span class="m">Pfad: </span><b style="font-family:monospace">struktur&gt;*</b>'},
+  {art:'kette',start:{merke:'GT'},kette:'struktur>*',dauer:3,ms:7000,text:'<b>{GT}</b> ist in <b>{stufe1.n} Baugruppen</b> verbaut: {stufe1}<br><span class="m">Die Lichtpunkte laufen vom Teil nach oben bis zur Hauptbaugruppe · {objekte} Objekte</span>'},
+  {art:'text',ms:6500,text:'Verwendet bis in die Hauptbaugruppen <b>{ende}</b><br><span class="m">Eine Änderung an diesem Teil betrifft also beide Strukturen</span>'}]},
+ {id:'perspektiven',titel:'Perspektiven',sprech:'[Schichten nach Objekttyp, nach Reifegrad, Zeitachse]',schritte:[
+  {art:'alle'},
+  {art:'layout',layout:'schichten',ms:7500,text:'Layout <b>„Schichten nach Objekttyp“</b><br><span class="m">Jeder Objekttyp liegt in einer eigenen Ebene: Bookmark, Baugruppen, Teile, Dokumente, Issues, Aufgaben, Personen</span>'},
+  {art:'layout',layout:'reife',ms:7500,text:'Layout <b>„Schichten nach Reifegrad“</b><br><span class="m">Eine Ebene je Reifegrad: freigegeben, eingefroren, in Arbeit, veraltet</span>'},
+  {art:'layout',layout:'zeit',gier:-.25,nick:.35,ms:8500,text:'Layout <b>„Zeitachse“</b>: die Zeit als Raumrichtung<br><span class="m">Links das Konzept, rechts heute · abgelöste Revisionen liegen hinter der gültigen</span>'}]},
+ {id:'kaufmaennisch',titel:'Kaufmännische Sicht',sprech:'[Blende, Datenraum „Kaufmännisch (fiktiv)“, Kundenportfolio, Verlängerungsradar, Projekt-Ampel]',schritte:[
+  {art:'text',ms:1,text:'<b>Teil 2: Kaufmännische Analysen</b><br><span class="m">Gleiches Prinzip, andere Daten: Kunden, Lizenzen, Projekte</span>'},
+  {art:'daten',raum:'kauf',blende:true,ms:3500},
+  {art:'achsen',vorlage:/^Kundenportfolio:/,gier:-.35,dauer:4,ms:6000,text:'<b>Kundenportfolio</b>: rechts = Umsatz · oben = Marge · vorne = Wachstum<br><span class="m">Jeder Körper ist ein Kunde, die Größe zeigt den Umsatz</span>'},
+  {art:'kennzahl',beste:{'Umsatz 12 Monate':1,'Marge':1,'Wachstum ggü. Vorjahr':.6},merke:'BK',dreh:-.9,ms:5000,text:'Starker Kunde: <b>{BK}</b><br><span class="m">Umsatz {BK.Umsatz 12 Monate} · Marge {BK.Marge} · Wachstum {BK.Wachstum ggü. Vorjahr}</span>'},
+  {art:'kennzahl',beste:{'Umsatz 12 Monate':1,'Marge':-1.2},merke:'RK',dreh:.9,ms:4500,text:'Rechts unten: <b>{RK}</b><br><span class="m">größter Umsatz ({RK.Umsatz 12 Monate}), aber nur {RK.Marge} Marge</span>'},
+  {art:'achsen',vorlage:/logarithmisch/,gier:.25,dauer:4,ms:6000,text:'<b>Umsatz auf logarithmischer Skala</b><br><span class="m">Die vielen kleineren Kunden rücken auseinander</span>'},
+  {art:'achsen',vorlage:/Verlängerungsradar/,gier:-.15,dauer:4,ms:5500,text:'<b>Lizenz-Verlängerungsradar</b>: rechts = Jahreswert · oben = Auslastung · vorne = läuft bald aus'},
+  {art:'kennzahl',beste:{'Jahreswert':1,'Auslastung':-1,'Restlaufzeit':-1},merke:'LK',dreh:-.9,ms:5000,text:'Kündigungsgefahr: <b>{LK}</b><br><span class="m">Jahreswert {LK.Jahreswert} · nur {LK.Auslastung} genutzt · Restlaufzeit {LK.Restlaufzeit}</span>'},
+  {art:'achsen',vorlage:/Projekt-Ampel/,gier:.3,dauer:4,ms:5500,text:'<b>Projekt-Ampel</b>: rechts = Auftragswert · oben = Marge · vorne = Budget über Plan'},
+  {art:'kennzahl',beste:{'Auftragswert':1,'Budget über Plan':1.2},merke:'PK',dreh:.9,ms:5000,text:'Projekt läuft aus dem Ruder: <b>{PK}</b><br><span class="m">Auftragswert {PK.Auftragswert} · Budget {PK.Budget über Plan} über Plan · Marge {PK.Marge (Projekt)}</span>'}]},
+ {id:'ausblick',titel:'Ausblick Widget',sprech:'[Blende zurück, Startansicht, Einblendung Widget]',schritte:[
+  {art:'profilZu'},
+  {art:'text',ms:1,text:'<b>Teil 3: Ausblick</b>'},
+  {art:'daten',raum:'eauto',blende:true,ms:1500},
+  {art:'text',ms:7500,text:'<b>Als Widget im 3DDashboard</b><br><span class="m">Live mit den Daten der Plattform: Strukturen, Dokumente, Issues, Aufgaben, Personen und alle Beziehungen in Raum und Zeit</span>'},
+  {art:'heim',dauer:3,dreh:.8,ms:4500,text:'Ende der Vorführung'}]}]};
+const DM={on:false,id:0,paused:false,cap:'',sp:null,ctx:{},fahrt:null,zr:null,dreh:0,pfad:null};
+function demoCap(txt){DM.cap=txt||'';const c=$('dcap'),z=DM.on&&DM.paused;c.style.display=DM.cap||z?'block':'none';
+ c.innerHTML=DM.cap+(DM.zr?'<div class="m" id="dczr"></div>':'')+(z?(DM.cap?'<br>':'')+'<span style="color:#ffd166;font-weight:700">⏸ Pausiert – P oder „Weiter“ zum Fortsetzen</span>':'');if(DM.zr)dmZrText()}
+// Wartezeit in ms, zählt nur ohne Pause; bricht ab, wenn die Vorführung endet (Test ersetzt dmWarte im Zeitraffer)
+function dmWarte(ms){const id=DM.id;let lt=performance.now(),el=0;return new Promise((ok,no)=>{const tick=()=>{if(!DM.on||DM.id!==id)return no('stop');const t=performance.now();if(!DM.paused)el+=t-lt;lt=t;if(el>=ms)return ok();setTimeout(tick,40)};tick()})}
+function dmW(ms){return dmWarte(ms*((DM.ablauf&&DM.ablauf.tempo)||1))}   // Wartezeit mit dem Tempo des Ablaufs
+function dmLaeuft(){const id=DM.id;return()=>{if(!DM.on||DM.id!==id)throw'stop'}}
+async function dmSimFertig(){const ok=dmLaeuft();for(let i=0;i<150&&sim;i++){await new Promise(r=>setTimeout(r,100));ok()}}
+// Eingriff des Benutzers: Vorführung pausiert statt abzubrechen; Stand wird gemerkt
+function demoEingriff(){if(DM.on&&!DM.paused&&!DM.intern)demoPause(true)}
+function demoPause(an){if(!DM.on)return;const neu_=an==null?!DM.paused:!!an;if(neu_===DM.paused)return;DM.paused=neu_;
+ if(neu_){DM.sp={K:{ziel:K.ziel.clone(),gier:K.gier,nick:K.nick,dist:K.dist,zZiel:K.zZiel.clone(),zDist:K.zDist,flug:K.flug,zGier:K.zGier},heimSp:heimSpaeter,sel,prof:prof.i,lay:layout,axs:JSON.stringify(AXS),t:tCur,D,
+   aus:new Set(N.filter(n=>n.dmAus).map(n=>n.id))}}
+ else if(DM.sp){const s=DM.sp;DM.sp=null;DM.intern=true;
+  try{if(D===s.D){spiel=false;$('zp').textContent='▶';
+    const axAnders=JSON.stringify(AXS)!==s.axs;if(axAnders){AXS=JSON.parse(s.axs);axZeigen()}
+    if(layout!==s.lay||(axAnders&&s.lay==='achsen')){$('ly').value=s.lay;setzeLayout(s.lay,false)}
+    N.forEach(n=>n.dmAus=s.aus.has(n.id));tCur=s.t;zeitAnwenden();
+    waehle(s.sel);if(s.prof>=0){if(prof.i!==s.prof)zeigeProfil(s.prof)}else schliesseProfil()}
+   const k=s.K;K.ziel.copy(k.ziel);K.gier=k.gier;K.nick=k.nick;K.dist=k.dist;K.zZiel.copy(k.zZiel);K.zDist=k.zDist;K.flug=k.flug;K.zGier=k.zGier;heimSpaeter=s.heimSp;neu()}
+  finally{DM.intern=false}}
+ $('dmp').textContent=DM.paused?'▶ Weiter (P)':'⏸ Pause (P)';demoCap(DM.cap)}
+// Weiche Kamerafahrt: Blickpunkt, Abstand (logarithmisch), Drehung und Neigung gemeinsam, sanft an- und abbremsend; bogen = Abstand wächst unterwegs
+function dmBlick(objs,o){o=o||{};const g0=K.gier,n0=K.nick;const gier=o.gier!=null?o.gier:g0+(o.dreh||0),nick=o.nick!=null?o.nick:n0;K.gier=gier;K.nick=nick;
+ const z=heimZiel(objs?objs.map(n=>({ziel:n.ziel,r:n.r*(o.nah||1)})):null);K.gier=g0;K.nick=n0;return z?{ziel:z.c,dist:z.d*(o.weit||1),gier,nick}:null}
+function dmFahrt(b,dauer,bogen){if(!b)return;heimSpaeter=false;K.zGier=null;K.flug=false;
+ if(!(dauer>0)){K.ziel.copy(b.ziel);K.dist=b.dist;K.gier=b.gier;K.nick=b.nick;K.zZiel.copy(K.ziel);K.zDist=K.dist;DM.fahrt=null;neu();return}
+ DM.fahrt={t:0,dauer,bogen:bogen==null?.12:bogen,a:{ziel:K.ziel.clone(),dist:K.dist,gier:K.gier,nick:K.nick},b,dg:((b.gier-K.gier+Math.PI)%(2*Math.PI)+2*Math.PI)%(2*Math.PI)-Math.PI};neu()}
+function dmFahrtTick(dt){const f=DM.fahrt;if(!f)return;f.t=Math.min(1,f.t+dt/f.dauer);const t=f.t,e=t*t*t*(t*(t*6-15)+10);   // smootherstep
+ K.ziel.lerpVectors(f.a.ziel,f.b.ziel,e);K.dist=f.a.dist*Math.pow(f.b.dist/f.a.dist,e)*(1+f.bogen*Math.sin(Math.PI*t));K.gier=f.a.gier+f.dg*e;K.nick=f.a.nick+(f.b.nick-f.a.nick)*e;
+ K.zZiel.copy(K.ziel);K.zDist=K.dist;K.flug=false;if(t>=1)DM.fahrt=null}
+// Lichtpunkte entlang der Pfade (Linkchain), laufen in Pfadrichtung
+const dmPunkte=(()=>{const g=new T.BufferGeometry(),mat=new T.ShaderMaterial({transparent:true,depthWrite:false,depthTest:false,uniforms:{px:{value:10}},
+ vertexShader:'uniform float px;void main(){gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);gl_PointSize=px;}',
+ fragmentShader:'void main(){float d=length(gl_PointCoord-.5)*2.;if(d>1.)discard;gl_FragColor=vec4(mix(vec3(1.),vec3(1.,.78,.25),min(1.,d*1.6)),pow(1.-d,.8));}'});
+ const p=new T.Points(g,mat);p.frustumCulled=false;p.renderOrder=6;p.visible=false;scene.add(p);return{p,g,mat,n:0,t:0}})();
+const DM_PRO_KANTE=3;
+function dmPunkteTick(dt){const P=dmPunkte,S=DM.pfad;if(!S||!S.length){if(P.p.visible){P.p.visible=false;neu()}return}
+ const n=S.length*DM_PRO_KANTE;if(P.n!==n){P.g.dispose();P.g=new T.BufferGeometry();P.g.setAttribute('position',new T.BufferAttribute(new Float32Array(3*n),3).setUsage(T.DynamicDrawUsage));P.p.geometry=P.g;P.n=n}
+ if(!DM.paused)P.t+=dt/1.6;const A=P.g.attributes.position.array;let i=0;
+ S.forEach(([a,b])=>{for(let j=0;j<DM_PRO_KANTE;j++){const f=(P.t+j/DM_PRO_KANTE)%1;A[i++]=a.pos.x+(b.pos.x-a.pos.x)*f;A[i++]=a.pos.y+(b.pos.y-a.pos.y)*f;A[i++]=a.pos.z+(b.pos.z-a.pos.z)*f}});
+ P.mat.uniforms.px.value=14*renderer.getPixelRatio();P.g.attributes.position.needsUpdate=true;P.p.visible=true;neu()}
+// Zeitreise: Zeitregler vom Beginn bis heute, Zähler im Textkasten
+function dmIssues(){let offen=0,zu=0;N.forEach(n=>{if(!/issue/i.test(n.ty)||!(n.t0<=tCur))return;if(isFinite(n.t1)&&n.t1<=tCur)zu++;else offen++});return{offen,zu,objekte:N.filter(n=>n.sZiel>0).length}}
+function dmZrText(){const el=document.getElementById('dczr');if(!el)return;const z=dmIssues(),t=zeitText(Math.min(tCur,tMax)),s='Stand '+t+' · '+z.objekte+' Objekte · '+z.offen+' Issues offen · '+z.zu+' geschlossen';if(el.textContent!==s)el.textContent=s}
+function demoTick(dt){if(!DM.on){dmPunkteTick(dt);return}
+ if(!DM.paused){dmFahrtTick(dt);const z=DM.zr;if(z&&z.t<1){z.t=Math.min(1,z.t+dt/z.dauer);tCur=z.von+(z.bis-z.von)*z.t;zeitAnwenden();dmZrText()}if(DM.dreh&&!DM.fahrt){K.gier+=DM.dreh*dt;neu()}}
+ dmPunkteTick(dt);if(DM.fahrt)neu()}
+// Ziele und Texte
+function dmKnoten(z){const C=DM.ctx;if(z==null)return null;if(typeof z==='function')return z(C);if(typeof z==='string')return N.find(n=>n.name===z)||null;
+ if(z.merke)return C[z.merke]||null;if(z.name instanceof RegExp)return N.find(n=>z.name.test(n.name))||null;
+ if(z.nachbar){const a=C[z.nachbar];if(!a)return null;const k=E.find(k=>(k.a===a||k.b===a)&&k.e.type===z.rel);return k?(k.a===a?k.b:k.a):null}return null}
+function dmText(t){if(!t)return'';const C=DM.ctx;return t.replace(/\{([^{}]+)\}/g,(m,p)=>{const [k,...r]=p.split('.'),f=r.join('.');let v=C[k];
+ if(v==null)return'';if(Array.isArray(v))return f==='n'?String(v.length):v.map(esc).join(' und ');if(v&&v.o&&v.name!=null)return esc(f?String((v.o.meta||{})[f]==null?'':(v.o.meta||{})[f]):v.name);
+ if(v instanceof Set)return String(v.size);return esc(String(v))})}
+// Umfeld (wie 3Deep): Struktur abwärts bis zur untersten Ebene, daran hängende Objekte, Aufgaben der Issues, zugewiesene Personen
+function dmUmfeld(I){const S=new Set([I]),q=[I];for(let h=0;h<q.length;h++)E.forEach(k=>{if(k.e.type==='struktur'&&k.b===q[h]&&!S.has(k.a)){S.add(k.a);q.push(k.a)}});
+ const M=new Set(S),dazu=(von,ok)=>[...von].forEach(n=>E.forEach(k=>{if((k.a===n||k.b===n)&&ok(k.e.type))M.add(k.a===n?k.b:k.a)}));
+ dazu(S,t=>t!=='struktur'&&t!=='inhalt');dazu([...M].filter(n=>n.ty==='issue'),t=>t==='aufgabe');dazu([...M].filter(n=>n.ty==='task'),t=>t==='zuweisung');return M}
+// Linkchain (allgemein): Schritte „typ>“ (from → to), „typ<“ (to → from), „*“ = beliebig oft wiederholen
+function dmKette(start,txt){const st=txt.trim().split(/\s+/).map(s=>{const m=s.match(/^(.+?)([<>])(\*?)$/);return m?{typ:m[1],vor:m[2]==='>',oft:!!m[3]}:null}).filter(Boolean);
+ let pfade=[[start]];
+ const gilt=k=>!(isFinite(k.t0)&&k.t0>tCur)&&!(isFinite(k.t1)&&k.t1<=tCur)&&sichtbar(k.a)&&sichtbar(k.b);   // nur zum Zeitpunkt gültige Beziehungen (z. B. nicht zur abgelösten Revision)
+ const weiter=(n,s)=>E.filter(k=>k.e.type===s.typ&&(s.vor?k.a===n:k.b===n)&&gilt(k)).map(k=>s.vor?k.b:k.a);
+ st.forEach(s=>{const neu_=[];pfade.forEach(p=>{let L=[p],fertig=[];
+  do{const W=[];L.forEach(q=>{const nx=weiter(q[q.length-1],s).filter(m=>!q.includes(m));if(nx.length)nx.forEach(m=>W.push(q.concat([m])));else if(q.length>p.length)fertig.push(q)});L=s.oft?W:[];if(!s.oft)W.forEach(q=>fertig.push(q))}while(L.length);
+  fertig.forEach(q=>neu_.push(q))});pfade=neu_});
+ const nodes=new Set([start]),segs=new Map();pfade.forEach(p=>p.forEach((n,i)=>{nodes.add(n);if(i)segs.set(p[i-1].i+'-'+n.i,[p[i-1],n])}));
+ return{pfade,nodes,segs:[...segs.values()],stufe1:[...new Set(pfade.map(p=>p[1]).filter(Boolean).map(n=>n.name))],ende:[...new Set(pfade.map(p=>p[p.length-1].name))]}}
+function dmAusblenden(M){N.forEach(n=>n.dmAus=!!M&&!M.has(n));zeitAnwenden()}
+// bestes Objekt nach gewichteten, normierten Kennzahlen (nur im aktuellen Kennzahlen-Diagramm sichtbare Objekte)
+function dmBeste(w){const L=N.filter(n=>!n.axAus&&n.sZiel>0),ks=Object.keys(w),v=(n,k)=>numv((n.o.meta||{})[k]);
+ const mm=ks.map(k=>{const x=L.map(n=>v(n,k)).filter(isFinite);return[Math.min(...x),Math.max(...x)]});let b=null,bs=-1e9;
+ L.forEach(n=>{if(!ks.every(k=>isFinite(v(n,k))))return;const s_=ks.reduce((a,k,j)=>a+w[k]*(v(n,k)-mm[j][0])/((mm[j][1]-mm[j][0])||1),0);if(s_>bs){bs=s_;b=n}});return b}
+async function dmDaten(raum,blende){const f=$('dfade');if(blende){f.style.opacity=1;await dmW(700)}
+ DM.intern=true;try{$('ds').value=raum;laden(raum==='kauf'?kaufDaten():raum==='demo'?demoDaten():elektroautoDaten())}finally{DM.intern=false}
+ DM.pfad=null;await dmSimFertig();const b=dmBlick(null,{});dmFahrt(b,0);if(blende){await dmW(150);f.style.opacity=0}}
+async function dmSchritt(s){const C=DM.ctx,ms=s.ms||0;
+ switch(s.art){
+  case'daten':await dmDaten(s.raum,s.blende);C.gesamt=N.length;break;
+  case'text':demoCap(dmText(s.text));break;
+  case'zeitreise':{const tag=864e5,t0=tMin,ende=Math.min(tMax,Math.max(HEUTE,tMin));schliesseProfil();waehle(-1);
+   const P=s.phasen,ges=P.reduce((a,p)=>a+p.s,0);DM.dreh=(s.dreh||0)/ges;
+   tCur=t0;zeitAnwenden();dmFahrt(dmBlick(N.filter(n=>!n.dmAus),{gier:K.gier-.5*(s.dreh||0)}),1.5,0);   // Ausschnitt für den Endstand (alle Objekte), Drehung um die MitteDM.zr={von:t0,bis:t0,t:1,dauer:1};
+   for(let j=0;j<P.length;j++){const von=t0+P[j].ab*tag,bis=j+1<P.length?t0+P[j+1].ab*tag:ende;Object.assign(C,dmIssues());
+    DM.zr={von:Math.min(von,ende),bis:Math.min(bis,ende),t:0,dauer:P[j].s*(DM.ablauf.tempo||1)};demoCap(dmText(P[j].text));await dmW(P[j].s*1000);tCur=DM.zr.bis;zeitAnwenden();DM.zr.t=1}
+   DM.dreh=0;tCur=ende;zeitAnwenden();Object.assign(C,dmIssues());C.zrEnde={...dmIssues()};DM.zr=null;
+   if(s.schluss){demoCap(dmText(s.schluss.text));await dmW(s.schluss.ms||4000)}return}
+  case'flug':{const n=dmKnoten(s.ziel);if(!n)throw new Error('Demo: Ziel nicht gefunden: '+JSON.stringify(s.ziel,(k,v)=>v instanceof RegExp?String(v):v));if(s.merke)C[s.merke]=n;
+   if(s.text)demoCap(dmText(s.text));waehle(n.i);dmFahrt(dmBlick([n],{nah:s.nah||11,dreh:s.dreh||0}),s.dauer||3);await dmW((s.dauer||3)*1000+300);break}
+  case'profil':{const n=dmKnoten(s.ziel);if(s.text)demoCap(dmText(s.text));if(n){waehle(n.i);zeigeProfil(n.i)}break}
+  case'profilZu':schliesseProfil();break;
+  case'umfeld':{const I=dmKnoten(s.ziel),M=dmUmfeld(I);if(s.merke)C[s.merke]=M;waehle(-1);demoCap(dmText(s.text));await dmW(1600);dmAusblenden(M);dmFahrt(dmBlick(null,{dreh:.35}),s.dauer||3);break}
+  case'kette':{const a=dmKnoten(s.start);dmAusblenden(null);const R=dmKette(a,s.kette);Object.assign(C,{pfade:R.pfade.length,objekte:R.nodes.size,stufe1:R.stufe1,ende:R.ende});C.kette=R;
+   schliesseProfil();waehle(-1);dmAusblenden(R.nodes);DM.pfad=R.segs;dmFahrt(dmBlick(null,{dreh:-.3}),s.dauer||3);demoCap(dmText(s.text));break}
+  case'alle':DM.pfad=null;schliesseProfil();waehle(-1);dmAusblenden(null);break;
+  case'heim':{if(s.text)demoCap(dmText(s.text));dmFahrt(dmBlick(null,{dreh:s.dreh||0}),s.dauer||3);break}
+  case'layout':{DM.pfad=null;demoCap(dmText(s.text));$('ly').value=s.layout;setzeLayout(s.layout,false);
+   if(sim)heimSpaeter=true;else dmFahrt(dmBlick(null,{gier:s.gier,nick:s.nick}),s.dauer||3);break}
+  case'achsen':{const i=AXP.findIndex(p=>s.vorlage.test(p.name));schliesseProfil();waehle(-1);if(i>=0){axVorlage(i);$('ly').value='achsen';setzeLayout('achsen',false);dmFahrt(dmBlick(null,{gier:s.gier!=null?s.gier:K.gier,nick:.3}),s.dauer||4)}
+   demoCap(dmText(s.text));break}
+  case'kennzahl':{const n=dmBeste(s.beste);if(!n)break;if(s.merke)C[s.merke]=n;waehle(n.i);demoCap(dmText(s.text));dmFahrt(dmBlick([n],{nah:9,dreh:s.dreh||0}),4.5,.18);await dmW(4700);zeigeProfil(n.i);await dmW(ms);schliesseProfil();waehle(-1);return}
+ }
+ if(ms)await dmW(ms)}
+async function demoAbspielen(A){if(DM.on)return demoStop();
+ DM.on=true;DM.paused=false;DM.id++;DM.ctx={};DM.ablauf=A;DM.station=-1;$('dmb').textContent='■ Demo stoppen';$('dmp').textContent='⏸ Pause (P)';$('dmp').style.display='';
+ if(U)uStop(true);
+ try{for(let i=0;i<A.stationen.length;i++){DM.station=i;const st=A.stationen[i];for(const s of st.schritte)await dmSchritt(s)}demoStop()}
+ catch(x){if(x!=='stop'){demoStop();meldeFehler(x)}}}
+function meldeFehler(x){console.error(x);const l=$('leer');l.style.display='';l.style.color='#ff6b6b';l.textContent='Fehler in der Vorführung: '+(x&&x.message||x)}
+function demoStop(){if(!DM.on)return;DM.on=false;DM.paused=false;DM.sp=null;DM.id++;DM.fahrt=null;DM.dreh=0;DM.pfad=null;if(DM.zr){DM.zr=null;tCur=Infinity}
+ N.forEach(n=>n.dmAus=false);if(N.length)zeitAnwenden();$('dfade').style.opacity=0;demoCap('');schliesseProfil();waehle(-1);
+ $('dmb').textContent='▶ Demo abspielen';$('dmp').style.display='none'}
+$('dmb').onclick=()=>demoAbspielen(DEMO_EAUTO);$('dmp').onclick=()=>demoPause();
+// Eingriffe: Zeiger und Rad überall außer an den Demo-Knöpfen (Erfassungsphase, damit der Stand vor der Änderung gemerkt wird), Tasten, SpaceMouse über nutzerSteuert()
+addEventListener('pointerdown',e=>{if(DM.on&&!e.target.closest('#dmb,#dmp'))demoEingriff()},true);
+addEventListener('wheel',()=>demoEingriff(),{capture:true,passive:true});
+addEventListener('keydown',e=>{if(!DM.on||e.repeat)return;const tg=e.target;if(tg.tagName==='TEXTAREA'||(tg.tagName==='INPUT'&&!/range|checkbox|button|file/.test(tg.type)))return;
+ if(e.code==='KeyP'&&!e.ctrlKey&&!e.altKey&&!e.metaKey){e.preventDefault();e.stopImmediatePropagation();demoPause();return}
+ if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();demoStop();return}
+ if(!/^(Shift|Control|Alt|Meta|CapsLock)$/.test(e.key))demoEingriff()},true);
+
 // ---------- Hauptschleife ----------
 let letzt=performance.now();
 function groesse(){const w=cv.clientWidth,h=cv.clientHeight;if(!w||!h)return false;if(cv.width!==Math.round(w*renderer.getPixelRatio())||cv.height!==Math.round(h*renderer.getPixelRatio())){renderer.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix();dirty=true}return true}
@@ -2186,7 +2641,7 @@ function schleife(jetzt){requestAnimationFrame(schleife);const dt=Math.min(.1,(j
  if(spiel){tCur+=(tMax-tMin)/(+$('ztempo').value||20)*dt*tempoFaktor();if(tCur>=tMax){tCur=tMax;spiel=false;$('zp').textContent='▶'}zeitAnwenden()}
  if(heimSpaeter&&(!sim||jetzt-heimT>700)){heimT=jetzt;if(!sim)heimSpaeter=false;heim()}   // Kamera während des Layouts mitführen, bis der Nutzer selbst steuert
  if(messung&&!messung.erg){K.gier=messung.gier+(jetzt-messung.start)/5000*Math.PI*2;messung.frames++;dirty=true;if(jetzt-messung.start>=5000){messung.erg=Math.round(messung.frames/5)+' fps im Mittel ('+N.length.toLocaleString('de-DE')+' Objekte, Schatten '+($('schatten').checked&&N.length<=12000?'an':'aus')+')';K.gier=messung.gier}}
- smTick(dt,jetzt);uTick(jetzt);const b=bewegen(dt);if(K.flug)dirty=true;leuchten();markerSetzen(jetzt);if(wkTick(jetzt/1000))dirty=true;haloTick();if(figTick(jetzt/1000,dt))dirty=true;if(strahlTick(jetzt/1000))dirty=true;
+ smTick(dt,jetzt);uTick(jetzt);demoTick(dt);const b=bewegen(dt);if(K.flug)dirty=true;leuchten();markerSetzen(jetzt);if(wkTick(jetzt/1000))dirty=true;haloTick();if(figTick(jetzt/1000,dt))dirty=true;if(strahlTick(jetzt/1000))dirty=true;
  if(ST.on&&ST.msgT&&jetzt>ST.msgT){ST.msgT=0;NM.neu=true}
  const gemalt=b||dirty;if(gemalt&&!kontextWeg){kameraSetzen();zeichnen();fz++;dirty=false}
  namenZeichnen(jetzt,dt,gemalt);if(gemalt&&prof.i>=0)profLage();
