@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="62">
+<meta name="4deep-darstellung" content="63">
 <title>4Deep – Datenraum in Raum und Zeit</title>
 <!-- 4Deep – Datenraum in Raum und Zeit (begonnen als Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026; Produkt seit 26.11.2026, Version 55): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -61,6 +61,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
 #profb{position:fixed;display:none;z-index:21;pointer-events:none;filter:drop-shadow(0 6px 9px rgba(0,0,0,.45))}#profb img{display:block;border-radius:6px}
 #profb .txt{max-width:280px;padding:10px 14px;background:#fff8e6;color:#1a2433;border-radius:8px;font:600 15px/1.35 system-ui,sans-serif;white-space:pre-wrap;overflow-wrap:anywhere}
 #dcap{left:50%;top:10px;transform:translateX(-50%);width:min(700px,calc(100% - 540px));min-width:340px;display:none;z-index:13;font-size:14px;line-height:1.45;pointer-events:none}#dcap .m{color:var(--mu);font-size:12.5px}#dczr{margin-top:4px;font-variant-numeric:tabular-nums}
+#gebm{position:fixed;left:50%;bottom:64px;transform:translateX(-50%);max-width:70vw;z-index:20;background:rgba(16,24,42,.92);color:#e8eefb;padding:8px 14px;border-radius:8px;font:13px system-ui,sans-serif;opacity:0;transition:opacity .4s;pointer-events:none}
 /* Version 62: Intro in 3D (wie 3Deep) */
 #intro{position:fixed;inset:0;z-index:60;transition:opacity 1.4s ease;cursor:pointer;background:#9dbbe4}#intro canvas{position:absolute;inset:0;width:100%;height:100%;display:block}#intro.aus{opacity:0;pointer-events:none}
 #intro .ton{position:absolute;right:18px;bottom:16px;z-index:2;margin:0;padding:6px 12px;border-radius:16px;background:rgba(255,255,255,.28);color:#fff;font:500 13px system-ui,sans-serif;border:1px solid rgba(255,255,255,.55);cursor:pointer;backdrop-filter:blur(4px)}#intro .ton:hover{background:rgba(255,255,255,.42)}
@@ -137,7 +138,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 62 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 63 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="chr"></div><div class="pn" id="mas"></div><div class="pn" id="prof"></div><div class="pn" id="dcap"></div><div id="dfade"></div><div id="profb"></div>
@@ -1247,6 +1248,35 @@ function masListe(){return(D&&D.massnahmen||[]).filter(m=>m&&(m.text||m.signal))
 function eur(v){if(!isFinite(v))return'–';const a=Math.abs(v);return a>=1e6?(v/1e6).toLocaleString('de-DE',{maximumFractionDigits:2})+' Mio €':a>=1e4?Math.round(v/1e3).toLocaleString('de-DE')+' T€':Math.round(v).toLocaleString('de-DE')+' €'}
 function skyFirmen(){const c=D&&D.skyline;if(!c)return[];const zahl={};N.forEach(n=>{const f=firmaVon(n);if(f&&f!==n)zahl[f.i]=(zahl[f.i]||0)+1});
  return N.filter(n=>n.ty===c.typ&&!typAus[n.ty]&&((kzv(n,c.hoehe)>0)||(zahl[n.i]||0)>=3)).sort((a,b)=>(kzv(b,c.hoehe)||0)-(kzv(a,c.hoehe)||0)||(zahl[b.i]||0)-(zahl[a.i]||0))}
+// ---- gebaeude-gemeinsam (Version 63: Gebäude-Werkstatt und 4Deep, Text in beiden Dateien gleich halten; tests/test-gebaeude4d.js prüft das) ----
+// Gebäudebeschreibung {format:'4deep-gebaeude',version:1,firma,name,adresse,lat,lon,teile:[{aussen:[[x,y],…],loecher:[[[x,y],…]],min,hoehe,dach,dachHoehe}],quelle,osm,erstellt}
+// x nach Osten, y nach Norden, Meter, Ursprung Mitte des Grundrisses; hoehe = Oberkante inkl. Dach; dach: 'flach' | 'zelt' | 'kuppel'.
+function gebaeudePruefen(G){if(!G||G.format!=='4deep-gebaeude'||!Array.isArray(G.teile)||!G.teile.length)return false;
+ return G.teile.every(t=>Array.isArray(t.aussen)&&t.aussen.length>=3&&t.aussen.every(p=>Array.isArray(p)&&isFinite(p[0])&&isFinite(p[1]))&&isFinite(t.hoehe)&&t.hoehe>0&&t.hoehe<1000&&(!t.min||isFinite(t.min)&&t.min<t.hoehe))}
+// Baut eine three.js-Gruppe in Metern (y nach oben, z = −Nord), Fuß auf y = 0. stil: {mat, kante} (Materialien) – Flächen und Kanten je Teil.
+function gebaeudeBauen(G,stil){const grp=new T.Group(),V2=p=>new T.Vector2(p[0],p[1]);
+ G.teile.forEach(t=>{const min=+t.min||0,dh=t.dach==='flach'||!t.dach?0:Math.max(0,Math.min(+t.dachHoehe||0,(t.hoehe-min)*.8)),wand=Math.max(.5,t.hoehe-min-dh);
+  const sh=new T.Shape(t.aussen.map(V2));(t.loecher||[]).forEach(l=>{if(Array.isArray(l)&&l.length>=3)sh.holes.push(new T.Path(l.map(V2)))});
+  const geo=new T.ExtrudeGeometry(sh,{depth:wand,bevelEnabled:false,curveSegments:1});geo.rotateX(-Math.PI/2);geo.translate(0,min,0);
+  const add=g=>{const m=new T.Mesh(g,stil.mat);grp.add(m);const k=new T.LineSegments(new T.EdgesGeometry(g,25),stil.kante);grp.add(k)};add(geo);
+  if(dh>0){const A=t.aussen,cx=A.reduce((s,p)=>s+p[0],0)/A.length,cy=A.reduce((s,p)=>s+p[1],0)/A.length,top=min+wand;
+   if(t.dach==='kuppel'){let fl=0;for(let i=0;i<A.length;i++){const a=A[i],b=A[(i+1)%A.length];fl+=a[0]*b[1]-b[0]*a[1]}const r=Math.sqrt(Math.abs(fl)/2/Math.PI)*.8,g=new T.SphereGeometry(1,24,10,0,Math.PI*2,0,Math.PI/2);g.scale(r,dh,r);g.translate(cx,top,-cy);add(g)}
+   else{const pos=[];for(let i=0;i<A.length;i++){const a=A[i],b=A[(i+1)%A.length];pos.push(a[0],top,-a[1],b[0],top,-b[1],cx,top+dh,-cy)}const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(pos,3));g.computeVertexNormals();
+    const m=new T.Mesh(g,stil.mat);grp.add(m);const k=new T.LineSegments(new T.EdgesGeometry(g,25),stil.kante);grp.add(k)}}});
+ return grp}
+// ---- Ende gebaeude-gemeinsam ----
+// Version 63: Gebäude-Beschreibungen (Datei *.4deep-gebaeude.json aus der Gebäude-Werkstatt, auch im CRM-ZIP oder als Feld „gebaeude“ am Objekt)
+// der passenden Firma zuordnen: Firmennummer (Objekt-ID, Nummer vor „ · “ im Namen oder ein Attributwert), sonst die ausgewählte Firma.
+const GEB_STIL={mat:new T.MeshStandardMaterial({color:0xe9eef5,roughness:.4,metalness:.15,side:T.DoubleSide}),kante:new T.LineBasicMaterial({color:0x2f4f8a,transparent:true,opacity:.55})};
+function gebFirma(G,L,typ){if(typ===undefined)typ=D&&D.skyline&&D.skyline.typ;const k=String(G.firma||'').trim();L=L||N.map(n=>({id:n.id,name:n.name,ty:n.ty,meta:n.o.meta,n}));
+ const C=L.filter(x=>!typ||(x.ty||x.type)===typ);if(k){const f=C.find(x=>String(x.id)===k||String(x.name||'').split(' · ')[0].trim()===k||Object.values(x.meta||{}).some(v=>String(v).trim()===k));if(f)return f}
+ return!k&&G.name?C.find(x=>String(x.name||'')===G.name||String(x.name||'').split(' · ').slice(1).join(' · ')===G.name)||null:null}
+function gebaeudeZuNodes(nodes,liste,typ){let z=0;liste.forEach(G=>{const f=gebFirma(G,nodes,typ||null);if(f){f.gebaeude=G;z++}});return z}
+function gebaeudeLaden(liste){const ok=[],ohne=[];liste.forEach(G=>{if(!gebaeudePruefen(G)){ohne.push((G&&G.name)||'?');return}let f=gebFirma(G);f=f?f.n:null;
+  if(!f&&sel>=0&&N[sel]&&(!D.skyline||N[sel].ty===D.skyline.typ))f=N[sel];if(f){f.o.gebaeude=G;ok.push(firmenName(f))}else ohne.push((G.name||'')+(G.firma?' ('+G.firma+')':''))});
+ if(ok.length&&layout==='skyline')setzeLayout('skyline',false);
+ gebMeld((ok.length?'Gebäude übernommen: '+ok.join(', '):'')+(ohne.length?(ok.length?' · ':'')+'keine passende Firma für: '+ohne.join(', ')+' (Firmennummer prüfen oder Firma vorher anklicken)':''))}
+function gebMeld(t){let el=$('gebm');if(!el){el=document.createElement('div');el.id='gebm';document.body.appendChild(el)}el.textContent=t;el.style.opacity=1;clearTimeout(gebMeld.t);gebMeld.t=setTimeout(()=>{el.style.opacity=0},6000)}
 function skyFarbe(v){const g=(D.skyline.farbeGrenzen)||[10,25];return!isFinite(v)?0x8a96a8:v<g[0]?0xd0402a:v<g[1]?0xe0a020:0x3a72d0}   // Version 62 (Wunsch des Nutzers): gute Marge blau statt grün
 function skyline(L){if(SKY&&SKY.schilder)SKY.schilder.forEach(G=>{const u=G.userData.s3;u.geo.dispose();u.tx.dispose();u.mats.forEach(m=>m.dispose())});
  while(skyG.children.length){const c=skyG.children.pop();c.geometry&&c.geometry.dispose();c.material&&c.material.dispose()}
@@ -1261,16 +1291,20 @@ function skyline(L){if(SKY&&SKY.schilder)SKY.schilder.forEach(G=>{const u=G.user
   // Version 51: Marge als schmaler Rahmen außen um die Dachkante (die Deckplatte flimmerte mit dem Glasdach und Schatten)
   {const dk=Math.min(h*.5,L*.16),t=L*.07,o=w/2+t/2+L*.01,mt=new T.MeshStandardMaterial({color:skyFarbe(kzv(f,c.farbe)),roughness:.3,metalness:.1,emissive:skyFarbe(kzv(f,c.farbe)),emissiveIntensity:.25});
    [[0,o,w+t*2+L*.02,t],[0,-o,w+t*2+L*.02,t],[o,0,t,w],[-o,0,t,w]].forEach(([dx,dz,sx,sz])=>{const m=new T.Mesh(new T.BoxGeometry(sx,dk,sz),mt);m.position.set(x+dx,h-dk/2,z+dz);skyG.add(m)})}
-  f.ziel.set(x,h+f.r*1.3,z);
+  // Version 63 (Wunsch des Nutzers, Schaustück): schematisches Gebäude aus der Gebäude-Werkstatt statt Gehry-Symbol; Grundriss höchstens 85 % der Turmbreite, Höhe höchstens L*5
+  let hb=0;if(gebaeudePruefen(f.o.gebaeude)){try{const gg=gebaeudeBauen(f.o.gebaeude,GEB_STIL),bx=new T.Box3().setFromObject(gg),sz=bx.getSize(new T.Vector3()),k=Math.min(w*.85/Math.max(1e-6,sz.x,sz.z),L*5/Math.max(1e-6,sz.y)),cx=(bx.min.x+bx.max.x)/2,cz=(bx.min.z+bx.max.z)/2;
+   gg.scale.setScalar(k);gg.position.set(x-cx*k,h,z-cz*k);skyG.add(gg);gg.children.forEach(m=>{if(m.isMesh)SKY.koerper.push({m,f})});hb=sz.y*k;f.skyAus=true}catch(e){console.error(e)}}
+  const hT=h+hb;
+  f.ziel.set(x,hT+f.r*1.3,z);
   // Version 42 (Wunsch des Nutzers): Trend als schräger Pfeil mit Schaft (↗ grün / ↘ rot, wie im Börsenchart) statt Kegel, Prozentzahl daneben
-  const g=kzv(f,c.pfeil);let tp=null;if(isFinite(g)&&Math.abs(g)>=1){const auf=g>0,s=L*(1.1+Math.min(.8,Math.abs(g)/60));tp=trendPfeil(auf,s,x+w*.25,h+s*.6,z+w*.2);/* auf dem Dach rechts, neben dem Turm verdeckte er Nachbarn */tp.txt=(auf?'+':'−')+Math.round(Math.abs(g))+' %'}
+  const g=kzv(f,c.pfeil);let tp=null;if(isFinite(g)&&Math.abs(g)>=1){const auf=g>0,s=L*(1.1+Math.min(.8,Math.abs(g)/60));tp=trendPfeil(auf,s,x+w*.25,hT+s*.6,z+w*.2);/* auf dem Dach rechts, neben dem Turm verdeckte er Nachbarn */tp.txt=(auf?'+':'−')+Math.round(Math.abs(g))+' %'}
   // Version 42: Hinweise der Handlungsliste als Warnschild (Dreieck mit „!“ und Anzahl) statt Fähnchen; Klick = Lagebericht dieser Firma
   const mf=M.filter(m=>m._f===firmenName(f)),p1=mf.filter(m=>m.prio===1).length,p2=mf.filter(m=>m.prio===2).length;
   // Version 43 (Wunsch des Nutzers): dezent – ein Viertel so groß, ohne Anzahl
-  if(p1||p2){const st=new T.Mesh(new T.CylinderGeometry(L*.018,L*.018,L*.5,6),new T.MeshStandardMaterial({color:0x5a6472}));const fx=x-w*.5+L*.3,fz=z-w*.5+L*.3;st.position.set(fx,h+L*.25,fz);skyG.add(st);
-   const ws=ampelSchild(p1>0,p2>0,L*.5);ws.position.set(fx,h+L*.72,fz);skyG.add(ws);SKY.koerper.push({m:ws,f,warn:true})}   // Version 62 (Wunsch des Nutzers): Ampel (rot = Einträge Prio 1, gelb = Prio 2) statt Warnschild
-  SKY.info.push({f,x,z,h,v,p1,p2,tp,txt:[c.titelHoehe||c.hoehe,eur(v)].join(' ')+' · '+(c.farbe||'')+' '+((f.o.meta||{})[c.farbe]||'–')+(isFinite(g)?' · '+(g>=0?'↗ +':'↘ −')+Math.round(Math.abs(g))+' %':'')+(p1||p2?' · Ampel '+(p1?'rot':'')+(p1&&p2?'/':'')+(p2?'gelb':'')+': Hinweise im Lagebericht':'')});
-  SKY.ecken.push(new T.Vector3(x-w,0,z-w),new T.Vector3(x+w,h+L*5.4,z+w),new T.Vector3(x-w*2.2,h+L*3.4,z),new T.Vector3(x+w*2.2,h+L*3.4,z))});
+  if(p1||p2){const st=new T.Mesh(new T.CylinderGeometry(L*.018,L*.018,hb+L*.5,6),new T.MeshStandardMaterial({color:0x5a6472}));const fx=x-w*.5+L*.3,fz=hb?z+w*.5-L*.3:z-w*.5+L*.3;st.position.set(fx,h+(hb+L*.5)/2,fz);   /* Version 63: mit Gebäude vorne links auf dessen Höhe, sonst verdeckt */skyG.add(st);
+   const ws=ampelSchild(p1>0,p2>0,L*.5);ws.position.set(fx,hT+L*.72,fz);skyG.add(ws);SKY.koerper.push({m:ws,f,warn:true})}   // Version 62 (Wunsch des Nutzers): Ampel (rot = Einträge Prio 1, gelb = Prio 2) statt Warnschild
+  SKY.info.push({f,x,z,h,hT,v,p1,p2,tp,txt:[c.titelHoehe||c.hoehe,eur(v)].join(' ')+' · '+(c.farbe||'')+' '+((f.o.meta||{})[c.farbe]||'–')+(isFinite(g)?' · '+(g>=0?'↗ +':'↘ −')+Math.round(Math.abs(g))+' %':'')+(p1||p2?' · Ampel '+(p1?'rot':'')+(p1&&p2?'/':'')+(p2?'gelb':'')+': Hinweise im Lagebericht':'')});
+  SKY.ecken.push(new T.Vector3(x-w,0,z-w),new T.Vector3(x+w,hT+L*5.4,z+w),new T.Vector3(x-w*2.2,hT+L*3.4,z),new T.Vector3(x+w*2.2,hT+L*3.4,z))});
  SKY.reihen=rows;
  if(nurF)skyBuehne(L,A,SKY.info[0].z+A*.9);   // Version 53: Bühne direkt vor dem Turm (andere Reihen sind aus), Kamera passt besser
  else SKY_AUF={f:null,offen:new Set()};
@@ -1294,9 +1328,9 @@ function schrift3d(text,hoehe,tiefe,farbe,seite){const F='800 128px system-ui,sa
 function skyBeschriften(){if(!SKY)return;const L=abstand(),hh=L*.55;
  (SKY.schilder||[]).forEach(G=>{skyG.remove(G);const u=G.userData.s3;u.geo.dispose();u.tx.dispose();u.mats.forEach(m=>m.dispose())});SKY.schilder=[];
  SKY.info.forEach(I=>{const {kurz,zusatz}=kurzName(firmenName(I.f)),hk=hh*2.1;
-  const G=schrift3d(kurz,hk*1.05,L*.2,0x2f4f8a,0x0c1730);G.position.set(I.x,I.h+L*4.2,I.z);G.rotation.y=K.gier;skyG.add(G);SKY.schilder.push(G);
-  if(zusatz)vorne(marke(zusatz,I.x,I.h+L*3.15,I.z,hk*.5,'#2a3b5c')).center.set(.5,.5);
-  vorne(marke(I.txt.replace(' · ⚠ Hinweise im Lagebericht',''),I.x,I.h+L*2.45,I.z,hh*.8,'#2a3b5c')).center.set(.5,.5);
+  const G=schrift3d(kurz,hk*1.05,L*.2,0x2f4f8a,0x0c1730);G.position.set(I.x,(I.hT||I.h)+L*4.2,I.z);G.rotation.y=K.gier;skyG.add(G);SKY.schilder.push(G);
+  if(zusatz)vorne(marke(zusatz,I.x,(I.hT||I.h)+L*3.15,I.z,hk*.5,'#2a3b5c')).center.set(.5,.5);
+  vorne(marke(I.txt.replace(/ · (⚠|Ampel [^:]*:) Hinweise im Lagebericht/,''),I.x,(I.hT||I.h)+L*2.45,I.z,hh*.8,'#2a3b5c')).center.set(.5,.5);
   if(I.tp)marke(I.tp.txt,I.tp.x+I.tp.s*.45,I.tp.y+I.tp.s*.1,I.tp.z,hh*1.05,I.tp.auf?'#1f7a3c':'#b02a1a').center.set(0,.5)});
  skyBuehneBeschriften(L,hh);legendeOben(SKY.buehne?'<b>Aufgeklappt: '+esc(firmenName(SKY.buehne.f))+'</b> · Klick auf einen Sammelkörper = Objekte zeigen/verbergen · Klick auf den Turm oder Doppelklick ins Leere = alle Firmen':esc('Firmen-Skyline · Höhe = '+(D.skyline.titelHoehe||D.skyline.hoehe)+', Dachkante = '+D.skyline.farbe+' (rot < '+((D.skyline.farbeGrenzen||[10,25])[0])+', gelb < '+((D.skyline.farbeGrenzen||[10,25])[1])+', sonst blau), Pfeil ↗/↘ = '+D.skyline.pfeil+', Ampel rot/gelb = Hinweise der Handlungsliste (Klick = Lagebericht)')+'<br>Klick = Firma aufklappen · Doppelklick = Firma öffnen')}
 function trendPfeil(auf,s,x,y,z){const mat=new T.MeshStandardMaterial({color:auf?0x2e9e4f:0xd0402a,roughness:.35,metalness:.1}),a=auf?-Math.PI/4:-Math.PI*3/4;
@@ -1649,7 +1683,7 @@ $('jl').onclick=()=>$('jf').click();
 $('jf').onchange=e=>{const f=e.target.files[0];if(f)leseDatei(f);e.target.value=''};
 addEventListener('dragover',e=>e.preventDefault());
 addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer.files&&e.dataTransfer.files[0];if(f)leseDatei(f)});
-function leseDatei(f){if(DM.on)demoStop();if(/\.zip$/i.test(f.name)){leseZip(f);return}const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);if(istMassnahmenDatei(j)){massnahmenLaden(j);return}eigeneWahl();lauf=null;laden(j.daten&&j.daten.nodes?j.daten:j)}catch(e){meld('Datei ist kein gültiges JSON: '+e.message)}};r.readAsText(f)}
+function leseDatei(f){if(DM.on)demoStop();if(/\.zip$/i.test(f.name)){leseZip(f);return}const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);if(istMassnahmenDatei(j)){massnahmenLaden(j);return}if(j&&j.format==='4deep-gebaeude'){gebaeudeLaden([j]);return}   /* Version 63 */eigeneWahl();lauf=null;laden(j.daten&&j.daten.nodes?j.daten:j)}catch(e){meld('Datei ist kein gültiges JSON: '+e.message)}};r.readAsText(f)}
 $('ds').onchange=e=>waehleRaum(e.target.value);
 $('ubtn').onclick=()=>{if(U)uBeenden();else uStart(0)};$('wks').onchange=e=>wkWahl(e.target.value);$('fbs').onchange=e=>fbSetzen(e.target.value);
 $('rvr').oninput=e=>rvSetzen(RV.ids[+e.target.value]);$('rvz').onclick=()=>rvSetzen(RV.ids[Math.max(0,RV.ids.indexOf(RV.akt)-1)]);$('rvv').onclick=()=>rvSetzen(RV.ids[Math.min(RV.ids.length-1,RV.ids.indexOf(RV.akt)+1)]);
@@ -1673,12 +1707,13 @@ async function zipEntpacken(e){if(e.meth===0)return e.daten;if(e.meth!==8)throw 
 let CRM_ROH=null;   // Version 21: Rohdaten des zuletzt geladenen CRM-Exports (für „Batches einzeln“), nur im Speicher
 async function leseZip(f){
  meld('Lese '+f.name+' …');ladeKugel(true);
- try{const dec=new TextDecoder('utf-8'),busse=[],rels=[],bId={},rId={},ordner=[];let json4d=null;
+ try{const dec=new TextDecoder('utf-8'),busse=[],rels=[],bId={},rId={},ordner=[],GEB=[];let json4d=null;
   // Version 30: neues Exportformat mit Unterordnern je Firma (…/<Firma>/busses/…, …/<Firma>/rels/…), auch ZIP im ZIP; Objekte doppelt in mehreren Ordnern nur einmal, mit allen Ordnern im Feld „Export-Ordner“
   const lies=async(ein,vor,tiefe)=>{for(const e of ein){
    if(/\.zip$/i.test(e.name)&&tiefe<2){try{await lies(await zipLesen((await zipEntpacken(e)).slice().buffer),vor+e.name.replace(/\.zip$/i,'')+'/',tiefe+1)}catch(_){}continue}
+   if(/\.4deep-gebaeude\.json$/i.test(e.name)){try{let t=dec.decode(await zipEntpacken(e));if(t.charCodeAt(0)===0xfeff)t=t.slice(1);GEB.push(JSON.parse(t))}catch(_){}continue}   // Version 63: Gebäude-Beschreibungen im ZIP
    if(!/\.json$/i.test(e.name))continue;const teile=(vor+e.name).split('/');const ib=teile.indexOf('busses'),ir=teile.indexOf('rels'),ix=ib>=0&&(ir<0||ib<ir)?ib:ir,art=ix<0?'':ix===ib?'b':'r';
-   if(!art&&ein.length>1)continue;let t=dec.decode(await zipEntpacken(e));if(t.charCodeAt(0)===0xfeff)t=t.slice(1);let o;try{o=JSON.parse(t)}catch(_){continue}
+   if(!art&&ein.filter(x=>!/\.4deep-gebaeude\.json$/i.test(x.name)).length>1)continue;/* Version 63: Gebäudedateien zählen nicht mit */let t=dec.decode(await zipEntpacken(e));if(t.charCodeAt(0)===0xfeff)t=t.slice(1);let o;try{o=JSON.parse(t)}catch(_){continue}
    if(!art){json4d=o;continue}
    const ord=teile.slice(0,ix).join('/');if(!ordner.includes(ord))ordner.push(ord);
    if(art==='b'){const k=o&&o.id!=null?String(o.id):null;if(k&&bId[k]){if(!bId[k].ord.includes(ord))bId[k].ord.push(ord);continue}busse.push(o);if(k)bId[k]={ord:[ord]}}
@@ -1687,9 +1722,9 @@ async function leseZip(f){
   if(busse.length){let zuord=null;
    if(ordner.length>1){const fn=id=>{const o=busse.find(b=>b&&String(b.id)===id),d=o&&o.data||{};return o?String(d.cTitle||o.name||'').trim():''};   // Ordner heißt nach der Firma (bus.sct.public.tCO.202_<Zeitstempel>) → Firmenname
     const kurz=ordner.map(x=>{const l=x.split('/').filter(Boolean).pop()||'(Wurzel)',m=/^(bus\.[^_]+)_\d+$/.exec(l);return m&&fn(m[1])||l});zuord={};Object.keys(bId).forEach(k=>zuord[k]=bId[k].ord.map(x=>kurz[ordner.indexOf(x)]).join(', '))}
-   CRM_ROH={b:busse,r:rels,zuord};const d=crmZuDaten(busse,rels,{einzeln:$('bae').checked,zuord,domain:$('crmdom').value});if(zuord)d.titel='CRM · '+ordner.length+' Export-Ordner';eigeneWahl();lauf=null;laden(d);
+   CRM_ROH={b:busse,r:rels,zuord};const d=crmZuDaten(busse,rels,{einzeln:$('bae').checked,zuord,domain:$('crmdom').value});if(zuord)d.titel='CRM · '+ordner.length+' Export-Ordner';if(GEB.length)gebaeudeZuNodes(d.nodes,GEB.filter(gebaeudePruefen),d.skyline&&d.skyline.typ);eigeneWahl();lauf=null;laden(d);
    return}
-  if(json4d){eigeneWahl();lauf=null;laden(json4d.daten&&json4d.daten.nodes?json4d.daten:json4d);return}
+  if(json4d){const d4=json4d.daten&&json4d.daten.nodes?json4d.daten:json4d;if(GEB.length&&Array.isArray(d4.nodes))gebaeudeZuNodes(d4.nodes,GEB.filter(gebaeudePruefen),d4.skyline&&d4.skyline.typ);eigeneWahl();lauf=null;laden(d4);return}
   meld('Im ZIP wurden weder CRM-Daten (Ordner busses/ und rels/) noch ein 4Deep-JSON gefunden.')
  }catch(err){meld('ZIP konnte nicht gelesen werden: '+err.message)}}
 
