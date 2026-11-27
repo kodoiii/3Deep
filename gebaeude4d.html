@@ -20,6 +20,7 @@ button.haupt{background:#2f63c8;border-color:#2f63c8;font-weight:600}
 .zeile{display:flex;gap:6px}.zeile>*{flex:1}
 #treffer button{text-align:left;font-size:12.5px;line-height:1.35}#treffer button.an{border-color:var(--ak);background:#1d2f57}
 #st{margin-top:12px;font-size:12.5px;color:var(--mu);min-height:1.4em}#st.fehler{color:#ff8a80}
+#teile{max-height:34vh;overflow:auto}.teil{display:flex;gap:4px;align-items:center;margin-top:4px;font-size:12px}.teil span{flex:0 0 18px;color:var(--mu)}.teil input{flex:1;padding:4px}.teil select{flex:1.4;padding:4px}
 #info{font-size:12.5px;color:var(--mu);margin-top:8px;line-height:1.45}
 #cv{position:fixed;inset:0;width:100%;height:100%;display:block}
 #plan{position:fixed;right:12px;top:12px;width:260px;height:260px;background:rgba(255,255,255,.85);border-radius:10px;border:1px solid #b9c8de}
@@ -39,7 +40,9 @@ button.haupt{background:#2f63c8;border-color:#2f63c8;font-weight:600}
  <label>Firmennummer (wie im CRM, z. B. CO000001)</label><input id="firma" placeholder="ordnet das Gebäude in 4Deep der Firma zu">
  <label>Name</label><input id="name">
  <div class="zeile"><div><label>Höhe gesamt (m)</label><input id="hoehe" type="number" min="1" max="999" step="0.5"></div>
-  <div><label>Dach</label><select id="dach"><option value="">wie OpenStreetMap</option><option value="flach">flach</option><option value="zelt">Zeltdach</option><option value="kuppel">Kuppel</option></select></div></div>
+  <div><label>Dach</label><select id="dach"><option value="">wie OpenStreetMap</option><option value="flach">flach</option><option value="zelt">Zeltdach</option><option value="sattel">Satteldach</option><option value="pult">Pultdach</option><option value="kuppel">Kuppel</option></select></div></div>
+ <label id="teilzeile" style="display:none;color:var(--tx);font-size:13px"><input type="checkbox" id="teilean" checked style="width:auto;margin-right:6px"><span id="teilan_t">Gebäudeteile verwenden</span></label>
+ <div id="teile"></div>
  <div id="info"></div>
  <button id="spei" class="haupt" disabled>Beschreibung speichern …</button>
  <div id="st">Adresse eingeben und „Suchen“.</div>
@@ -48,21 +51,37 @@ button.haupt{background:#2f63c8;border-color:#2f63c8;font-weight:600}
 <script>
 'use strict';
 const T=THREE,$=id=>document.getElementById(id);
-// ---- gebaeude-gemeinsam (Version 63: Gebäude-Werkstatt und 4Deep, Text in beiden Dateien gleich halten; tests/test-gebaeude4d.js prüft das) ----
+// ---- gebaeude-gemeinsam (Version 63/64: Gebäude-Werkstatt und 4Deep, Text in beiden Dateien gleich halten; tests/test-gebaeude4d.js prüft das) ----
 // Gebäudebeschreibung {format:'4deep-gebaeude',version:1,firma,name,adresse,lat,lon,teile:[{aussen:[[x,y],…],loecher:[[[x,y],…]],min,hoehe,dach,dachHoehe}],quelle,osm,erstellt}
-// x nach Osten, y nach Norden, Meter, Ursprung Mitte des Grundrisses; hoehe = Oberkante inkl. Dach; dach: 'flach' | 'zelt' | 'kuppel'.
+// x nach Osten, y nach Norden, Meter, Ursprung Mitte des Grundrisses; min = Unterkante, hoehe = Oberkante inkl. Dach;
+// dach: 'flach' | 'zelt' (Walm/Pyramide) | 'sattel' (First entlang der langen Seite) | 'pult' (steigt quer zur langen Seite) | 'kuppel'.
 function gebaeudePruefen(G){if(!G||G.format!=='4deep-gebaeude'||!Array.isArray(G.teile)||!G.teile.length)return false;
  return G.teile.every(t=>Array.isArray(t.aussen)&&t.aussen.length>=3&&t.aussen.every(p=>Array.isArray(p)&&isFinite(p[0])&&isFinite(p[1]))&&isFinite(t.hoehe)&&t.hoehe>0&&t.hoehe<1000&&(!t.min||isFinite(t.min)&&t.min<t.hoehe))}
+// kleinstes umschließendes Rechteck (Richtungen der Kanten): Achse u entlang der langen Seite, Ausdehnung, Flächenanteil des Umrisses
+function gebaeudeRechteck(A){let best=null,fl=0;for(let i=0;i<A.length;i++){const a=A[i],b=A[(i+1)%A.length];fl+=a[0]*b[1]-b[0]*a[1];const l=Math.hypot(b[0]-a[0],b[1]-a[1]);if(l<1e-6)continue;
+  const ux=(b[0]-a[0])/l,uy=(b[1]-a[1])/l;let u0=1e9,u1=-1e9,v0=1e9,v1=-1e9;A.forEach(p=>{const u=p[0]*ux+p[1]*uy,v=-p[0]*uy+p[1]*ux;u0=Math.min(u0,u);u1=Math.max(u1,u);v0=Math.min(v0,v);v1=Math.max(v1,v)});
+  const f=(u1-u0)*(v1-v0);if(!best||f<best.f)best={f,ux,uy,u0,u1,v0,v1}}
+ if(!best)return null;if(best.v1-best.v0>best.u1-best.u0){const b=best;best={f:b.f,ux:-b.uy,uy:b.ux,u0:b.v0,u1:b.v1,v0:-b.u1,v1:-b.u0}}best.anteil=Math.abs(fl)/2/Math.max(1e-9,best.f);return best}
 // Baut eine three.js-Gruppe in Metern (y nach oben, z = −Nord), Fuß auf y = 0. stil: {mat, kante} (Materialien) – Flächen und Kanten je Teil.
 function gebaeudeBauen(G,stil){const grp=new T.Group(),V2=p=>new T.Vector2(p[0],p[1]);
- G.teile.forEach(t=>{const min=+t.min||0,dh=t.dach==='flach'||!t.dach?0:Math.max(0,Math.min(+t.dachHoehe||0,(t.hoehe-min)*.8)),wand=Math.max(.5,t.hoehe-min-dh);
-  const sh=new T.Shape(t.aussen.map(V2));(t.loecher||[]).forEach(l=>{if(Array.isArray(l)&&l.length>=3)sh.holes.push(new T.Path(l.map(V2)))});
-  const geo=new T.ExtrudeGeometry(sh,{depth:wand,bevelEnabled:false,curveSegments:1});geo.rotateX(-Math.PI/2);geo.translate(0,min,0);
-  const add=g=>{const m=new T.Mesh(g,stil.mat);grp.add(m);const k=new T.LineSegments(new T.EdgesGeometry(g,25),stil.kante);grp.add(k)};add(geo);
-  if(dh>0){const A=t.aussen,cx=A.reduce((s,p)=>s+p[0],0)/A.length,cy=A.reduce((s,p)=>s+p[1],0)/A.length,top=min+wand;
-   if(t.dach==='kuppel'){let fl=0;for(let i=0;i<A.length;i++){const a=A[i],b=A[(i+1)%A.length];fl+=a[0]*b[1]-b[0]*a[1]}const r=Math.sqrt(Math.abs(fl)/2/Math.PI)*.8,g=new T.SphereGeometry(1,24,10,0,Math.PI*2,0,Math.PI/2);g.scale(r,dh,r);g.translate(cx,top,-cy);add(g)}
-   else{const pos=[];for(let i=0;i<A.length;i++){const a=A[i],b=A[(i+1)%A.length];pos.push(a[0],top,-a[1],b[0],top,-b[1],cx,top+dh,-cy)}const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(pos,3));g.computeVertexNormals();
-    const m=new T.Mesh(g,stil.mat);grp.add(m);const k=new T.LineSegments(new T.EdgesGeometry(g,25),stil.kante);grp.add(k)}}});
+ const add=g=>{const m=new T.Mesh(g,stil.mat);grp.add(m);grp.add(new T.LineSegments(new T.EdgesGeometry(g,25),stil.kante))};
+ const dreiecke=pos=>{const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(pos,3));g.computeVertexNormals();add(g)};
+ G.teile.forEach(t=>{const A=t.aussen,min=+t.min||0,R=(t.dach==='sattel'||t.dach==='pult')?gebaeudeRechteck(A):null;
+  let dach=t.dach||'flach';if((dach==='sattel'||dach==='pult')&&(!R||R.anteil<.8))dach='zelt';   // nicht rechteckig: Walmdach statt Sattel/Pult
+  const dh=dach==='flach'?0:Math.max(0,Math.min(+t.dachHoehe||0,(t.hoehe-min)*.8)),wand=Math.max(.5,t.hoehe-min-dh),top=min+wand;
+  const sh=new T.Shape(A.map(V2));(t.loecher||[]).forEach(l=>{if(Array.isArray(l)&&l.length>=3)sh.holes.push(new T.Path(l.map(V2)))});
+  const geo=new T.ExtrudeGeometry(sh,{depth:wand,bevelEnabled:false,curveSegments:1});geo.rotateX(-Math.PI/2);geo.translate(0,min,0);add(geo);
+  if(!(dh>0))return;
+  const P=(x,y,h)=>[x,h,-y],cx=A.reduce((s,p)=>s+p[0],0)/A.length,cy=A.reduce((s,p)=>s+p[1],0)/A.length;
+  if(dach==='kuppel'){const xs=A.map(p=>p[0]),ys=A.map(p=>p[1]),x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),g=new T.SphereGeometry(1,28,12,0,Math.PI*2,0,Math.PI/2);   // Kuppel füllt den Umriss (Ellipse im Rechteck)
+   g.scale((x1-x0)/2*.95,dh,(y1-y0)/2*.95);g.translate((x0+x1)/2,top,-(y0+y1)/2);add(g);return}
+  if(dach==='sattel'){const w=(u,v)=>[u*R.ux-v*R.uy,u*R.uy+v*R.ux],vm=(R.v0+R.v1)/2,a=w(R.u0,R.v0),b=w(R.u1,R.v0),c=w(R.u1,R.v1),d=w(R.u0,R.v1),f0=w(R.u0,vm),f1=w(R.u1,vm);
+   dreiecke([...P(...a,top),...P(...b,top),...P(...f1,top+dh),...P(...a,top),...P(...f1,top+dh),...P(...f0,top+dh),...P(...c,top),...P(...d,top),...P(...f0,top+dh),...P(...c,top),...P(...f0,top+dh),...P(...f1,top+dh),
+    ...P(...b,top),...P(...c,top),...P(...f1,top+dh),...P(...d,top),...P(...a,top),...P(...f0,top+dh)]);return}
+  if(dach==='pult'){const z=p=>top+dh*((-p[0]*R.uy+p[1]*R.ux)-R.v0)/Math.max(1e-6,R.v1-R.v0),pos=[],tri=T.ShapeUtils.triangulateShape(A.map(V2),[]);
+   tri.forEach(q=>q.forEach(i=>pos.push(...P(A[i][0],A[i][1],z(A[i])))));
+   for(let i=0;i<A.length;i++){const a=A[i],b=A[(i+1)%A.length];pos.push(...P(...a,top),...P(...b,top),...P(...b,z(b)),...P(...a,top),...P(...b,z(b)),...P(...a,z(a)))}dreiecke(pos);return}
+  const pos=[];for(let i=0;i<A.length;i++){const a=A[i],b=A[(i+1)%A.length];pos.push(...P(...a,top),...P(...b,top),...P(cx,cy,top+dh))}dreiecke(pos)});
  return grp}
 // ---- Ende gebaeude-gemeinsam ----
 
@@ -77,30 +96,72 @@ function istGebaeude(h){const g=h&&h.geojson;return!!g&&(g.type==='Polygon'||g.t
 function vereinfachen(P,tol){if(P.length<5)return P;const d=(p,a,b)=>{const dx=b[0]-a[0],dy=b[1]-a[1],l=dx*dx+dy*dy;if(!l)return Math.hypot(p[0]-a[0],p[1]-a[1]);const t=Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dy)/l));return Math.hypot(p[0]-a[0]-t*dx,p[1]-a[1]-t*dy)};
  const dp=(L)=>{let m=0,i0=0;for(let i=1;i<L.length-1;i++){const x=d(L[i],L[0],L[L.length-1]);if(x>m){m=x;i0=i}}return m>tol?dp(L.slice(0,i0+1)).slice(0,-1).concat(dp(L.slice(i0))):[L[0],L[L.length-1]]};
  const R=dp(P.concat([P[0]]));R.pop();return R.length>=3?R:P}
+// Dachform aus OpenStreetMap (roof:shape) → flach / zelt / sattel / pult / kuppel; Dachhöhe: roof:height, sonst roof:levels × 2,8 m, sonst Annahme nach Form und Breite
+function dachArt(t){const rs=String(t['roof:shape']||'flat').toLowerCase();return rs==='flat'?'flach':/dome|onion|round/.test(rs)?'kuppel':/^(gabled|saltbox|gambrel|round_gabled)$/.test(rs)?'sattel':/skillion|lean_to/.test(rs)?'pult':'zelt'}
+function dachHoeheStd(dach,ext,t){const rh=zahl(t&&t['roof:height']),rl=zahl(t&&t['roof:levels']);if(rh>0)return rh;if(rl>0&&dach!=='flach')return rl*2.8;
+ return dach==='flach'?0:dach==='kuppel'?Math.min(25,ext*.5):dach==='pult'?Math.min(5,ext*.2):Math.min(8,ext*.3)}
+const breite=A=>{const xs=A.map(q=>q[0]),ys=A.map(q=>q[1]);return Math.min(Math.max(...xs)-Math.min(...xs),Math.max(...ys)-Math.min(...ys))};
+const r1=x=>Math.round(x*10)/10;
 function nominatimZuGebaeude(h){const g=h.geojson,polys=g.type==='Polygon'?[g.coordinates]:g.coordinates,X=[];polys.forEach(p=>p[0].forEach(c=>X.push(c)));
  const lo=[Math.min(...X.map(c=>c[0])),Math.max(...X.map(c=>c[0]))],la=[Math.min(...X.map(c=>c[1])),Math.max(...X.map(c=>c[1]))],lon0=(lo[0]+lo[1])/2,lat0=(la[0]+la[1])/2,kx=111320*Math.cos(lat0*Math.PI/180),ky=110574;
- const ring=R=>{let P=R.map(c=>[(c[0]-lon0)*kx,(c[1]-lat0)*ky]);if(P.length>1&&P[0][0]===P[P.length-1][0]&&P[0][1]===P[P.length-1][1])P.pop();return vereinfachen(P,.8).map(p=>[Math.round(p[0]*10)/10,Math.round(p[1]*10)/10])};
+ const proj=c=>[(c[0]-lon0)*kx,(c[1]-lat0)*ky],ring=R=>{let P=R.map(proj);if(P.length>1&&P[0][0]===P[P.length-1][0]&&P[0][1]===P[P.length-1][1])P.pop();return vereinfachen(P,.8).map(p=>[r1(p[0]),r1(p[1])])};
  const t=h.extratags||{},lev=zahl(t['building:levels']),rl=zahl(t['roof:levels']);
  let hoehe=zahl(t.height);if(!(hoehe>0))hoehe=lev>0?lev*3.2+(rl>0?rl*2.8:0):12;
  let min=zahl(t.min_height);if(!(min>=0))min=zahl(t['building:min_level'])>0?zahl(t['building:min_level'])*3.2:0;if(min>=hoehe)min=0;
- const rs=String(t['roof:shape']||'flat').toLowerCase(),dach=/^(flat)$/.test(rs)?'flach':/dome|onion|round/.test(rs)?'kuppel':'zelt';
- const teile=polys.map(p=>{const aussen=ring(p[0]),loecher=p.slice(1).map(ring).filter(l=>l.length>=3);const xs=aussen.map(q=>q[0]),ys=aussen.map(q=>q[1]),ext=Math.min(Math.max(...xs)-Math.min(...xs),Math.max(...ys)-Math.min(...ys));
-  let dh=zahl(t['roof:height']);if(!(dh>0))dh=rl>0?rl*2.8:dach==='zelt'?Math.min(8,ext*.25):dach==='kuppel'?Math.min(15,ext*.3):0;return{aussen,loecher,min:Math.round(min*10)/10,hoehe:Math.round(hoehe*10)/10,dach,dachHoehe:Math.round(dh*10)/10}});
- return{format:'4deep-gebaeude',version:1,firma:'',name:h.name||String(h.display_name||'').split(',')[0],adresse:h.display_name||'',lat:+lat0.toFixed(6),lon:+lon0.toFixed(6),teile,
-  quelle:'© OpenStreetMap-Mitwirkende, ODbL 1.0',osm:h.osm_type+'/'+h.osm_id,erstellt:new Date().toISOString().slice(0,10)}}
+ const dach=dachArt(t),teile=polys.map(p=>{const aussen=ring(p[0]),loecher=p.slice(1).map(ring).filter(l=>l.length>=3);return{aussen,loecher,min:r1(min),hoehe:r1(hoehe),dach,dachHoehe:r1(dachHoeheStd(dach,breite(aussen),t))}});
+ const G={format:'4deep-gebaeude',version:1,firma:'',name:h.name||String(h.display_name||'').split(',')[0],adresse:h.display_name||'',lat:+lat0.toFixed(6),lon:+lon0.toFixed(6),teile,
+  quelle:'© OpenStreetMap-Mitwirkende, ODbL 1.0',osm:h.osm_type+'/'+h.osm_id,erstellt:new Date().toISOString().slice(0,10)};
+ Object.defineProperty(G,'_r',{value:{lon0,lat0,kx,ky,proj,ringe:polys.map(p=>p[0].map(proj)),bbox:[la[0],lo[0],la[1],lo[1]]},enumerable:false});return G}
+// ---------- Version 64: Gebäudeteile (building:part) über Overpass – Türme, Kuppeln, Dächer mit eigener Höhe ----------
+// Nur ein Rechteck aus Koordinaten geht hinaus (keine Adresse). Zwei Server nacheinander (ausgelastet → nächster).
+const OVERPASS=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
+async function overpass(q){let f=null;for(const u of OVERPASS){try{const r=await fetch(u,{method:'POST',body:'data='+encodeURIComponent(q),headers:{'Content-Type':'application/x-www-form-urlencoded'}});if(!r.ok)throw new Error(u.split('/')[2]+' antwortet mit '+r.status);return await r.json()}catch(e){f=e}}throw f||new Error('Overpass nicht erreichbar')}
+function innen(p,R){let c=false;for(let i=0,j=R.length-1;i<R.length;j=i++){const a=R[i],b=R[j];if((a[1]>p[1])!==(b[1]>p[1])&&p[0]<(b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1])+a[0])c=!c}return c}
+const flaeche=A=>{let f=0;for(let i=0;i<A.length;i++){const a=A[i],b=A[(i+1)%A.length];f+=a[0]*b[1]-b[0]*a[1]}return Math.abs(f)/2};
+// Wege einer Relation zu Ringen zusammensetzen (Endpunkte verbinden)
+function ringeAus(wege){const offen=wege.map(w=>w.slice()),R=[],gl=(a,b)=>a.lat===b.lat&&a.lon===b.lon;while(offen.length){let r=offen.shift();let weiter=true;
+  while(weiter&&!gl(r[0],r[r.length-1])){weiter=false;for(let i=0;i<offen.length;i++){const w=offen[i];if(gl(r[r.length-1],w[0])){r=r.concat(w.slice(1))}else if(gl(r[r.length-1],w[w.length-1])){r=r.concat(w.slice(0,-1).reverse())}else continue;offen.splice(i,1);weiter=true;break}}
+  if(r.length>=4)R.push(r)}return R}
+function osmTeile(js,G){const Rm=G._r,Hb=Math.max(...G.teile.map(t=>t.hoehe)),Fb=Rm.ringe.reduce((s,R)=>s+flaeche(R),0),out=[];
+ const ring=g=>{let P=g.map(c=>Rm.proj([c.lon,c.lat]));if(P.length>1&&P[0][0]===P[P.length-1][0]&&P[0][1]===P[P.length-1][1])P.pop();return vereinfachen(P,.5).map(p=>[r1(p[0]),r1(p[1])])};
+ (js.elements||[]).forEach(el=>{const t=el.tags||{};if(!t['building:part']||t['building:part']==='no')return;let polys=[];
+  if(el.type==='way'&&el.geometry)polys=[{aussen:ring(el.geometry),loecher:[]}];
+  else if(el.type==='relation'&&el.members){const W=r=>el.members.filter(m=>m.type==='way'&&m.role===r&&m.geometry).map(m=>m.geometry);const inn=ringeAus(W('inner')).map(ring);
+   polys=ringeAus(W('outer')).map(o=>{const a=ring(o);return{aussen:a,loecher:inn.filter(l=>innen(l[0],a))}})}
+  polys.forEach(P=>{const A=P.aussen;if(A.length<3)return;const c=[A.reduce((s,p)=>s+p[0],0)/A.length,A.reduce((s,p)=>s+p[1],0)/A.length];
+   if(!Rm.ringe.some(R=>innen(c,R))||flaeche(A)>Fb*1.05)return;   // nur Teile innerhalb des gewählten Gebäudes
+   const lev=zahl(t['building:levels']),ml=zahl(t['building:min_level']),rl=zahl(t['roof:levels']);let min=zahl(t.min_height);if(!(min>=0))min=ml>0?ml*3.2:0;
+   let h=zahl(t.height);if(!(h>0))h=lev>0?min+lev*3.2+(rl>0?rl*2.8:0):Hb;if(!(h>min))return;const dach=dachArt(t);
+   out.push({aussen:A,loecher:P.loecher,min:r1(min),hoehe:r1(h),dach,dachHoehe:r1(dachHoeheStd(dach,breite(A),t)),_osm:el.type+'/'+el.id})})});
+ return out.sort((a,b)=>a.min-b.min||b.hoehe-a.hoehe)}
+async function teileHolen(G){const b=G._r.bbox,q='[out:json][timeout:25];(way["building:part"]('+b.map(x=>x.toFixed(6)).join(',')+');relation["building:part"]('+b.map(x=>x.toFixed(6)).join(',')+'););out tags geom;';return osmTeile(await overpass(q),G)}
 // Suche: Treffer mit Gebäudeumriss direkt, sonst Gebäude an der Stelle des Treffers (Rückwärtssuche, höchstens 2)
 async function suchen(q){const opt='format=jsonv2&polygon_geojson=1&extratags=1';const H=await nomi('search?'+opt+'&limit=6&q='+encodeURIComponent(q)),K=[],ids=new Set(),neu=h=>{const k=h.osm_type+h.osm_id;if(istGebaeude(h)&&!ids.has(k)){ids.add(k);K.push(h)}};
  H.forEach(neu);let n=0;for(const h of H){if(istGebaeude(h)||n>=2)continue;n++;try{neu(await nomi('reverse?'+opt+'&zoom=18&lat='+h.lat+'&lon='+h.lon))}catch(_){}}return K}
 // ---------- Bedienung ----------
-const W={K:[],roh:null};
+const W={K:[],roh:null,teile:[],nr:0};
 function st(t,f){$('st').textContent=t;$('st').className=f?'fehler':''}
-function aktuell(){if(!W.roh)return null;const G=JSON.parse(JSON.stringify(W.roh)),H=parseFloat($('hoehe').value),mx=Math.max(...G.teile.map(t=>t.hoehe)),d=$('dach').value;
- if(H>0&&Math.abs(H-mx)>.01){const k=H/mx;G.teile.forEach(t=>{t.hoehe=Math.round(t.hoehe*k*10)/10;t.min=Math.round((t.min||0)*k*10)/10;t.dachHoehe=Math.round((t.dachHoehe||0)*k*10)/10})}
- if(d)G.teile.forEach(t=>{if(t.dach!==d){t.dach=d;if(d!=='flach'&&!(t.dachHoehe>0)){const xs=t.aussen.map(q=>q[0]),ys=t.aussen.map(q=>q[1]),ext=Math.min(Math.max(...xs)-Math.min(...xs),Math.max(...ys)-Math.min(...ys));t.dachHoehe=Math.round(Math.min(d==='kuppel'?15:8,ext*(d==='kuppel'?.3:.25))*10)/10}}});
+const DACH={flach:'flach',zelt:'Zeltdach',sattel:'Satteldach',pult:'Pultdach',kuppel:'Kuppel'};
+function mitTeilen(){return W.teile.length>0&&$('teilean').checked}
+function aktuell(){if(!W.roh)return null;const G=JSON.parse(JSON.stringify(W.roh));if(mitTeilen())G.teile=JSON.parse(JSON.stringify(W.teile)).map(t=>{delete t._osm;return t});
+ const H=parseFloat($('hoehe').value),mx=Math.max(...G.teile.map(t=>t.hoehe)),d=$('dach').value;
+ if(H>0&&Math.abs(H-mx)>.01){const k=H/mx;G.teile.forEach(t=>{t.hoehe=r1(t.hoehe*k);t.min=r1((t.min||0)*k);t.dachHoehe=r1((t.dachHoehe||0)*k)})}
+ if(d)G.teile.forEach(t=>{if(t.dach!==d){t.dach=d;if(d!=='flach'&&!(t.dachHoehe>0))t.dachHoehe=r1(dachHoeheStd(d,breite(t.aussen),null))}});
+ if(mitTeilen())G.teileQuelle='building:part ('+W.teile.length+')';
  G.firma=$('firma').value.trim();G.name=$('name').value.trim()||G.name;return G}
-function waehleKandidat(i){W.roh=nominatimZuGebaeude(W.K[i]);[...$('treffer').children].forEach((b,j)=>b.classList.toggle('an',j===i));
- $('name').value=W.roh.name;$('hoehe').value=Math.max(...W.roh.teile.map(t=>t.hoehe));$('dach').value='';$('spei').disabled=false;
- const t=W.K[i].extratags||{};st('Bitte prüfen: Umriss und Höhe. Höhe aus '+(t.height?'Höhenangabe':t['building:levels']?'Stockwerkzahl ('+t['building:levels']+')':'Annahme (keine Angabe in OpenStreetMap)')+'.');zeigen()}
+function hoeheSetzen(){const L=mitTeilen()?W.teile:W.roh?W.roh.teile:[];$('hoehe').value=L.length?Math.max(...L.map(t=>t.hoehe)):''}
+// Liste der Gebäudeteile: Unterkante, Oberkante, Dach je Teil korrigierbar
+function teileListe(){const el=$('teile');el.innerHTML='';$('teilzeile').style.display=W.teile.length?'':'none';$('teilan_t').textContent='Gebäudeteile verwenden ('+W.teile.length+' aus OpenStreetMap)';if(!W.teile.length||!$('teilean').checked)return;
+ W.teile.forEach((t,i)=>{const z=document.createElement('div');z.className='teil';z.innerHTML='<span>'+(i+1)+'</span><input type="number" step="0.5" min="0" title="Unterkante (m)" value="'+t.min+'"><input type="number" step="0.5" min="1" title="Oberkante (m)" value="'+t.hoehe+'"><select title="Dach">'+Object.keys(DACH).map(k=>'<option value="'+k+'"'+(k===t.dach?' selected':'')+'>'+DACH[k]+'</option>').join('')+'</select>';
+  const [a,b]=z.querySelectorAll('input'),c=z.querySelector('select');a.oninput=()=>{const v=parseFloat(a.value);if(v>=0&&v<t.hoehe){t.min=v;zeigen()}};b.oninput=()=>{const v=parseFloat(b.value);if(v>t.min){t.hoehe=v;hoeheSetzen();zeigen()}};
+  c.onchange=()=>{t.dach=c.value;if(t.dach!=='flach'&&!(t.dachHoehe>0))t.dachHoehe=r1(dachHoeheStd(t.dach,breite(t.aussen),null));zeigen()};z.onmouseenter=()=>{W.hell=i;zeigen()};z.onmouseleave=()=>{W.hell=null;zeigen()};el.appendChild(z)})}
+async function waehleKandidat(i){W.roh=nominatimZuGebaeude(W.K[i]);W.teile=[];W.hell=null;const nr=++W.nr;[...$('treffer').children].forEach((b,j)=>b.classList.toggle('an',j===i));
+ $('name').value=W.roh.name;$('dach').value='';$('teilean').checked=true;hoeheSetzen();teileListe();$('spei').disabled=false;
+ const t=W.K[i].extratags||{},hq='Höhe aus '+(t.height?'Höhenangabe':t['building:levels']?'Stockwerkzahl ('+t['building:levels']+')':'Annahme (keine Angabe in OpenStreetMap)');st('Gebäudeteile werden gesucht … · '+hq);zeigen();
+ try{const L=await teileHolen(W.roh);if(nr!==W.nr)return;W.teile=L;hoeheSetzen();teileListe();zeigen();
+  st(L.length?'Bitte prüfen: '+L.length+' Gebäudeteile mit eigener Höhe ('+Math.min(...L.map(x=>x.min))+'–'+Math.max(...L.map(x=>x.hoehe))+' m).':'Bitte prüfen: Umriss und Höhe. Keine Gebäudeteile in OpenStreetMap · '+hq+'.')}
+ catch(e){if(nr!==W.nr)return;st('Gebäudeteile nicht abrufbar ('+e.message+') – Gesamtumriss · '+hq+'.',1)}}
+$('teilean').onchange=()=>{hoeheSetzen();teileListe();zeigen()};
 $('such').onclick=async()=>{const q=$('adr').value.trim();if(!q){st('Bitte eine Adresse eingeben.',1);return}$('such').disabled=true;st('Suche …');$('treffer').innerHTML='';W.K=[];W.roh=null;$('spei').disabled=true;zeigen();
  try{W.K=await suchen(q);if(!W.K.length){st('Kein Gebäudeumriss gefunden. Adresse genauer angeben (Straße, Hausnummer, Ort) oder den Gebäudenamen.',1);return}
   W.K.forEach((h,i)=>{const b=document.createElement('button');b.innerHTML='<b>'+esc(h.name||h.display_name.split(',')[0])+'</b><br><span class="m">'+esc(h.display_name)+'</span>';b.onclick=()=>waehleKandidat(i);$('treffer').appendChild(b)});waehleKandidat(0)}
@@ -127,7 +188,8 @@ function zeigen(){if(GG){S.remove(GG);GG.traverse(o=>{if(o.geometry)o.geometry.d
  $('info').innerHTML='Grundriss '+Math.round(Math.max(...xs)-Math.min(...xs))+' × '+Math.round(Math.max(...ys)-Math.min(...ys))+' m · Höhe '+Math.max(...G.teile.map(t=>t.hoehe))+' m · '+G.teile.length+' Teil(e), '+G.teile.reduce((s,t)=>s+t.aussen.length,0)+' Eckpunkte'+(G.teile.some(t=>(t.loecher||[]).length)?' · mit Innenhof':'')+'<br>Quelle: '+esc(G.osm)}
 function planMalen(G){const c=$('plan'),g=c.getContext('2d'),W2=c.width;g.clearRect(0,0,W2,W2);g.fillStyle='#2a3b5c';g.font='22px system-ui';
  if(!G){g.fillText('Lageplan',20,40);return}const P=G.teile.flatMap(t=>t.aussen),m=Math.max(...P.map(p=>Math.max(Math.abs(p[0]),Math.abs(p[1])))),k=(W2/2-50)/Math.max(1,m),pt=p=>[W2/2+p[0]*k,W2/2-p[1]*k];
- G.teile.forEach(t=>{g.beginPath();[t.aussen,...(t.loecher||[])].forEach(Rg=>{Rg.forEach((p,i)=>{const q=pt(p);i?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1])});g.closePath()});g.fillStyle='rgba(47,99,200,.25)';g.fill('evenodd');g.strokeStyle='#2f4f8a';g.lineWidth=2;g.stroke()});
+ const umriss=(t,fl,li,lw)=>{g.beginPath();[t.aussen,...(t.loecher||[])].forEach(Rg=>{Rg.forEach((p,i)=>{const q=pt(p);i?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1])});g.closePath()});g.fillStyle=fl;g.fill('evenodd');g.strokeStyle=li;g.lineWidth=lw;g.stroke()};
+ G.teile.forEach((t,i)=>umriss(t,mitTeilen()?(W.hell===i?'rgba(230,120,30,.55)':'rgba(47,99,200,'+(.12+.5*t.hoehe/Math.max(...G.teile.map(x=>x.hoehe))).toFixed(2)+')'):'rgba(47,99,200,.25)',mitTeilen()?'#1f3a70':'#2f4f8a',mitTeilen()?1.2:2));
  const sm=[5,10,20,50,100,200].find(x=>x*k>60)||200;g.fillStyle='#2a3b5c';g.fillRect(20,W2-30,sm*k,5);g.fillText(sm+' m',20,W2-40);g.fillText('N ↑',W2-60,40)}
 let zieh=null;cv.onpointerdown=e=>{zieh={x:e.clientX,y:e.clientY}};addEventListener('pointerup',()=>{zieh=null});
 addEventListener('pointermove',e=>{if(!zieh)return;K.gier-=(e.clientX-zieh.x)*.008;K.nick=Math.max(.05,Math.min(1.3,K.nick+(e.clientY-zieh.y)*.006));zieh={x:e.clientX,y:e.clientY}});

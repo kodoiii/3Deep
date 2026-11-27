@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="63">
+<meta name="4deep-darstellung" content="64">
 <title>4Deep – Datenraum in Raum und Zeit</title>
 <!-- 4Deep – Datenraum in Raum und Zeit (begonnen als Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026; Produkt seit 26.11.2026, Version 55): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -138,7 +138,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 63 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 64 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="chr"></div><div class="pn" id="mas"></div><div class="pn" id="prof"></div><div class="pn" id="dcap"></div><div id="dfade"></div><div id="profb"></div>
@@ -1248,21 +1248,37 @@ function masListe(){return(D&&D.massnahmen||[]).filter(m=>m&&(m.text||m.signal))
 function eur(v){if(!isFinite(v))return'–';const a=Math.abs(v);return a>=1e6?(v/1e6).toLocaleString('de-DE',{maximumFractionDigits:2})+' Mio €':a>=1e4?Math.round(v/1e3).toLocaleString('de-DE')+' T€':Math.round(v).toLocaleString('de-DE')+' €'}
 function skyFirmen(){const c=D&&D.skyline;if(!c)return[];const zahl={};N.forEach(n=>{const f=firmaVon(n);if(f&&f!==n)zahl[f.i]=(zahl[f.i]||0)+1});
  return N.filter(n=>n.ty===c.typ&&!typAus[n.ty]&&((kzv(n,c.hoehe)>0)||(zahl[n.i]||0)>=3)).sort((a,b)=>(kzv(b,c.hoehe)||0)-(kzv(a,c.hoehe)||0)||(zahl[b.i]||0)-(zahl[a.i]||0))}
-// ---- gebaeude-gemeinsam (Version 63: Gebäude-Werkstatt und 4Deep, Text in beiden Dateien gleich halten; tests/test-gebaeude4d.js prüft das) ----
+// ---- gebaeude-gemeinsam (Version 63/64: Gebäude-Werkstatt und 4Deep, Text in beiden Dateien gleich halten; tests/test-gebaeude4d.js prüft das) ----
 // Gebäudebeschreibung {format:'4deep-gebaeude',version:1,firma,name,adresse,lat,lon,teile:[{aussen:[[x,y],…],loecher:[[[x,y],…]],min,hoehe,dach,dachHoehe}],quelle,osm,erstellt}
-// x nach Osten, y nach Norden, Meter, Ursprung Mitte des Grundrisses; hoehe = Oberkante inkl. Dach; dach: 'flach' | 'zelt' | 'kuppel'.
+// x nach Osten, y nach Norden, Meter, Ursprung Mitte des Grundrisses; min = Unterkante, hoehe = Oberkante inkl. Dach;
+// dach: 'flach' | 'zelt' (Walm/Pyramide) | 'sattel' (First entlang der langen Seite) | 'pult' (steigt quer zur langen Seite) | 'kuppel'.
 function gebaeudePruefen(G){if(!G||G.format!=='4deep-gebaeude'||!Array.isArray(G.teile)||!G.teile.length)return false;
  return G.teile.every(t=>Array.isArray(t.aussen)&&t.aussen.length>=3&&t.aussen.every(p=>Array.isArray(p)&&isFinite(p[0])&&isFinite(p[1]))&&isFinite(t.hoehe)&&t.hoehe>0&&t.hoehe<1000&&(!t.min||isFinite(t.min)&&t.min<t.hoehe))}
+// kleinstes umschließendes Rechteck (Richtungen der Kanten): Achse u entlang der langen Seite, Ausdehnung, Flächenanteil des Umrisses
+function gebaeudeRechteck(A){let best=null,fl=0;for(let i=0;i<A.length;i++){const a=A[i],b=A[(i+1)%A.length];fl+=a[0]*b[1]-b[0]*a[1];const l=Math.hypot(b[0]-a[0],b[1]-a[1]);if(l<1e-6)continue;
+  const ux=(b[0]-a[0])/l,uy=(b[1]-a[1])/l;let u0=1e9,u1=-1e9,v0=1e9,v1=-1e9;A.forEach(p=>{const u=p[0]*ux+p[1]*uy,v=-p[0]*uy+p[1]*ux;u0=Math.min(u0,u);u1=Math.max(u1,u);v0=Math.min(v0,v);v1=Math.max(v1,v)});
+  const f=(u1-u0)*(v1-v0);if(!best||f<best.f)best={f,ux,uy,u0,u1,v0,v1}}
+ if(!best)return null;if(best.v1-best.v0>best.u1-best.u0){const b=best;best={f:b.f,ux:-b.uy,uy:b.ux,u0:b.v0,u1:b.v1,v0:-b.u1,v1:-b.u0}}best.anteil=Math.abs(fl)/2/Math.max(1e-9,best.f);return best}
 // Baut eine three.js-Gruppe in Metern (y nach oben, z = −Nord), Fuß auf y = 0. stil: {mat, kante} (Materialien) – Flächen und Kanten je Teil.
 function gebaeudeBauen(G,stil){const grp=new T.Group(),V2=p=>new T.Vector2(p[0],p[1]);
- G.teile.forEach(t=>{const min=+t.min||0,dh=t.dach==='flach'||!t.dach?0:Math.max(0,Math.min(+t.dachHoehe||0,(t.hoehe-min)*.8)),wand=Math.max(.5,t.hoehe-min-dh);
-  const sh=new T.Shape(t.aussen.map(V2));(t.loecher||[]).forEach(l=>{if(Array.isArray(l)&&l.length>=3)sh.holes.push(new T.Path(l.map(V2)))});
-  const geo=new T.ExtrudeGeometry(sh,{depth:wand,bevelEnabled:false,curveSegments:1});geo.rotateX(-Math.PI/2);geo.translate(0,min,0);
-  const add=g=>{const m=new T.Mesh(g,stil.mat);grp.add(m);const k=new T.LineSegments(new T.EdgesGeometry(g,25),stil.kante);grp.add(k)};add(geo);
-  if(dh>0){const A=t.aussen,cx=A.reduce((s,p)=>s+p[0],0)/A.length,cy=A.reduce((s,p)=>s+p[1],0)/A.length,top=min+wand;
-   if(t.dach==='kuppel'){let fl=0;for(let i=0;i<A.length;i++){const a=A[i],b=A[(i+1)%A.length];fl+=a[0]*b[1]-b[0]*a[1]}const r=Math.sqrt(Math.abs(fl)/2/Math.PI)*.8,g=new T.SphereGeometry(1,24,10,0,Math.PI*2,0,Math.PI/2);g.scale(r,dh,r);g.translate(cx,top,-cy);add(g)}
-   else{const pos=[];for(let i=0;i<A.length;i++){const a=A[i],b=A[(i+1)%A.length];pos.push(a[0],top,-a[1],b[0],top,-b[1],cx,top+dh,-cy)}const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(pos,3));g.computeVertexNormals();
-    const m=new T.Mesh(g,stil.mat);grp.add(m);const k=new T.LineSegments(new T.EdgesGeometry(g,25),stil.kante);grp.add(k)}}});
+ const add=g=>{const m=new T.Mesh(g,stil.mat);grp.add(m);grp.add(new T.LineSegments(new T.EdgesGeometry(g,25),stil.kante))};
+ const dreiecke=pos=>{const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(pos,3));g.computeVertexNormals();add(g)};
+ G.teile.forEach(t=>{const A=t.aussen,min=+t.min||0,R=(t.dach==='sattel'||t.dach==='pult')?gebaeudeRechteck(A):null;
+  let dach=t.dach||'flach';if((dach==='sattel'||dach==='pult')&&(!R||R.anteil<.8))dach='zelt';   // nicht rechteckig: Walmdach statt Sattel/Pult
+  const dh=dach==='flach'?0:Math.max(0,Math.min(+t.dachHoehe||0,(t.hoehe-min)*.8)),wand=Math.max(.5,t.hoehe-min-dh),top=min+wand;
+  const sh=new T.Shape(A.map(V2));(t.loecher||[]).forEach(l=>{if(Array.isArray(l)&&l.length>=3)sh.holes.push(new T.Path(l.map(V2)))});
+  const geo=new T.ExtrudeGeometry(sh,{depth:wand,bevelEnabled:false,curveSegments:1});geo.rotateX(-Math.PI/2);geo.translate(0,min,0);add(geo);
+  if(!(dh>0))return;
+  const P=(x,y,h)=>[x,h,-y],cx=A.reduce((s,p)=>s+p[0],0)/A.length,cy=A.reduce((s,p)=>s+p[1],0)/A.length;
+  if(dach==='kuppel'){const xs=A.map(p=>p[0]),ys=A.map(p=>p[1]),x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),g=new T.SphereGeometry(1,28,12,0,Math.PI*2,0,Math.PI/2);   // Kuppel füllt den Umriss (Ellipse im Rechteck)
+   g.scale((x1-x0)/2*.95,dh,(y1-y0)/2*.95);g.translate((x0+x1)/2,top,-(y0+y1)/2);add(g);return}
+  if(dach==='sattel'){const w=(u,v)=>[u*R.ux-v*R.uy,u*R.uy+v*R.ux],vm=(R.v0+R.v1)/2,a=w(R.u0,R.v0),b=w(R.u1,R.v0),c=w(R.u1,R.v1),d=w(R.u0,R.v1),f0=w(R.u0,vm),f1=w(R.u1,vm);
+   dreiecke([...P(...a,top),...P(...b,top),...P(...f1,top+dh),...P(...a,top),...P(...f1,top+dh),...P(...f0,top+dh),...P(...c,top),...P(...d,top),...P(...f0,top+dh),...P(...c,top),...P(...f0,top+dh),...P(...f1,top+dh),
+    ...P(...b,top),...P(...c,top),...P(...f1,top+dh),...P(...d,top),...P(...a,top),...P(...f0,top+dh)]);return}
+  if(dach==='pult'){const z=p=>top+dh*((-p[0]*R.uy+p[1]*R.ux)-R.v0)/Math.max(1e-6,R.v1-R.v0),pos=[],tri=T.ShapeUtils.triangulateShape(A.map(V2),[]);
+   tri.forEach(q=>q.forEach(i=>pos.push(...P(A[i][0],A[i][1],z(A[i])))));
+   for(let i=0;i<A.length;i++){const a=A[i],b=A[(i+1)%A.length];pos.push(...P(...a,top),...P(...b,top),...P(...b,z(b)),...P(...a,top),...P(...b,z(b)),...P(...a,z(a)))}dreiecke(pos);return}
+  const pos=[];for(let i=0;i<A.length;i++){const a=A[i],b=A[(i+1)%A.length];pos.push(...P(...a,top),...P(...b,top),...P(cx,cy,top+dh))}dreiecke(pos)});
  return grp}
 // ---- Ende gebaeude-gemeinsam ----
 // Version 63: Gebäude-Beschreibungen (Datei *.4deep-gebaeude.json aus der Gebäude-Werkstatt, auch im CRM-ZIP oder als Feld „gebaeude“ am Objekt)
