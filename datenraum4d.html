@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="65">
+<meta name="4deep-darstellung" content="68">
 <title>4Deep – Datenraum in Raum und Zeit</title>
 <!-- 4Deep – Datenraum in Raum und Zeit (begonnen als Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026; Produkt seit 26.11.2026, Version 55): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -21,6 +21,7 @@ html,body{margin:0;height:100%;background:#c4d8f1;color:var(--tx);font:13px syst
 #pn h1{font-size:16px;margin:0 0 2px}/* Version 59: Arbeitsmodus blendet Demo-Datenräume und Demo-Knöpfe aus */body[data-modus=arbeit] .nurdemo{display:none!important}#modw{display:flex;margin:0 0 8px;border:1px solid var(--bd,#3a4660);border-radius:6px;overflow:hidden}#modw button{flex:1;margin:0;border:0;border-radius:0;padding:4px 0;font-size:11px;background:transparent;opacity:.6}#modw button.an{opacity:1;background:#2f6fe0;color:#fff;font-weight:600}#pn .u{color:var(--mu);font-size:11px;margin-bottom:8px}
 #pn label{display:block;margin:7px 0 2px;color:var(--mu);font-size:11px}
 #pn select,#pn button{width:100%;padding:5px;background:#16213a;color:var(--tx);border:1px solid var(--rand);border-radius:6px;font:inherit}
+#sud input[type=text]{padding:5px;background:#16213a;color:var(--tx);border:1px solid var(--rand);border-radius:6px;font:inherit}
 #pn button{cursor:pointer;margin-top:4px}#pn button:hover{border-color:var(--ak)}
 #pn details{margin-top:8px;font-size:12px}#pn summary{cursor:pointer;color:var(--tx)}#pn .m{color:var(--mu);font-size:11px;line-height:1.35}#smi span{margin-right:7px;white-space:nowrap}#smb button{width:auto;padding:3px 6px;margin:2px 3px 0 0;font-size:11px}#smv{font:10px monospace;color:var(--mu);white-space:pre}
 html.stereo .pn,html.stereo #st,html.stereo #tip,html.stereo #prof,html.stereo #profb,html.stereo #leer{display:none!important}html.stereo canvas{cursor:none}
@@ -105,13 +106,22 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  <div class="cb" id="baew" title="CRM: Zeitnachweise (Batches) einzeln statt je Rechnung bzw. je Billing Sheet und Monat gebündelt"><input type="checkbox" id="bae"><span>Batches einzeln</span></div>
  </details>
  <label>Layout</label>
- <select id="ly"><option value="netz">Netz</option><option value="schichten">Schichten nach Objekttyp</option><option value="skyline" id="lysky" hidden>Firmen-Skyline (Überblick)</option><option value="reise" id="lyreise" hidden>Kundenreise (je Firma über die Zeit)</option><option value="reife">Schichten nach Reifegrad</option><option value="baum">Baum</option>
+ <select id="ly"><option value="netz">Netz</option><option value="schichten">Schichten nach Objekttyp</option><option value="skyline" id="lysky" hidden>Firmen-Skyline (Überblick)</option><option value="reise" id="lyreise" hidden>Kundenreise (je Firma über die Zeit)</option><option value="reife">Schichten nach Reifegrad</option><option value="attr" id="lyattr">Gruppiert nach Attribut</option><option value="baum">Baum</option>
   <option value="zeit">Zeitachse (Zeit als Raumrichtung)</option><option value="plan" id="lyplan" hidden>Projektplan (Phasen, kritischer Pfad)</option><option value="achsen">Kennzahlen (Achsen)</option><option value="fest">Feste Positionen (aus Daten)</option></select>
+ <div id="atw" style="display:none"><label>Attribut</label><select id="at" title="Objekte in Ebenen nach dem Wert dieses Attributs (Metadaten)"></select></div>
  <div id="axui" style="display:none"><label>Kennzahlen-Vorlage</label><select id="axp"></select>
   <div class="axz"><span style="color:#e0352b" title="rechts">→</span><select id="axx" title="rechts"></select><span class="axl"><input type="checkbox" id="axlx">log</span></div>
   <div class="axz"><span style="color:#1fa463" title="oben">↑</span><select id="axy" title="oben"></select><span class="axl"><input type="checkbox" id="axly">log</span></div>
   <div class="axz"><span style="color:#2f6fe0" title="vorne">↙</span><select id="axz" title="vorne (zum Betrachter)"></select><span class="axl"><input type="checkbox" id="axlz">log</span></div>
   <div id="axnote" class="m" style="margin-top:4px"></div></div>
+ <details id="sud" class="grp nurdemo"><summary>Suche, Linkchain, Beziehungsfilter</summary>
+ <input id="q" type="text" placeholder="Suche (Name, ID, Metadaten) …" style="width:100%;box-sizing:border-box;margin-top:4px" title="Enter = ersten Treffer anfliegen"><div id="qres"></div>
+ <label>Linkchain-Analyse</label><div id="kinfo" class="m">Startobjekt anklicken, dann Chain wählen und „Pfade zeigen“.</div>
+ <select id="kpre" style="margin-top:4px"></select><input id="kin" type="text" placeholder="z. B. struktur&gt;*" style="width:100%;box-sizing:border-box;margin-top:4px">
+ <div style="display:flex;gap:4px"><button id="kgo">Pfade zeigen</button><button id="kno">Zurücksetzen</button></div><div id="kres" class="m"></div>
+ <div class="m" style="margin-top:4px">Schreibweise: Linktyp + Richtung (<b>&gt;</b> vom Start weg, <b>&lt;</b> zum Start hin, <b>-</b> egal), <b>*</b> = beliebig oft, <b>?</b> = beliebiger Linktyp. Gilt zum eingestellten Zeitpunkt. Linktypen: <span id="klt"></span></div>
+ <label>Beziehungsfilter</label><div id="rfl" class="m"></div>
+ </details>
  <details id="dard" class="grp"><summary>Darstellung (Licht, Farben, Oberfläche, Geräte)</summary>
  <div class="cb"><input type="checkbox" id="schatten"><span>Schatten</span></div>
  <div class="cb"><input type="checkbox" id="kanten" checked><span>Beziehungen</span></div>
@@ -138,7 +148,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 65 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 68 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="chr"></div><div class="pn" id="mas"></div><div class="pn" id="prof"></div><div class="pn" id="dcap"></div><div id="dfade"></div><div id="profb"></div>
@@ -346,7 +356,7 @@ let D=null;           // aktuelle Daten (Format wie datenraum3d.html)
 let N=[],E=[],TY={},byId={};
 let gruppen=[];       // je Form ein InstancedMesh
 let trompMesh=null,trompE=[],kantenMesh=null,balkenMesh=null,kantenLinien=false,matAlle=true;const LINIEN_AB=15000;   // ab so vielen Beziehungen Linien statt Röhren
-let sel=-1,hov=-1,layout='netz',lauf=null;
+let sel=-1,hov=-1,layout='netz',lauf=null;let relAus={},KUI=null;   /* Version 66: Beziehungsfilter, Linkchain der Oberfläche */
 let tMin=0,tMax=0,tCur=Infinity,hatZeit=false,spiel=false;
 const heuteTag=()=>{const d=new Date();return Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())};
 let HEUTE=heuteTag(),KET=[],verzugN=0;   // Revisionsketten, Anzahl Objekte im Verzug
@@ -409,7 +419,7 @@ function laden(daten,opt){
  // neue Objekte neben bekannten Nachbarn beginnen lassen (schrittweiser Aufbau ohne Sprung)
  if(N.length>1000&&!N.some(n=>n.alt))startLagen(abstand());
  else N.forEach(n=>{if(n.alt)return;const k=n.nb.find(m=>m.alt);if(k)n.pos.copy(k.pos).add(V.set(rnd()-.5,rnd()-.5,rnd()-.5).multiplyScalar(4));else n.pos.set((rnd()-.5)*20,(rnd()-.5)*20,(rnd()-.5)*20)});
- baueMeshes();legende();
+ baueMeshes();legende();suFuellen(!!opt.behalten);
  const hatPos=N.some(n=>n.fest);
  axVorbereiten();$('finb').style.display=daten.crm?'':'none';$('lysky').hidden=!daten.skyline;$('lyplan').hidden=!PROJ;$('lyreise').hidden=!daten.skyline;$('lgbb').style.display=daten.skyline?'':'none';$('crmd').style.display=daten.crm?'':'none';if(daten.crm)$('crmdom').placeholder=daten.eigeneDomain?(daten.eigeneAuto?'automatisch: ':'')+daten.eigeneDomain:'automatisch (keine erkannt)';$('fkw').style.display=daten.fakten?'':'none';{const hm=Array.isArray(daten.massnahmen)&&daten.massnahmen.length;$('masb').style.display=hm?'':'none';if(!hm)$('mas').style.display='none';else if($('mas').style.display==='block')massnahmenZeigen()}$('chrb').style.display=Array.isArray(daten.chronik)&&daten.chronik.length?'':'none';if(!(Array.isArray(daten.chronik)&&daten.chronik.length))$('chr').style.display='none';else if($('chr').style.display==='block')chronikZeigen();
  rvVorbereiten(daten);
@@ -718,10 +728,10 @@ function typReihe(){const vorn=(D&&Array.isArray(D.schichtReihe)?D.schichtReihe:
  N.forEach(n=>{if(!k.includes(n.ty))k.push(n.ty)});return k}
 function setzeLayout(ly,kamera){
  layout=ly;stoppeSim();N.forEach(n=>{if(n.r0!=null)n.r=n.r0});matAlle=true;zeitEbene.visible=false;N.forEach(n=>{n.axAus=false;n.skyAus=false});skyG.visible=false;axLinien.visible=false;AXINFO=null;heuteEbene.visible=false;if(balkenMesh)balkenMesh.visible=false;if(PLAN||planG.visible){planLeeren();if(balkenMesh){balkenMesh.userData.liste.forEach((n,i)=>balkenMesh.setColorAt(i,n.col));balkenMesh.instanceColor.needsUpdate=true}}E.forEach(k=>k.planAus=false);const L=abstand();
- if(ly==='netz'||ly==='schichten'||ly==='reife'){
+ if(ly==='netz'||ly==='schichten'||ly==='reife'||ly==='attr'){
   const reihe=typReihe();
-  const rr=reifeReihe();
-  N.forEach(n=>{n.ziel.copy(n.pos);n.yFest=ly==='schichten'?(reihe.length-1-reihe.indexOf(n.ty))*L*2.2:ly==='reife'?(rr.length-1-rr.indexOf(n._rk))*reifeAbst(L):null;if(n.yFest!=null)n.ziel.y=n.yFest});
+  const rr=reifeReihe(),AR=ly==='attr'?attrReihe(L):null;
+  N.forEach(n=>{n.ziel.copy(n.pos);n.yFest=ly==='schichten'?(reihe.length-1-reihe.indexOf(n.ty))*L*2.2:ly==='reife'?(rr.length-1-rr.indexOf(n._rk))*reifeAbst(L):AR?AR.y(AR.val(n)):null;if(n.yFest!=null)n.ziel.y=n.yFest});
   starteSim(L);
  }else if(ly==='baum'){baum(L)}
  else if(ly==='zeit'){zeitachse(L)}
@@ -734,7 +744,7 @@ function setzeLayout(ly,kamera){
   // auf übliche Größe bringen (Hülle aller Schritte); Version 28: Daten mit layout 'fest' (Unterricht, Moleküle) mit Größen in Dateneinheiten wie 3Deep
   const g=b.getSize(V).length()||1,f=Math.max(1,Math.sqrt(N.length)*L/g);FEST_F=f;N.forEach(n=>n.ziel.multiplyScalar(f));
   if(D&&D.layout==='fest')N.forEach(n=>{const sz=+n.o.size||+(TY[n.ty]||{}).size||1;n.r=Math.max(.05,sz/2*f)});if(WK.teile.length)wkBauen()}
- $('zt').style.display=hatZeit&&ly!=='skyline'?'flex':'none';
+ $('zt').style.display=hatZeit&&ly!=='skyline'?'flex':'none';$('atw').style.display=ly==='attr'?'':'none';
  {const pr=ly==='skyline'?Math.min(3,(devicePixelRatio||1)*2):Math.min(devicePixelRatio,2);if(renderer.getPixelRatio()!==pr)renderer.setPixelRatio(pr)}   // Version 51: Skyline (erster Eindruck) mit doppelter Auflösung gerendert = glattere Kanten   // Version 50: Zeitleiste in der Skyline ausgeblendet (Unruhe)
  bodenSetzen();beschriften();heuteSetzen();axZeigen();if(N.length)zeitAnwenden();if(kamera)heimSpaeter=true;neu();
 }
@@ -958,8 +968,9 @@ function beschriften(){legendeOben('');schrift.children.slice().forEach(c=>{schr
  if(layout==='skyline'){skyBeschriften();return}
  if(layout==='reise'){reiseBeschriften();return}
  if(layout==='plan'){planBeschriften(L);return}
- if(layout!=='zeit'&&layout!=='schichten'&&layout!=='reife')return;const reihe=typReihe();const b=new T.Box3();N.forEach(n=>b.expandByPoint(n.ziel));if(b.isEmpty())return;
+ if(layout!=='zeit'&&layout!=='schichten'&&layout!=='reife'&&layout!=='attr')return;const reihe=typReihe();const b=new T.Box3();N.forEach(n=>b.expandByPoint(n.ziel));if(b.isEmpty())return;
  const h=Math.max(L*.5,b.getSize(V).length()*.018);
+ if(layout==='attr'){const A=attrReihe(L);A.order.forEach(v=>marke((v.length>40?v.slice(0,38)+' …':v)+' ('+A.cnt[v]+')',b.min.x-L*1.5,A.y(v),0,h,'#1d2b45').center.set(1,.5));legendeOben('Gruppiert nach <b>'+esc(A.k)+'</b>');return}
  if(layout==='reife'){const rr=reifeReihe();rr.forEach((st,k)=>marke(reifeName(st),b.min.x-L*1.5,(rr.length-1-k)*reifeAbst(L),0,h,'#1d2b45').center.set(1,.5));return}
  reihe.forEach((t,k)=>{const y=layout==='zeit'?(reihe.length-1-k)*L*ZEILE+L:(reihe.length-1-k)*L*2.2;const sp=marke((TY[t]||{}).label||t,b.min.x-L*1.5,y,0,h,(TY[t]||{}).color);sp.center.set(1,.5)});
  if(layout==='zeit'&&zeitX&&hatZeit&&HEUTE>=tMin&&HEUTE<=tMax)marke('Heute '+zeitText(HEUTE),zeitX(HEUTE),b.max.y+L*1.2,0,h*1.1,'#d0302a').center.set(.5,.5);
@@ -1005,7 +1016,7 @@ function bewegen(dt){
   if(ge)g.mesh.instanceMatrix.needsUpdate=true}
  if(kantenMesh){const zeig=$('kanten').checked&&layout!=='reise';kantenMesh.visible=zeig;if(trompMesh)trompMesh.visible=zeig;if(zeig){let ge=false;
   const A=kantenLinien?kantenMesh.geometry.attributes.position.array:kantenMesh.instanceMatrix.array;
-  for(let i=0;i<E.length;i++){const k=E[i],p=k.a.pos,q=k.b.pos;if(!alle&&!k.a.m&&!k.b.m)continue;ge=true;const vis=k.a.s>.05&&k.b.s>.05&&!k.revAus&&!k.planAus&&!(GEL&&k.dir)&&!(isFinite(k.t0)&&k.t0>tCur);
+  for(let i=0;i<E.length;i++){const k=E[i],p=k.a.pos,q=k.b.pos;if(!alle&&!k.a.m&&!k.b.m)continue;ge=true;const vis=k.a.s>.05&&k.b.s>.05&&!relAus[k.e.type]&&!k.revAus&&!k.planAus&&!(GEL&&k.dir)&&!(isFinite(k.t0)&&k.t0>tCur);
    if(kantenLinien){const o=i*6;A[o]=p.x;A[o+1]=p.y;A[o+2]=p.z;if(vis){A[o+3]=q.x;A[o+4]=q.y;A[o+5]=q.z}else{A[o+3]=p.x;A[o+4]=p.y;A[o+5]=p.z}continue}
    const o=i*16;let ux=q.x-p.x,uy=q.y-p.y,uz=q.z-p.z;const len=Math.sqrt(ux*ux+uy*uy+uz*uz);
    if(!vis||len<1e-3){for(let j=0;j<16;j++)A[o+j]=0;A[o+15]=1;if(k.tj!=null){const B=trompMesh.instanceMatrix.array,ob=k.tj*16;for(let j=0;j<16;j++)B[ob+j]=0;B[ob+15]=1;trompMesh.instanceMatrix.needsUpdate=true}continue}
@@ -1115,7 +1126,7 @@ function hover(e){const jetzt=performance.now();if(jetzt-hoverZeit<40)return;hov
  const tip=$('tip');if(n>=0){const o=N[n];tip.textContent=o.name+' · '+((TY[o.ty]||{}).label||o.ty)+(isFinite(o.t0)?' · '+zeitText(o.t0)+(isFinite(o.t1)?' – '+zeitText(o.t1):''):'');tip.style.display='block';tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY+12)+'px'}else{const sk=(layout==='reise'||layout==='skyline')&&SKY?skyKoerper(e):null;if(sk&&sk.warn){tip.textContent=sk.mas?'P'+sk.mas.prio+' · '+(sk.mas.signal?sk.mas.signal+' · ':'')+String(sk.mas.text||'').slice(0,90)+' · Klick = Details':'Hinweise der Handlungsliste · Klick = Lagebericht dieser Firma';tip.style.display='block';tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY+12)+'px';return}const k=trefferK(e);if(k){tip.textContent=kLabel(k)+': '+k.a.name+(k.dir?' → ':' – ')+k.b.name+' · Rechtsklick = Details';tip.style.display='block';tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY+12)+'px'}else tip.style.display='none'}}
 // Version 30 (Wunsch des Nutzers): Infos zu Beziehungen wie 3Deep: Maus über der Beziehung = Kurzinfo, Klick/Rechtsklick = Profilkarte der Beziehung
 const kLabel=k=>String(k.e.label||(((D&&D.relTypes)||{})[k.e.type]||{}).label||k.e.type||'Beziehung');
-function kSicht(k){return $('kanten').checked&&layout!=='reise'&&k.a.s>.05&&k.b.s>.05&&!k.revAus&&!(GEL&&k.dir)&&!(isFinite(k.t0)&&k.t0>tCur)}
+function kSicht(k){return $('kanten').checked&&layout!=='reise'&&k.a.s>.05&&k.b.s>.05&&!relAus[k.e.type]&&!k.revAus&&!(GEL&&k.dir)&&!(isFinite(k.t0)&&k.t0>tCur)}
 function trefferK(e){if(!E.length)return null;const r=cv.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top,W=r.width,H=r.height,va=new T.Vector3(),vb=new T.Vector3();let best=null,bd=36;   // 6 px Abstand
  for(let i=0;i<E.length;i++){const k=E[i];if(!kSicht(k))continue;va.copy(k.a.pos).project(cam);vb.copy(k.b.pos).project(cam);if(va.z>1||vb.z>1||va.z<-1||vb.z<-1)continue;
   const ax=(va.x+1)/2*W,ay=(1-va.y)/2*H,bx=(vb.x+1)/2*W,by=(1-vb.y)/2*H,dx=bx-ax,dy=by-ay,L=dx*dx+dy*dy;let t=L>0?((mx-ax)*dx+(my-ay)*dy)/L:0;t=Math.max(0,Math.min(1,t));const qx=ax+t*dx-mx,qy=ay+t*dy-my,d=qx*qx+qy*qy;if(d<bd){bd=d;best=k}}
@@ -1133,7 +1144,7 @@ function zeigeProfilE(k,x,y){schliesseProfil();const el=$('prof'),A=k.a,B=k.b,tl
 
 // ---------- Auswahl und Profil ----------
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-function waehle(i){sel=i;NM.t=0;NM.neu=true;faerben();neu()}   // Version 15: Linksklick nur auswählen (Name am Objekt), kein Detailfeld mehr
+function waehle(i){sel=i;NM.t=0;NM.neu=true;faerben();neu();suWahl()}   // Version 15: Linksklick nur auswählen (Name am Objekt), kein Detailfeld mehr
 
 // ---------- Profilkarte am Objekt (Rechtsklick, wie datenraum3d.html: 15–20 Attribute, Vorschaubild, folgt dem Objekt) ----------
 const prof={i:-1,auf:false};
@@ -1294,6 +1305,22 @@ function gebaeudeLaden(liste){const ok=[],ohne=[];liste.forEach(G=>{if(!gebaeude
  if(ok.length&&layout==='skyline')setzeLayout('skyline',false);
  gebMeld((ok.length?'Gebäude übernommen: '+ok.join(', '):'')+(ohne.length?(ok.length?' · ':'')+'keine passende Firma für: '+ohne.join(', ')+' (Firmennummer prüfen oder Firma vorher anklicken)':''))}
 function gebMeld(t){let el=$('gebm');if(!el){el=document.createElement('div');el.id='gebm';document.body.appendChild(el)}el.textContent=t;el.style.opacity=1;clearTimeout(gebMeld.t);gebMeld.t=setTimeout(()=>{el.style.opacity=0},6000)}
+// Version 68 (Wunsch des Nutzers): Firmenturm in der frostigen Kristalloptik der Ladekugel – facettierte Dreiecke mit unterschiedlich hellem Schimmer (leuchtende Textur
+// auf dunkelblauem Glas), feine weiße Kanten, inneres Kristallgerüst (Lichthof verworfen: wirkte als dicker weißer Rand). TURM_STIL 'glas' = bisher (Version 50).
+var TURM_STIL='kristall',KR_TEX=null;
+function kristallTex(){if(KR_TEX)return KR_TEX;const S=512,n=4,c=document.createElement('canvas');c.width=c.height=S;const g=c.getContext('2d'),zf=(i,j,k)=>{const v=Math.sin(i*127.1+j*311.7+k*74.7)*43758.5453;return v-Math.floor(v)};
+ const pt=(i,j)=>{const a=((i%n)+n)%n,b=((j%n)+n)%n,inn=(a!==0)&&(b!==0)?1:0,jx=inn?(zf(a,b,1)-.5)*.5:0,jy=inn?(zf(a,b,2)-.5)*.5:0;return[(i+jx)*S/n,(j+jy)*S/n]};
+ g.fillStyle='#000';g.fillRect(0,0,S,S);const T3=[];for(let i=0;i<n;i++)for(let j=0;j<n;j++){const A=pt(i,j),B=pt(i+1,j),C=pt(i+1,j+1),D=pt(i,j+1);if((i+j)%2){T3.push([A,B,C],[A,C,D])}else{T3.push([A,B,D],[B,C,D])}}
+ T3.forEach((t,k)=>{const lt=zf(k,3,7),gr=g.createLinearGradient(t[0][0],t[0][1],t[2][0],t[2][1]);const a=.06+lt*.34;gr.addColorStop(0,'rgba(226,239,255,'+a.toFixed(3)+')');gr.addColorStop(1,'rgba(226,239,255,'+(a*.45).toFixed(3)+')');
+  g.beginPath();g.moveTo(...t[0]);g.lineTo(...t[1]);g.lineTo(...t[2]);g.closePath();g.fillStyle=gr;g.fill()});
+ g.lineJoin='round';g.strokeStyle='rgba(244,249,255,.75)';g.lineWidth=2;T3.forEach(t=>{g.beginPath();g.moveTo(...t[0]);g.lineTo(...t[1]);g.lineTo(...t[2]);g.closePath();g.stroke()});
+ KR_TEX=new T.CanvasTexture(c);KR_TEX.wrapS=KR_TEX.wrapT=T.RepeatWrapping;KR_TEX.encoding=T.sRGBEncoding;KR_TEX.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());return KR_TEX}
+function kristallTurm(w,h){const geo=new T.BoxGeometry(1,1,1),uv=geo.attributes.uv,k=Math.max(.75,h/w*.75);
+ for(let gi=0;gi<6;gi++){const seit=gi!==2&&gi!==3;for(let v=gi*4;v<gi*4+4;v++){uv.setX(v,uv.getX(v)*.75);uv.setY(v,uv.getY(v)*(seit?k:.75))}}uv.needsUpdate=true;
+ const m=new T.Mesh(geo,new T.MeshPhysicalMaterial({color:0x0e2557,transparent:true,opacity:.76,roughness:.2,metalness:0,clearcoat:1,clearcoatRoughness:.1,emissive:0xbcd6ff,emissiveMap:kristallTex(),emissiveIntensity:.32,sheen:.6,sheenColor:new T.Color(0xdbe9ff),sheenRoughness:.5,depthWrite:false,side:T.DoubleSide}));
+ m.add(new T.LineSegments(new T.EdgesGeometry(geo),new T.LineBasicMaterial({color:0xf4f9ff,transparent:true,opacity:.8,depthWrite:false})));
+ const kern=new T.BoxGeometry(.42,.94,.42);kern.rotateY(Math.PI/4);m.add(new T.LineSegments(new T.EdgesGeometry(kern),new T.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.28,depthWrite:false})));
+ return m}
 function skyFarbe(v){const g=(D.skyline.farbeGrenzen)||[10,25];return!isFinite(v)?0x8a96a8:v<g[0]?0xd0402a:v<g[1]?0xe0a020:0x3a72d0}   // Version 62 (Wunsch des Nutzers): gute Marge blau statt grün
 function skyline(L){if(SKY&&SKY.schilder)SKY.schilder.forEach(G=>{const u=G.userData.s3;u.geo.dispose();u.tx.dispose();u.mats.forEach(m=>m.dispose())});
  while(skyG.children.length){const c=skyG.children.pop();c.geometry&&c.geometry.dispose();c.material&&c.material.dispose()}
@@ -1303,24 +1330,24 @@ function skyline(L){if(SKY&&SKY.schilder)SKY.schilder.forEach(G=>{const u=G.user
  const nurF=SKY_AUF.f&&F.includes(SKY_AUF.f)?SKY_AUF.f:null;   // Version 53 (Wunsch des CEO): aufgeklappte Firma allein, andere Türme und Firmen ausgeblendet (Plätze bleiben)
  F.forEach((f,i)=>{if(nurF&&f!==nurF){f.skyAus=true;return}const x=(i%cols-(cols-1)/2)*A,z=(Math.floor(i/cols)-(rows-1)/2)*A*1.15,v=kzv(f,c.hoehe),h=Math.max(L*.4,(v>0?v/vmax:0)*Hmax),w=L*2.52*Math.max(1,Math.min(1.5,4.5/cols));   /* Version 50: wenige Firmen breiter verteilt und etwas kräftiger, damit die Bildbreite genutzt wird */
   // Version 50 (Wunsch des Nutzers, Probe K1): Turm als dunkelblauer Glasquader mit weißen Kanten (Stil Intro 3Deep / Ladekugel); Marge als farbige Dachkante
-  const tm=new T.Mesh(new T.BoxGeometry(1,1,1),new T.MeshPhysicalMaterial({color:0x0e2557,transparent:true,opacity:.72,roughness:.06,metalness:0,clearcoat:1,clearcoatRoughness:.05,depthWrite:false,side:T.DoubleSide}));tm.scale.set(w,h,w);tm.position.set(x,h/2,z);skyG.add(tm);SKY.koerper.push({m:tm,f});
-  tm.add(new T.LineSegments(new T.EdgesGeometry(tm.geometry),new T.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.95,depthWrite:false})));
+  const tm=TURM_STIL==='kristall'?kristallTurm(w,h):new T.Mesh(new T.BoxGeometry(1,1,1),new T.MeshPhysicalMaterial({color:0x0e2557,transparent:true,opacity:.72,roughness:.06,metalness:0,clearcoat:1,clearcoatRoughness:.05,depthWrite:false,side:T.DoubleSide}));tm.scale.set(w,h,w);tm.position.set(x,h/2,z);skyG.add(tm);SKY.koerper.push({m:tm,f});
+  if(TURM_STIL!=='kristall')tm.add(new T.LineSegments(new T.EdgesGeometry(tm.geometry),new T.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.95,depthWrite:false})));
   // Version 51: Marge als schmaler Rahmen außen um die Dachkante (die Deckplatte flimmerte mit dem Glasdach und Schatten)
   {const dk=Math.min(h*.5,L*.16),t=L*.07,o=w/2+t/2+L*.01,mt=new T.MeshStandardMaterial({color:skyFarbe(kzv(f,c.farbe)),roughness:.3,metalness:.1,emissive:skyFarbe(kzv(f,c.farbe)),emissiveIntensity:.25});
    [[0,o,w+t*2+L*.02,t],[0,-o,w+t*2+L*.02,t],[o,0,t,w],[-o,0,t,w]].forEach(([dx,dz,sx,sz])=>{const m=new T.Mesh(new T.BoxGeometry(sx,dk,sz),mt);m.position.set(x+dx,h-dk/2,z+dz);skyG.add(m)})}
   // Version 63 (Wunsch des Nutzers, Schaustück): schematisches Gebäude aus der Gebäude-Werkstatt statt Gehry-Symbol; Grundriss höchstens 85 % der Turmbreite, Höhe höchstens L*5
   let hb=0;if(gebaeudePruefen(f.o.gebaeude)){try{const gg=gebaeudeBauen(f.o.gebaeude,GEB_STIL),bx=new T.Box3().setFromObject(gg),sz=bx.getSize(new T.Vector3()),k=Math.min(w*.85/Math.max(1e-6,sz.x,sz.z),L*5/Math.max(1e-6,sz.y)),cx=(bx.min.x+bx.max.x)/2,cz=(bx.min.z+bx.max.z)/2;
-   gg.scale.setScalar(k);gg.position.set(x-cx*k,h,z-cz*k);skyG.add(gg);gg.children.forEach(m=>{if(m.isMesh)SKY.koerper.push({m,f})});hb=sz.y*k;f.skyAus=true}catch(e){console.error(e)}}
+   gg.scale.setScalar(k);gg.position.set(x-cx*k,h,z-cz*k);skyG.add(gg);gg.children.forEach(m=>{if(m.isMesh)SKY.koerper.push({m,f,geb:true})});hb=sz.y*k;f.skyAus=true}catch(e){console.error(e)}}
   const hT=h+hb;
+  if(f.r0==null)f.r0=f.r;f.r=f.r0*2;   /* Version 67 (Wunsch des Nutzers): Gehry-Symbol doppelt so groß */
   f.ziel.set(x,hT+f.r*1.3,z);
   // Version 42 (Wunsch des Nutzers): Trend als schräger Pfeil mit Schaft (↗ grün / ↘ rot, wie im Börsenchart) statt Kegel, Prozentzahl daneben
-  const g=kzv(f,c.pfeil);let tp=null;if(isFinite(g)&&Math.abs(g)>=1){const auf=g>0,s=L*(1.1+Math.min(.8,Math.abs(g)/60));tp=trendPfeil(auf,s,x+w*.25,hT+s*.6,z+w*.2);/* auf dem Dach rechts, neben dem Turm verdeckte er Nachbarn */tp.txt=(auf?'+':'−')+Math.round(Math.abs(g))+' %'}
+  const g=kzv(f,c.pfeil);let tp=null;if(isFinite(g)&&Math.abs(g)>=1){const auf=g>0,s=L*(.9+Math.min(.5,Math.abs(g)/80));tp=trendPfeil(auf,s,x,s*.5,z+w/2+L*.75);/* Version 67 (Wunsch des Nutzers): unten mittig vor dem Fuß des Turms */tp.txt=(auf?'+':'−')+Math.round(Math.abs(g))+' %'}
   // Version 42: Hinweise der Handlungsliste als Warnschild (Dreieck mit „!“ und Anzahl) statt Fähnchen; Klick = Lagebericht dieser Firma
   const mf=M.filter(m=>m._f===firmenName(f)),p1=mf.filter(m=>m.prio===1).length,p2=mf.filter(m=>m.prio===2).length;
   // Version 43 (Wunsch des Nutzers): dezent – ein Viertel so groß, ohne Anzahl
-  if(p1||p2){const st=new T.Mesh(new T.CylinderGeometry(L*.018,L*.018,hb+L*.5,6),new T.MeshStandardMaterial({color:0x5a6472}));const fx=x-w*.5+L*.3,fz=hb?z+w*.5-L*.3:z-w*.5+L*.3;st.position.set(fx,h+(hb+L*.5)/2,fz);   /* Version 63: mit Gebäude vorne links auf dessen Höhe, sonst verdeckt */skyG.add(st);
-   const ws=ampelSchild(p1>0,p2>0,L*.5);ws.position.set(fx,hT+L*.72,fz);skyG.add(ws);SKY.koerper.push({m:ws,f,warn:true})}   // Version 62 (Wunsch des Nutzers): Ampel (rot = Einträge Prio 1, gelb = Prio 2) statt Warnschild
-  SKY.info.push({f,x,z,h,hT,v,p1,p2,tp,txt:[c.titelHoehe||c.hoehe,eur(v)].join(' ')+' · '+(c.farbe||'')+' '+((f.o.meta||{})[c.farbe]||'–')+(isFinite(g)?' · '+(g>=0?'↗ +':'↘ −')+Math.round(Math.abs(g))+' %':'')+(p1||p2?' · Ampel '+(p1?'rot':'')+(p1&&p2?'/':'')+(p2?'gelb':'')+': Hinweise im Lagebericht':'')});
+  /* Version 67 (Wunsch des Nutzers): keine Ampel mehr; Hinweise der Handlungsliste im Lagebericht per Einzelklick auf das Gehry-Gebäude */
+  SKY.info.push({f,x,z,h,hT,v,p1,p2,tp,txt:[c.titelHoehe||c.hoehe,eur(v)].join(' ')+' · '+(c.farbe||'')+' '+((f.o.meta||{})[c.farbe]||'–')+(isFinite(g)?' · '+(g>=0?'↗ +':'↘ −')+Math.round(Math.abs(g))+' %':'')});
   SKY.ecken.push(new T.Vector3(x-w,0,z-w),new T.Vector3(x+w,hT+L*5.4,z+w),new T.Vector3(x-w*2.2,hT+L*3.4,z),new T.Vector3(x+w*2.2,hT+L*3.4,z))});
  SKY.reihen=rows;
  if(nurF)skyBuehne(L,A,SKY.info[0].z+A*.9);   // Version 53: Bühne direkt vor dem Turm (andere Reihen sind aus), Kamera passt besser
@@ -1348,10 +1375,10 @@ function skyBeschriften(){if(!SKY)return;const L=abstand(),hh=L*.55;
   const G=schrift3d(kurz,hk*1.05,L*.2,0x2f4f8a,0x0c1730);G.position.set(I.x,(I.hT||I.h)+L*4.2,I.z);G.rotation.y=K.gier;skyG.add(G);SKY.schilder.push(G);
   if(zusatz)vorne(marke(zusatz,I.x,(I.hT||I.h)+L*3.15,I.z,hk*.5,'#2a3b5c')).center.set(.5,.5);
   vorne(marke(I.txt.replace(/ · (⚠|Ampel [^:]*:) Hinweise im Lagebericht/,''),I.x,(I.hT||I.h)+L*2.45,I.z,hh*.8,'#2a3b5c')).center.set(.5,.5);
-  if(I.tp)marke(I.tp.txt,I.tp.x+I.tp.s*.45,I.tp.y+I.tp.s*.1,I.tp.z,hh*1.05,I.tp.auf?'#1f7a3c':'#b02a1a').center.set(0,.5)});
- skyBuehneBeschriften(L,hh);legendeOben(SKY.buehne?'<b>Aufgeklappt: '+esc(firmenName(SKY.buehne.f))+'</b> · Klick auf einen Sammelkörper = Objekte zeigen/verbergen · Klick auf den Turm oder Doppelklick ins Leere = alle Firmen':esc('Firmen-Skyline · Höhe = '+(D.skyline.titelHoehe||D.skyline.hoehe)+', Dachkante = '+D.skyline.farbe+' (rot < '+((D.skyline.farbeGrenzen||[10,25])[0])+', gelb < '+((D.skyline.farbeGrenzen||[10,25])[1])+', sonst blau), Pfeil ↗/↘ = '+D.skyline.pfeil+', Ampel rot/gelb = Hinweise der Handlungsliste (Klick = Lagebericht)')+'<br>Klick = Firma aufklappen · Doppelklick = Firma öffnen')}
-function trendPfeil(auf,s,x,y,z){const mat=new T.MeshStandardMaterial({color:auf?0x2e9e4f:0xd0402a,roughness:.35,metalness:.1}),a=auf?-Math.PI/4:-Math.PI*3/4;
- [new T.CylinderGeometry(s*.07,s*.07,s*.62,14).translate(0,-.19*s,0),new T.ConeGeometry(s*.2,s*.38,20).translate(0,.31*s,0)].forEach(gm=>{gm.rotateZ(a);const m=new T.Mesh(gm,mat);m.position.set(x,y,z);m.castShadow=true;skyG.add(m)});
+  if(I.tp)marke(I.tp.txt,I.tp.x+I.tp.s*.4,I.tp.y,I.tp.z,hh*.8,I.tp.auf?'#2f7a48':'#a8402e').center.set(0,.5)});
+ skyBuehneBeschriften(L,hh);legendeOben(SKY.buehne?'<b>Aufgeklappt: '+esc(firmenName(SKY.buehne.f))+'</b> · Klick auf einen Sammelkörper = Objekte zeigen/verbergen · Klick auf den Turm oder Doppelklick ins Leere = alle Firmen':esc('Firmen-Skyline · Höhe = '+(D.skyline.titelHoehe||D.skyline.hoehe)+', Dachkante = '+D.skyline.farbe+' (rot < '+((D.skyline.farbeGrenzen||[10,25])[0])+', gelb < '+((D.skyline.farbeGrenzen||[10,25])[1])+', sonst blau), Pfeil ↗/↘ = '+D.skyline.pfeil+'')+'<br>Klick auf den Turm = Firma aufklappen · Klick auf das Gebäude = Lagebericht · Doppelklick = Firma öffnen')}
+function trendPfeil(auf,s,x,y,z){const mat=new T.MeshStandardMaterial({color:auf?0x3f9a5c:0xc8503c,roughness:.45,metalness:.1,transparent:true,opacity:.85}),a=auf?-Math.PI/4:-Math.PI*3/4;   /* Version 67: dezenter und filigraner */
+ [new T.CylinderGeometry(s*.028,s*.028,s*.72,10).translate(0,-.14*s,0),new T.ConeGeometry(s*.1,s*.26,16).translate(0,.35*s,0)].forEach(gm=>{gm.rotateZ(a);const m=new T.Mesh(gm,mat);m.position.set(x,y,z);m.castShadow=true;skyG.add(m)});
  return{auf,s,x,y,z}}
 function warnSchild(prio,anz,gr){const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d'),col=prio===1?'#d0302a':'#e0a020';
  g.lineJoin='round';g.beginPath();g.moveTo(64,10);g.lineTo(120,112);g.lineTo(8,112);g.closePath();g.fillStyle='#ffffff';g.fill();g.lineWidth=14;g.strokeStyle=col;g.stroke();
@@ -1411,13 +1438,28 @@ function skySammelTypen(f){const c=D.skyline,zahl={};N.forEach(n=>{if(n!==f&&!ty
  const G=Array.isArray(c.sammel)?c.sammel.map(e=>typeof e==='string'?{t:e,typen:[e]}:{t:'grp:'+(e.titel||e.typen.join('+')),typen:e.typen||[],titel:e.titel,namen:e.namen,farbe:e.farbe,anteile:!!e.anteile}):Object.keys(zahl).filter(t=>t!==c.typ).sort((a,b)=>zahl[b]-zahl[a]).slice(0,7).map(t=>({t,typen:[t]}));
  G.forEach(g=>{g.anz=g.typen.reduce((a,t)=>a+(zahl[t]||0),0);g.teile=g.typen.map((t,k)=>({t,anz:zahl[t]||0,name:(g.namen||[])[k]||((TY[t]||{}).label||t)}))});return G.filter(g=>g.anz>0)}
 function sammelTypen(){return(Array.isArray(D.skyline.sammel)?D.skyline.sammel:[]).flatMap(e=>typeof e==='string'?[e]:(e.typen||[]))}
+// Version 67 (Vorschläge für den Nutzer): Form der Sammelkörper vorn beim Aufklappen; SAMMEL_FORM zylinder (bisher), stapel, raster, buendel, kiste, ordner
+var SAMMEL_FORM='stapel';   /* Version 68: Stapel als Standard (Wahl des Nutzers) */
+function sammelKoerper(x,z,h,col,L,op,anz,k){const F=SAMMEL_FORM,R=L*1.15,add=m=>{m.castShadow=m.receiveShadow=true;skyG.add(m);return m},zf=i=>{const v=Math.sin((i+1)*12.9898+k*78.233)*43758.5453;return v-Math.floor(v)};
+ const glas=()=>new T.MeshPhysicalMaterial({color:col,roughness:.12,metalness:0,clearcoat:1,clearcoatRoughness:.08,transparent:true,opacity:Math.min(.92,op)}),kante=new T.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.85,depthWrite:false});
+ const quader=(sx,sy,sz,px,py,pz,ry,mat)=>{const m=add(new T.Mesh(new T.BoxGeometry(sx,sy,sz),mat||glas()));m.position.set(px,py,pz);m.rotation.y=ry||0;const e=new T.LineSegments(new T.EdgesGeometry(m.geometry),kante);m.add(e);return m};
+ if(F==='stapel'){const n=Math.max(1,Math.min(14,anz)),d=Math.min(L*.42,Math.max(L*.2,h/n));for(let i=0;i<n;i++){const b=R*(1.75+.2*zf(i));quader(b,d*.9,b*(.8+.15*zf(i+7)),x+(zf(i+3)-.5)*L*.15,d*(i+.45),z,(zf(i+5)-.5)*.35)}}
+ else if(F==='raster'){const c=L*.66,g=c*1.08,cnt=Math.max(1,Math.min(81,anz)),M=glas();for(let i=0;i<cnt;i++){const e=i%9,l=Math.floor(i/9);quader(c,c,c,x+(e%3-1)*g,c/2+l*g,z+(Math.floor(e/3)-1)*g,0,M)}}
+ else if(F==='buendel'){const P=[[0,0]].concat([0,1,2,3,4,5].map(i=>[Math.cos(i*Math.PI/3)*L*.62,Math.sin(i*Math.PI/3)*L*.62])).slice(0,Math.max(1,Math.min(7,anz))),M=glas();P.forEach(([dx,dz],i)=>{const hh=h*(i?.78+.22*zf(i):1);quader(L*.5,hh,L*.5,x+dx,hh/2,z+dz,(zf(i+2)-.5)*.4,M)});
+  const gold=new T.MeshStandardMaterial({color:0xd4a017,roughness:.3,metalness:.7});[.3,.68].forEach(f=>{const t=add(new T.Mesh(new T.TorusGeometry(L*.98,L*.06,8,40),gold));t.rotation.x=Math.PI/2;t.position.set(x,h*f*.8,z)})}
+ else if(F==='kiste'){const b=R*2,hb=Math.max(L*1.2,h),m=add(new T.Mesh(new T.BoxGeometry(b,hb,b),new T.MeshPhysicalMaterial({color:0xffffff,roughness:.05,clearcoat:1,transparent:true,opacity:.3,depthWrite:false})));m.position.set(x,hb/2,z);m.castShadow=false;m.add(new T.LineSegments(new T.EdgesGeometry(m.geometry),kante));
+  const c=L*.42,n=Math.min(80,Math.max(1,anz)),pro=Math.floor((b*.9)/c)**2,M=glas();for(let i=0;i<n;i++){const l=Math.floor(i/pro),e=i%pro,r=Math.floor((b*.9)/c);const q=quader(c*.9,c*.9,c*.9,x-b*.45+c*(e%r+.5),c*.45+l*c*.92,z-b*.45+c*(Math.floor(e/r)+.5),(zf(i)-.5)*.6,M);if(c*(l+1)>hb*.92){skyG.remove(q);break}}}
+ else if(F==='ordner'){const n=Math.max(1,Math.min(7,anz)),t=R*2/Math.max(4,n),M=glas(),wm=new T.MeshStandardMaterial({color:0xffffff,roughness:.6});for(let i=0;i<n;i++){const hh=h*(.86+.14*zf(i)),px=x-n*t/2+t*(i+.5);const o=quader(t*.86,hh,R*1.6,px,hh/2,z,0,M);if(i===n-1){o.rotation.z=-.12;o.position.x+=hh*.06}
+   const sch=add(new T.Mesh(new T.BoxGeometry(t*.6,Math.min(L*.9,hh*.3),L*.02),wm));sch.position.set(o.position.x,hh*.62,z+R*.8+L*.012);sch.rotation.z=o.rotation.z;const lo=add(new T.Mesh(new T.CylinderGeometry(t*.16,t*.16,L*.03,16),new T.MeshStandardMaterial({color:0x2a3b5c})));lo.rotation.x=Math.PI/2;lo.position.set(o.position.x,hh*.25,z+R*.8+L*.02)}}
+ else{const m=add(new T.Mesh(new T.CylinderGeometry(L*1.1,L*1.25,h,28),new T.MeshStandardMaterial({color:col,roughness:.35,metalness:.15,transparent:true,opacity:op})));m.position.set(x,h/2,z);return m}
+ const hit=new T.Mesh(new T.CylinderGeometry(R*1.1,R*1.1,h,12),new T.MeshBasicMaterial({visible:false}));hit.position.set(x,h/2,z);skyG.add(hit);return hit}
 function skyBuehne(L,A,z0){const f=SKY_AUF.f,I=SKY.info.find(x=>x.f===f);if(!I)return;const T6=skySammelTypen(f),B=L*5.2,cell=L*.95,cols=Math.max(1,Math.floor(B/cell)),mx=Math.max(1,...T6.map(x=>x.anz));
  const x0=I.x-(T6.length-1)/2*B,feld=skyWert;SKY.buehne={f,x0,z0,B,T6,I};
  // goldene Verbindung vom Turm zur Bühne
  const lg=new T.BufferGeometry().setFromPoints([new T.Vector3(I.x,.05,I.z),new T.Vector3(I.x,.05,z0-L*.8),new T.Vector3(x0-B*.5,.05,z0-L*.8),new T.Vector3(x0+(T6.length-.5)*B,.05,z0-L*.8)]);
  skyG.add(new T.Line(lg,new T.LineBasicMaterial({color:0xd4a017})));
  SKY.reihen=[];T6.forEach((g,k)=>{const x=x0+k*B,h=L*(.5+2.5*Math.sqrt(g.anz/mx)),col=new T.Color(g.farbe||(TY[g.typen[0]]||{}).color||'#8b94a3');
-  const cm=new T.Mesh(new T.CylinderGeometry(L*1.1,L*1.25,h,28),new T.MeshStandardMaterial({color:col,roughness:.35,metalness:.15,transparent:true,opacity:SKY_AUF.offen.has(g.t)?.55:.9}));cm.position.set(x,h/2,z0);cm.castShadow=cm.receiveShadow=true;skyG.add(cm);
+  const cm=sammelKoerper(x,z0,h,col,L,SKY_AUF.offen.has(g.t)?.55:.9,g.anz,k);
   const O=N.filter(n=>n!==f&&g.typen.includes(n.ty)&&gehoertZu(n,f)&&!typAus[n.ty]).sort((a,b)=>g.typen.indexOf(a.ty)-g.typen.indexOf(b.ty)||(isFinite(a.t0)?a.t0:0)-(isFinite(b.t0)?b.t0:0));
   const sum=O.reduce((a,n)=>{const v=feld(n);return isFinite(v)?a+v:a},0),hatW=O.some(n=>isFinite(feld(n)));
   SKY.sammel.push({m:cm,f,typ:g.t,anz:g.anz,x,z:z0,h,txt:(g.titel||(TY[g.t]||{}).label||g.t)+' '+g.anz+(g.teile.length>1?' · '+g.teile.filter(t=>t.anz).map(t=>t.name+' '+t.anz).join(' · '):'')+(hatW?' · '+eur(sum):'')});SKY.koerper.push({m:cm,f,typ:g.t});
@@ -1451,9 +1493,10 @@ function skyBuehneBeschriften(L,hh){const S=SKY.buehne;if(!S)return;   // Übers
   K.teile.forEach(t=>marke(t.txt,K.x+K.w/2+L*1.0,t.y,K.z+K.w/2+L*.9,hh*.9,'#10203c').center.set(0,.5))})}
 function skyKoerper(e){if(!SKY||!SKY.koerper.length||!skyG.visible)return null;treffer(e);const hit=ray.intersectObjects(SKY.koerper.map(k=>k.m),false)[0];return hit?Object.assign({d:hit.distance},SKY.koerper.find(k=>k.m===hit.object)):null}
 function skyKlick(e,i){if(layout==='reise'&&SKY&&i<0){const sk=skyKoerper(e);if(sk&&sk.mas){$('chr').style.display='none';hinweisZeigen(sk.mas);return true}return false}
- if(layout!=='skyline'||!SKY)return false;const sw=skyKoerper(e),sk=i<0||(sw&&sw.warn&&sw.d<ray.ray.origin.distanceTo(N[i].pos)-N[i].r*.5)?sw:null;if(sk&&sk.warn){clearTimeout(SKY_KL);$('chr').style.display='none';lageberichtZeigen(sk.f);return true}const f=i>=0&&SKY.F.includes(N[i])?N[i]:sk&&!sk.typ?sk.f:null;
+ if(layout!=='skyline'||!SKY)return false;const sw=skyKoerper(e),sk=i<0||(sw&&sw.warn&&sw.d<ray.ray.origin.distanceTo(N[i].pos)-N[i].r*.5)?sw:null;if(sk&&sk.warn){clearTimeout(SKY_KL);$('chr').style.display='none';lageberichtZeigen(sk.f);return true}const f=i>=0&&SKY.F.includes(N[i])?N[i]:sk&&!sk.typ?sk.f:null,geh=!!f&&(i>=0||!!(sk&&sk.geb));
  if(!f&&!(sk&&sk.typ))return false;clearTimeout(SKY_KL);
- SKY_KL=setTimeout(()=>{if(f){SKY_AUF=SKY_AUF.f===f?{f:null,offen:new Set()}:{f,offen:new Set()}}else{const o=SKY_AUF.offen;o.has(sk.typ)?o.delete(sk.typ):o.add(sk.typ)}
+ SKY_KL=setTimeout(()=>{if(geh){$('chr').style.display='none';lageberichtZeigen(f);return}   /* Version 67: Einzelklick auf das Gehry-Gebäude = Lagebericht (Handlungsliste) der Firma, Klick auf den Turm = aufklappen */
+  if(f){SKY_AUF=SKY_AUF.f===f?{f:null,offen:new Set()}:{f,offen:new Set()}}else{const o=SKY_AUF.offen;o.has(sk.typ)?o.delete(sk.typ):o.add(sk.typ)}
   setzeLayout('skyline',false);if(SKY_AUF.f&&SKY.buehne){const P=[];const Ls=abstand();SKY.sammel.forEach(g=>P.push(new T.Vector3(g.x,g.h+Ls,g.z),new T.Vector3(g.x,0,g.z+Ls*1.3),new T.Vector3(g.x-Ls*1.3,0,g.z),new T.Vector3(g.x+Ls*1.3,0,g.z)));N.forEach(n=>{if(!n.skyAus&&!SKY.F.includes(n))P.push(n.ziel)});P.push(new T.Vector3(SKY.buehne.I.x,SKY.buehne.I.h,SKY.buehne.I.z));
    // Version 53 (Wunsch des CEO): beim Aufklappen gerade von vorn (Turm hinten, Sammelkörper davor mittig); Drehung auf kürzestem Weg
    const g0=K.gier,g1=g0-Math.round(g0/(2*Math.PI))*2*Math.PI;K.gier=0;const z=heimZiel(P.map(p=>({ziel:p,r:abstand()})));K.gier=g0;if(z){K.zZiel.copy(z.c);K.zDist=z.d;K.zGier=g0-g1;K.flug=true}}else heim();neu()},260);return true}
@@ -3070,15 +3113,57 @@ function dmUmfeld(I){const S=new Set([I]),q=[I];for(let h=0;h<q.length;h++)E.for
  const M=new Set(S),dazu=(von,ok)=>[...von].forEach(n=>E.forEach(k=>{if((k.a===n||k.b===n)&&ok(k.e.type))M.add(k.a===n?k.b:k.a)}));
  dazu(S,t=>t!=='struktur'&&t!=='inhalt');dazu([...M].filter(n=>n.ty==='issue'),t=>t==='aufgabe');dazu([...M].filter(n=>n.ty==='task'),t=>t==='zuweisung');return M}
 // Linkchain (allgemein): Schritte „typ>“ (from → to), „typ<“ (to → from), „*“ = beliebig oft wiederholen
-function dmKette(start,txt){const st=txt.trim().split(/\s+/).map(s=>{const m=s.match(/^(.+?)([<>])(\*?)$/);return m?{typ:m[1],vor:m[2]==='>',oft:!!m[3]}:null}).filter(Boolean);
+function dmKette(start,txt){const st=kSchritte(txt).filter(Boolean);let gekuerzt=false;   /* Version 66: auch ? (beliebiger Linktyp) und - (beide Richtungen) wie 3Deep; Grenze 3000 Pfade */
  let pfade=[[start]];
  const gilt=k=>!(isFinite(k.t0)&&k.t0>tCur)&&!(isFinite(k.t1)&&k.t1<=tCur)&&sichtbar(k.a)&&sichtbar(k.b);   // nur zum Zeitpunkt gültige Beziehungen (z. B. nicht zur abgelösten Revision)
- const weiter=(n,s)=>E.filter(k=>k.e.type===s.typ&&(s.vor?k.a===n:k.b===n)&&gilt(k)).map(k=>s.vor?k.b:k.a);
+ const weiter=(n,s)=>E.filter(k=>(s.typ==='?'||k.e.type===s.typ)&&(s.dir==='>'?k.a===n:s.dir==='<'?k.b===n:k.a===n||k.b===n)&&gilt(k)).map(k=>k.a===n?k.b:k.a);
  st.forEach(s=>{const neu_=[];pfade.forEach(p=>{let L=[p],fertig=[];
-  do{const W=[];L.forEach(q=>{const nx=weiter(q[q.length-1],s).filter(m=>!q.includes(m));if(nx.length)nx.forEach(m=>W.push(q.concat([m])));else if(q.length>p.length)fertig.push(q)});L=s.oft?W:[];if(!s.oft)W.forEach(q=>fertig.push(q))}while(L.length);
-  fertig.forEach(q=>neu_.push(q))});pfade=neu_});
+  do{const W=[];L.forEach(q=>{const nx=weiter(q[q.length-1],s).filter(m=>!q.includes(m));if(nx.length)nx.forEach(m=>W.push(q.concat([m])));else if(q.length>p.length)fertig.push(q)});if(W.length>3000){W.length=3000;gekuerzt=true}L=s.oft?W:[];if(!s.oft)W.forEach(q=>fertig.push(q))}while(L.length);
+  fertig.forEach(q=>neu_.push(q))});if(neu_.length>3000){neu_.length=3000;gekuerzt=true}pfade=neu_});
  const nodes=new Set([start]),segs=new Map();pfade.forEach(p=>p.forEach((n,i)=>{nodes.add(n);if(i)segs.set(p[i-1].i+'-'+n.i,[p[i-1],n])}));
- return{pfade,nodes,segs:[...segs.values()],stufe1:[...new Set(pfade.map(p=>p[1]).filter(Boolean).map(n=>n.name))],ende:[...new Set(pfade.map(p=>p[p.length-1].name))]}}
+ return{pfade,nodes,segs:[...segs.values()],stufe1:[...new Set(pfade.map(p=>p[1]).filter(Boolean).map(n=>n.name))],ende:[...new Set(pfade.map(p=>p[p.length-1].name))],gekuerzt}}
+// Version 66: Suche, Linkchain-Eingabe, Beziehungsfilter (Demo-Modus) und Layout „Gruppiert nach Attribut“ (beide Modi) wie in 3Deep
+function kSchritte(txt){return String(txt||'').trim().split(/[\s,→]+/).filter(Boolean).map(t=>{const m=t.match(/^(.+?)([<>-]?)(\*?)$/);return m?{typ:m[1],dir:m[2]||'-',vor:m[2]==='>',oft:!!m[3]}:null})}
+const K_GEN=[{name:'Alle direkten Nachbarn',chain:'?-'},{name:'Zwei Schritte (beliebig)',chain:'?- ?-'},{name:'Struktur abwärts (beliebig tief)',chain:'struktur<*'},{name:'Struktur aufwärts (beliebig tief)',chain:'struktur>*'}];
+function attrWert(n,k){const v=(n.o.meta||{})[k];return v==null||v===''?'(leer)':typeof v==='object'?JSON.stringify(v):String(v)}
+function attrReihe(L){const k=$('at').value,cnt={};N.forEach(n=>{if(typAus[n.ty])return;const v=attrWert(n,k);cnt[v]=(cnt[v]||0)+1});
+ const order=Object.keys(cnt).sort((a,b)=>a==='(leer)'?1:b==='(leer)'?-1:a.localeCompare(b,'de',{numeric:true})),ab=order.length<=8?reifeAbst(L):L*2.6;
+ return{k,cnt,order,val:n=>attrWert(n,k),y:v=>{const i=order.indexOf(v);return(order.length-1-(i<0?order.length:i))*ab}}}
+function suFuellen(behalten){const ks={},cn={},zahl=v=>v!==''&&isFinite(+String(v).replace(',','.')),datum=v=>/^\d{4}-\d{1,2}-\d{1,2}([T ].*)?$|^\d{1,2}\.\d{1,2}\.\d{2,4}( .*)?$/.test(String(v).trim());
+ N.forEach(n=>Object.entries(n.o.meta||{}).forEach(([k,v])=>{if(v==null||typeof v==='object')return;(ks[k]=ks[k]||new Set()).add(String(v));cn[k]=(cn[k]||0)+1}));
+ const ok=Object.keys(ks).filter(k=>{const z=ks[k].size,nz=[...ks[k]].every(zahl);return z>=2&&z<=30&&!(nz&&z>12)&&!(z===cn[k]&&cn[k]>6)&&![...ks[k]].every(datum)});   /* keine Kennzahlen mit vielen Werten, keine Einzelwerte (E-Mail o. Ä.), Version 67: keine Datumsfelder */
+ const at=$('at'),alt=at.value;at.innerHTML=ok.map(k=>'<option value="'+esc(k)+'">'+esc(k)+' ('+ks[k].size+')</option>').join('');$('lyattr').hidden=!ok.length;
+ const pref=[behalten&&alt,D&&D.attr,'Status','Abteilung','Lieferant','Owner','Revision'].find(k=>k&&ok.includes(k));if(pref)at.value=pref;
+ if(!behalten){relAus={};$('q').value='';$('kin').value=''}KUI=null;$('kres').innerHTML='';$('qres').innerHTML='';
+ const RT=(D&&D.relTypes)||{},c={};E.forEach(k=>{const t=k.e.type||'';if(!c[t])c[t]={n:0,l:(RT[t]||{}).label||t||'Beziehung',f:'#'+k.col.getHexString()};c[t].n++});
+ $('rfl').innerHTML=Object.keys(c).length?Object.keys(c).map(t=>'<label style="display:flex;gap:6px;align-items:center;margin:2px 0;color:var(--tx);font-size:12px"><input type="checkbox" data-r="'+esc(t)+'"'+(relAus[t]?'':' checked')+'><span style="width:10px;height:10px;border-radius:2px;background:'+c[t].f+';display:inline-block"></span>'+esc(c[t].l)+' <span class="m">('+c[t].n+')</span></label>').join(''):'keine Beziehungen';
+ $('rfl').querySelectorAll('input').forEach(i=>i.onchange=()=>{relAus[i.dataset.r]=!i.checked;matAlle=true;neu()});
+ $('klt').textContent=Object.keys(c).filter(Boolean).join(', ');suWahl()}
+function kVorlagen(n){return((D&&Array.isArray(D.chains))?D.chains:[]).filter(c=>c&&c.chain&&(!c.start||(n&&c.start===n.ty))).concat(K_GEN)}
+function suWahl(){const n=sel>=0?N[sel]:null,kp=$('kpre'),ki=$('kin');if(!kp)return;$('kinfo').textContent=n?'Start: '+(n.name||n.id):'Startobjekt anklicken, dann Chain wählen und „Pfade zeigen“.';
+ const V=kVorlagen(n),war=[...kp.options].map(o=>o.value);kp.innerHTML=V.map(c=>'<option value="'+esc(c.chain)+'">'+esc(c.name||c.chain)+'</option>').join('');
+ if(n&&(!ki.value.trim()||war.includes(ki.value))){ki.value=V[0].chain;kp.value=V[0].chain}}
+function kAus(){KUI=null;$('kres').innerHTML='';if(!DM.on){DM.pfad=null;if(N.some(n=>n.dmAus))dmAusblenden(null)}neu()}
+function kZeigen(){if(DM.on)return;const inf=$('kinfo'),n=sel>=0?N[sel]:null;if(!n){inf.textContent='Bitte zuerst ein Startobjekt anklicken.';return}
+ const roh=kSchritte($('kin').value);if(!roh.length){inf.textContent='Die Chain ist leer.';return}const fb=roh.indexOf(null);if(fb>=0){inf.textContent='Ungültiger Schritt: '+$('kin').value.trim().split(/[\s,→]+/)[fb];return}
+ dmAusblenden(null);const R=dmKette(n,$('kin').value);inf.textContent='Start: '+(n.name||n.id);
+ if(!R.pfade.length||R.pfade.every(p=>p.length<2)){KUI=null;DM.pfad=null;$('kres').innerHTML='Kein Pfad gefunden. Linktypen, Richtung (&gt; / &lt;) und Zeitpunkt prüfen.';neu();return}
+ KUI=R;dmAusblenden(R.nodes);DM.pfad=R.segs;
+ const zz=new Map();R.pfade.forEach(p=>{const z=p[p.length-1];zz.set(z,(zz.get(z)||0)+1)});const Z=[...zz.keys()].sort((a,b)=>String(a.ty).localeCompare(String(b.ty))||String(a.name).localeCompare(String(b.name),'de'));
+ $('kres').innerHTML='<b style="color:var(--tx)">'+R.pfade.length+' Pfade · '+Z.length+' Zielobjekte'+(R.gekuerzt?' (gekürzt)':'')+'</b><div style="margin-top:3px">Zielobjekte (Klick = anfliegen):</div>'+Z.slice(0,60).map(z=>'<div class="it" data-i="'+z.i+'" style="color:var(--tx)">'+esc(z.name||z.id)+' <span class="m">'+esc((TY[z.ty]||{}).label||z.ty)+' · '+zz.get(z)+'</span></div>').join('')+(Z.length>60?'<div>… weitere nicht gelistet</div>':'');
+ $('kres').querySelectorAll('.it').forEach(e2=>e2.onclick=()=>{const j=+e2.dataset.i;sel=j;faerben();zeigeProfil(j);nutzerSteuert();K.zZiel.copy(N[j].pos);K.flug=true;neu()});
+ nutzerSteuert();const z=heimZiel([...R.nodes]);if(z){K.zZiel.copy(z.c);K.zDist=z.d*1.2;K.flug=true}neu()}
+function suche(){const q=$('q').value.trim().toLowerCase(),r=$('qres');if(!q){r.innerHTML='';return[]}
+ const m=N.filter(n=>!typAus[n.ty]&&((n.name||'')+' '+n.id+' '+Object.values(n.o.meta||{}).join(' ')).toLowerCase().includes(q)).slice(0,8);
+ r.innerHTML=m.map(n=>'<div class="it" data-i="'+n.i+'">'+esc(n.name||n.id)+' <span class="m">'+esc((TY[n.ty]||{}).label||n.ty)+'</span></div>').join('')||'<div class="m">Keine Treffer</div>';
+ r.querySelectorAll('.it').forEach(e2=>e2.onclick=()=>suSpringen(N[+e2.dataset.i]));return m}
+function suSpringen(n){if(!n)return;if(n.dmAus&&!DM.on)kAus();
+ if(n.skyAus||n.axAus){setzeLayout('netz');$('ly').value='netz'}if(n.fokAus){FOKUS=null;N.forEach(x=>x.fokAus=false);$('fokb').style.display='none';zeitAnwenden()}
+ if(isFinite(n.t0)&&n.t0>tCur){spiel=false;$('zp').textContent='▶';tCur=Infinity;zeitAnwenden()}
+ waehle(n.i);zeigeProfil(n.i);nutzerSteuert();K.zZiel.copy(n.ziel);K.flug=true;neu()}
+$('q').oninput=suche;$('q').onkeydown=e=>{if(e.key==='Enter'){const m=suche();if(m[0])suSpringen(m[0])}};
+$('kpre').onchange=e=>{$('kin').value=e.target.value};$('kgo').onclick=kZeigen;$('kno').onclick=kAus;$('kin').onkeydown=e=>{if(e.key==='Enter')kZeigen()};
+$('at').onchange=()=>{$('ly').value='attr';setzeLayout('attr',true)};
 function dmAusblenden(M){N.forEach(n=>n.dmAus=!!M&&!M.has(n));zeitAnwenden()}
 // bestes Objekt nach gewichteten, normierten Kennzahlen (nur im aktuellen Kennzahlen-Diagramm sichtbare Objekte)
 function dmBeste(w){const L=N.filter(n=>!n.axAus&&n.sZiel>0),ks=Object.keys(w),v=(n,k)=>numv((n.o.meta||{})[k]);
