@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="56">
+<meta name="4deep-darstellung" content="61">
 <title>4Deep – Datenraum in Raum und Zeit</title>
 <!-- 4Deep – Datenraum in Raum und Zeit (begonnen als Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026; Produkt seit 26.11.2026, Version 55): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -18,7 +18,7 @@ html,body{margin:0;height:100%;background:#c4d8f1;color:var(--tx);font:13px syst
 #cv,#nm{position:fixed;inset:0;display:block;width:100%;height:100%}#nm{pointer-events:none}#cv,#nm{transition:opacity .5s ease}#kugel{position:fixed;z-index:5;pointer-events:none;opacity:0;transition:opacity .5s ease}
 .pn{position:fixed;background:var(--pn);border:1px solid var(--rand);border-radius:10px;padding:10px 12px;backdrop-filter:blur(6px)}
 #pn{left:10px;top:10px;width:250px;max-height:calc(100% - 110px);overflow:auto}
-#pn h1{font-size:16px;margin:0 0 2px}#pn .u{color:var(--mu);font-size:11px;margin-bottom:8px}
+#pn h1{font-size:16px;margin:0 0 2px}/* Version 59: Arbeitsmodus blendet Demo-Datenräume und Demo-Knöpfe aus */body[data-modus=arbeit] .nurdemo{display:none!important}#modw{display:flex;margin:0 0 8px;border:1px solid var(--bd,#3a4660);border-radius:6px;overflow:hidden}#modw button{flex:1;margin:0;border:0;border-radius:0;padding:4px 0;font-size:11px;background:transparent;opacity:.6}#modw button.an{opacity:1;background:#2f6fe0;color:#fff;font-weight:600}#pn .u{color:var(--mu);font-size:11px;margin-bottom:8px}
 #pn label{display:block;margin:7px 0 2px;color:var(--mu);font-size:11px}
 #pn select,#pn button{width:100%;padding:5px;background:#16213a;color:var(--tx);border:1px solid var(--rand);border-radius:6px;font:inherit}
 #pn button{cursor:pointer;margin-top:4px}#pn button:hover{border-color:var(--ak)}
@@ -50,7 +50,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
 #chr{right:10px;top:10px;width:390px;max-height:calc(100% - 120px);overflow:auto;display:none;z-index:15;font-size:12px}#chr h2{font-size:15px;margin:0 18px 6px 0}#chr .x{position:absolute;right:8px;top:6px;cursor:pointer;color:var(--mu);font-size:16px}
 #mas{right:10px;top:10px;width:420px;max-height:calc(100% - 120px);overflow:auto;display:none;z-index:15;font-size:12px}#mas h2{font-size:15px;margin:0 18px 6px 0}#mas[data-art="lage"],#mas[data-art="mas"],#mas[data-art="hin"]{zoom:1.25;max-height:calc((100% - 120px)/1.25)}/* Version 51 (Wunsch des Nutzers): Lagebericht, Handlungsliste und Hinweis 125 % – Anweisungen für die Geschäftsführung groß und deutlich */#mas .x{position:absolute;right:8px;top:6px;cursor:pointer;color:var(--mu);font-size:16px}
 #chr select{background:#16213a;color:var(--tx);border:1px solid var(--rand);border-radius:6px;padding:3px;font:inherit;margin-bottom:6px}#chr .sum{border:1px solid var(--rand);border-radius:6px;padding:5px 7px;margin-bottom:6px;line-height:1.5}
-#mas select{background:#16213a;color:var(--tx);border:1px solid var(--rand);border-radius:6px;padding:3px;font:inherit;margin-bottom:6px}#mas .sum{border:1px solid var(--rand);border-radius:6px;padding:5px 7px;margin-bottom:6px;line-height:1.5}
+#mas select{background:#16213a;color:var(--tx);border:1px solid var(--rand);border-radius:6px;padding:3px;font:inherit;margin-bottom:6px}#mas .aus,#prof .aus{margin-top:8px;padding:7px;border:1px solid #ff8c1a;border-radius:6px;line-height:1.5}#mas .rang{margin-top:10px}#mas .aus button,#prof .aus button{width:auto;display:inline-block;padding:3px 8px;margin:0}#mas .aus button:disabled,#prof .aus button:disabled{opacity:.4;cursor:default}#mas .ev.on{background:#2a3a60}#mas .sum{border:1px solid var(--rand);border-radius:6px;padding:5px 7px;margin-bottom:6px;line-height:1.5}
 #chr .ev{display:grid;grid-template-columns:76px 1fr;gap:1px 6px;padding:4px 3px;border-top:1px solid #1c2740;cursor:pointer;border-radius:4px}#chr .ev:hover{background:#1c2a48}#chr .ev .d{color:var(--mu);white-space:nowrap}#chr .ev .a{font-weight:600}#chr .ev .e{grid-column:2;color:var(--mu)}#chr .ok{color:#3fbf7f}#chr .nok{color:#ff6b5e}
 #mas .ev{display:grid;grid-template-columns:76px 1fr;gap:1px 6px;padding:4px 3px;border-top:1px solid #1c2740;cursor:pointer;border-radius:4px}#mas .ev:hover{background:#1c2a48}#mas .ev .d{color:var(--mu);white-space:nowrap}#mas .ev .a{font-weight:600}#mas .ev .e{grid-column:2;color:var(--mu)}#mas .ok{color:#3fbf7f}#mas .nok{color:#ff6b5e}
 #prof{width:340px;max-height:calc(100% - 16px);overflow:auto;display:none;z-index:20;box-shadow:0 6px 24px rgba(0,0,0,.45);font-size:12px}
@@ -71,15 +71,17 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
 </head>
 <body>
 <canvas id="cv"></canvas><canvas id="nm"></canvas><canvas id="kugel" width="1" height="1"></canvas>
-<div id="leer">Datenraum wählen oder JSON-Datei hierher ziehen …</div>
+<div id="leer"><span class="nurdemo">Datenraum wählen oder </span>JSON-Datei oder CRM-ZIP hierher ziehen …</div>
 <div class="pn" id="pn">
  <h1>4Deep</h1><div class="u">Datenraum in Raum und Zeit</div>
- <label>Datenraum</label>
- <select id="ds"><option value="">Datenraum wählen …</option><option value="eauto">Demo: Elektroauto (fiktiv)</option><option value="demo">Produktentwicklung (fiktiv, 18 Monate)</option><option value="kauf">Kaufmännisch (fiktiv)</option>
+ <div id="modw" title="Arbeitsmodus: nur eigene Daten (Datei laden, Widget). Demo-Modus: zusätzlich Beispiel-Datenräume und Vorführungen. Wird im Browser gemerkt."><button id="moda">Arbeitsmodus</button><button id="modd">Demo-Modus</button></div>
+ <label class="nurdemo">Datenraum</label>
+ <select id="ds" class="nurdemo"><option value="">Datenraum wählen …</option><option value="eauto">Demo: Elektroauto (fiktiv)</option><option value="demo">Produktentwicklung (fiktiv, 18 Monate)</option><option value="kauf">Kaufmännisch (fiktiv)</option><option value="projekt">Projekt (fiktiv)</option>
   <option value="stress:2000">Leistungstest 2 000 Objekte</option>
   <option value="stress:10000">Leistungstest 10 000 Objekte</option><option value="stress:30000">Leistungstest 30 000 Objekte</option>
   <optgroup label="Unterricht (über Webserver)"><option value="thema:supernova">Supernova Typ Ia</option><option value="thema:hastings">Schlacht von Hastings (1066)</option></optgroup></select>
- <div style="display:flex;gap:4px"><button id="dmb" title="Vorführung mit dem Elektroauto (ca. 5 min): Eingriff mit Maus, Taste oder SpaceMouse pausiert, P = Pause/Weiter, Esc = beenden">▶ Demo abspielen</button><button id="dmp" style="display:none;width:auto;white-space:nowrap">⏸ Pause (P)</button></div>
+ <div class="nurdemo" style="display:flex;gap:4px"><button id="dmb" title="Vorführung mit dem Elektroauto (ca. 5 min): Eingriff mit Maus, Taste oder SpaceMouse pausiert, P = Pause/Weiter, Esc = beenden">▶ Demo abspielen</button><button id="dmp" style="display:none;width:auto;white-space:nowrap">⏸ Pause (P)</button></div>
+ <button id="dmpj" class="nurdemo" title="Vorführung Projektmanagement (ca. 6 min): Zeitachse, Heute, kritischer Pfad, Handlungsliste mit Belastbarkeit, Fälle per Klick, Engpass und Ausfall, Gate-Reife. Eingriff pausiert, P = Pause/Weiter, Esc = beenden">▶ Demo Projekt</button>
  <button id="jl" title="4Deep-JSON oder CRM-Export als ZIP (wird nur im Browser umgewandelt)">Datei laden (JSON / CRM-ZIP) …</button><input type="file" id="jf" accept=".json,.zip,application/json,application/zip" hidden>
  <button id="ubtn" style="display:none" title="Unterricht: Stationen mit Text, Frage und Antwort (← → wechseln, A = Antwort, Esc = beenden)">▶ Unterricht</button>
  <div id="rvw" style="display:none"><label id="rvl">Ablauf</label><div class="rvz"><button id="rvz">◀</button><input type="range" id="rvr" min="0" max="0" value="0"><button id="rvv">▶</button></div><div id="rvt" class="m"></div></div>
@@ -97,24 +99,24 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  </details>
  <label>Layout</label>
  <select id="ly"><option value="netz">Netz</option><option value="schichten">Schichten nach Objekttyp</option><option value="skyline" id="lysky" hidden>Firmen-Skyline (Überblick)</option><option value="reise" id="lyreise" hidden>Kundenreise (je Firma über die Zeit)</option><option value="reife">Schichten nach Reifegrad</option><option value="baum">Baum</option>
-  <option value="zeit">Zeitachse (Zeit als Raumrichtung)</option><option value="achsen">Kennzahlen (Achsen)</option><option value="fest">Feste Positionen (aus Daten)</option></select>
+  <option value="zeit">Zeitachse (Zeit als Raumrichtung)</option><option value="plan" id="lyplan" hidden>Projektplan (Phasen, kritischer Pfad)</option><option value="achsen">Kennzahlen (Achsen)</option><option value="fest">Feste Positionen (aus Daten)</option></select>
  <div id="axui" style="display:none"><label>Kennzahlen-Vorlage</label><select id="axp"></select>
   <div class="axz"><span style="color:#e0352b" title="rechts">→</span><select id="axx" title="rechts"></select><span class="axl"><input type="checkbox" id="axlx">log</span></div>
   <div class="axz"><span style="color:#1fa463" title="oben">↑</span><select id="axy" title="oben"></select><span class="axl"><input type="checkbox" id="axly">log</span></div>
   <div class="axz"><span style="color:#2f6fe0" title="vorne">↙</span><select id="axz" title="vorne (zum Betrachter)"></select><span class="axl"><input type="checkbox" id="axlz">log</span></div>
   <div id="axnote" class="m" style="margin-top:4px"></div></div>
  <details id="dard" class="grp"><summary>Darstellung (Licht, Farben, Oberfläche, Geräte)</summary>
- <div class="cb"><input type="checkbox" id="schatten" checked><span>Schatten</span></div>
+ <div class="cb"><input type="checkbox" id="schatten"><span>Schatten</span></div>
  <div class="cb"><input type="checkbox" id="kanten" checked><span>Beziehungen</span></div>
  <div class="cb"><input type="checkbox" id="vergangen" checked><span>Vergangenes blass zeigen</span></div>
  <div class="cb" title="Netz und Schichten: Abstände zwischen den Objekten (wird im Browser gespeichert)"><span style="min-width:44px">Dichte</span><input type="range" id="dichte" min="0" max="100" step="5" style="flex:1"><span id="dichtew" style="min-width:26px;text-align:right"></span></div>
  <div class="cb"><input type="checkbox" id="namen"><span>Namen am Objekt (N)</span></div>
  <div class="cb"><input type="checkbox" id="glanz" checked><span>Glanz und Reifegrade</span></div>
  <div class="cb" title="Pulsierende Kugel während des Ladens (wird im Browser gespeichert)"><input type="checkbox" id="kugelan" checked><span>Ladekugel</span></div>
- <label>Farbschema</label><select id="fs" title="Hintergrund, Licht und Objektfarben"></select>
- <label>Oberfläche</label><select id="of" title="Materialwirkung der Objekte"><option value="satin">Satin (seidenmatt)</option><option value="metall">Metall (eloxiert)</option><option value="lack">Lack (glänzend, bisher)</option><option value="bio">Bio-Porzellan (Alien-Tech)</option></select>
- <button id="lt">Leistung messen (5 s Drehung)</button>
- <button id="st3" title="3D-Fernseher: Side-by-Side oder Top-and-Bottom, Vollbild · T Augen tauschen · B SBS/TB · + − Tiefe · Bild↑↓ Ebene · Esc Ende">3D-TV (Strg+Umschalt+3)</button>
+ <label class="nurdemo">Farbschema</label><select id="fs" class="nurdemo" title="Hintergrund, Licht und Objektfarben"></select>
+ <label class="nurdemo">Oberfläche</label><select id="of" class="nurdemo" title="Materialwirkung der Objekte"><option value="satin">Satin (seidenmatt)</option><option value="metall">Metall (eloxiert)</option><option value="lack">Lack (glänzend, bisher)</option><option value="bio">Bio-Porzellan (Alien-Tech)</option></select>
+ <button id="lt" class="nurdemo">Leistung messen (5 s Drehung)</button>
+ <button id="st3" class="nurdemo" title="3D-Fernseher: Side-by-Side oder Top-and-Bottom, Vollbild · T Augen tauschen · B SBS/TB · + − Tiefe · Bild↑↓ Ebene · Esc Ende">3D-TV (Strg+Umschalt+3)</button>
  <details id="smd"><summary>SpaceMouse (3Dconnexion)</summary>
   <div class="m" style="margin:4px 0">Zusätzlich zur Maus, wie 3Deep. Benötigt Chrome/Edge (WebHID); geht lokal (Doppelklick oder Webadresse direkt), in Einbettungen nur, wenn der Rahmen den Gerätezugriff erlaubt. Blockiert der Treiber 3DxWare das Gerät: Treiber kurz beenden.</div>
   <button id="smc">SpaceMouse verbinden</button><div id="smst" class="m" style="margin:4px 0">nicht verbunden</div>
@@ -126,7 +128,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 56 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 61 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="chr"></div><div class="pn" id="mas"></div><div class="pn" id="prof"></div><div class="pn" id="dcap"></div><div id="dfade"></div><div id="profb"></div>
@@ -382,12 +384,13 @@ function laden(daten,opt){
   const n={id:o.id,o,ty:o.type,stufe:reifeStufe(o),name:o.name||String(o.id),form:ty.shape||formNachName(ty.label||o.type),col:schemaFarbe(kraeftig(farbe(o.color||ty.color))),_cq:o.color||ty.color,r:1.7*Math.max(.35,Math.min(3.2,Math.sqrt(sz))),
    t0,t1,tg,pos:new T.Vector3(),ziel:new T.Vector3(),s:0,sZiel:1,i:N.length,nb:[],fest:o.pos,warn:o.warnung?String(o.warnung):''};
   const a=alt[o.id];if(a){n.pos.copy(a.pos);n.s=a.s;n.alt=true}
+  {let a=zeit(o.start),b=zeit(o.end);if(isNaN(a))a=b;if(isNaN(b))b=a;if(isFinite(a)){if(b<a){const x=a;a=b;b=x}n.ts=a;n.te=b}const pg=o.progress==null||o.progress===''?NaN:+o.progress;if(isFinite(pg))n.pg=Math.max(0,Math.min(100,pg));if(o.critical!=null)n.kritG=!!o.critical}   // Version 57: Projektfelder wie 3Deep 92
   n.r0=n.r;byId[o.id]=n;N.push(n);
  });
  FZ=null;FOKUS=null;SKY_AUF={f:null,offen:new Set()};$('fokb').style.display='none';E=[];(daten.edges||[]).forEach(e=>{const a=byId[e.from],b=byId[e.to];if(!a||!b||a===b)return;const rt=RT[e.type]||{};if(rt.hidden)return;
   const k={a,b,e,col:farbe(e.color||rt.color,'#6f86ab'),t0:zeit(e.start),t1:zeit(e.end),dir:!!rt.directed,hier:!!rt.hierarchy||/^(struktur|inhalt|teil|hierarchy)$/i.test(e.type||''),dk:+e.dicke>0?Math.min(4,+e.dicke):1};E.push(k);   // Version 39: Kantenfeld dicke (Faktor)
  a.nb.push(b);b.nb.push(a)});
- HEUTE=isFinite(zeit(daten.heute))?zeit(daten.heute):heuteTag();N.forEach(n=>n.fertig=fertig(n));revKetten();
+ HEUTE=isFinite(zeit(daten.heute))?zeit(daten.heute):isFinite(zeit(daten.today))?zeit(daten.today):heuteTag();projektVorbereiten(daten);handlung(daten);N.forEach(n=>n.fertig=fertig(n));revKetten();
  // Zeitspanne
  let lo=Infinity,hi=-Infinity;N.forEach(n=>{[n.t0,n.t1].forEach(t=>{if(isFinite(t)){lo=Math.min(lo,t);hi=Math.max(hi,t)}})});
  if(hi>lo&&HEUTE>hi&&HEUTE-hi<(hi-lo)*.25)hi=HEUTE;   // Heute noch in die Zeitspanne nehmen, wenn nah
@@ -398,9 +401,9 @@ function laden(daten,opt){
  else N.forEach(n=>{if(n.alt)return;const k=n.nb.find(m=>m.alt);if(k)n.pos.copy(k.pos).add(V.set(rnd()-.5,rnd()-.5,rnd()-.5).multiplyScalar(4));else n.pos.set((rnd()-.5)*20,(rnd()-.5)*20,(rnd()-.5)*20)});
  baueMeshes();legende();
  const hatPos=N.some(n=>n.fest);
- axVorbereiten();$('finb').style.display=daten.crm?'':'none';$('lysky').hidden=!daten.skyline;$('lyreise').hidden=!daten.skyline;$('lgbb').style.display=daten.skyline?'':'none';$('crmd').style.display=daten.crm?'':'none';if(daten.crm)$('crmdom').placeholder=daten.eigeneDomain?(daten.eigeneAuto?'automatisch: ':'')+daten.eigeneDomain:'automatisch (keine erkannt)';$('fkw').style.display=daten.fakten?'':'none';{const hm=Array.isArray(daten.massnahmen)&&daten.massnahmen.length;$('masb').style.display=hm?'':'none';if(!hm)$('mas').style.display='none';else if($('mas').style.display==='block')massnahmenZeigen()}$('chrb').style.display=Array.isArray(daten.chronik)&&daten.chronik.length?'':'none';if(!(Array.isArray(daten.chronik)&&daten.chronik.length))$('chr').style.display='none';else if($('chr').style.display==='block')chronikZeigen();
+ axVorbereiten();$('finb').style.display=daten.crm?'':'none';$('lysky').hidden=!daten.skyline;$('lyplan').hidden=!PROJ;$('lyreise').hidden=!daten.skyline;$('lgbb').style.display=daten.skyline?'':'none';$('crmd').style.display=daten.crm?'':'none';if(daten.crm)$('crmdom').placeholder=daten.eigeneDomain?(daten.eigeneAuto?'automatisch: ':'')+daten.eigeneDomain:'automatisch (keine erkannt)';$('fkw').style.display=daten.fakten?'':'none';{const hm=Array.isArray(daten.massnahmen)&&daten.massnahmen.length;$('masb').style.display=hm?'':'none';if(!hm)$('mas').style.display='none';else if($('mas').style.display==='block')massnahmenZeigen()}$('chrb').style.display=Array.isArray(daten.chronik)&&daten.chronik.length?'':'none';if(!(Array.isArray(daten.chronik)&&daten.chronik.length))$('chr').style.display='none';else if($('chr').style.display==='block')chronikZeigen();
  rvVorbereiten(daten);
- let ly=opt.behalten?layout:(daten.layout==='achsen'&&AXP.length?'achsen':daten.layout==='plan'||daten.zeitArt?'zeit':hatPos?'fest':'netz');
+ let ly=opt.behalten?layout:(daten.layout==='achsen'&&AXP.length?'achsen':daten.layout==='plan'&&PROJ?'plan':daten.layout==='plan'||daten.zeitArt?'zeit':hatPos?'fest':'netz');
  if(!opt.behalten&&daten.skyline&&skyFirmen().length)ly='skyline';   // Version 36 (Wunsch des Nutzers): mit Firmen-Kennzahlen immer zuerst die Skyline
  if(!$('ly').querySelector('option[value="'+ly+'"]'))ly='netz';
  $('ly').value=ly;setzeLayout(ly,!opt.behalten);
@@ -437,6 +440,145 @@ function fertig(n){const o=n.o,m=o.meta||{};if(n.stufe==='kristall'||n.stufe==='
 // Kette in Zeitrichtung: ältere Revisionen hinter der neuesten (−x), die neueste nimmt am Layout teil
 function kettenLage(L){KET.forEach(K2=>{const a=K2[K2.length-1];for(let i=0;i<K2.length-1;i++){const n=K2[i];n.ziel.copy(a.ziel);n.ziel.x-=(K2.length-1-i)*L*1.3;if(n.yFest!=null)n.ziel.y=n.yFest}})}   // Version 17: feste Ebene (Schichten) bleibt erhalten
 function revText(n){const k=n.kette;if(!k)return'';return k.L.map(m=>{const r=m.rev||'#'+(m.kette.i+1);return m===n?'['+r+']':r}).join(' → ')+' · '+(n.gueltig?'gültig':n.revAlt?'abgelöst':'neuer als die gültige')}
+// ---------- Version 57: Projektmanagement wie 3Deep (Darstellung 92): Abhängigkeiten (kind FS/SS/FF/SF, lag in Tagen), Deliverables, Zuweisungen, kritischer Pfad ----------
+const TAG=864e5,ART={FS:'Ende → Anfang (FS)',SS:'Anfang → Anfang (SS)',FF:'Ende → Ende (FF)',SF:'Anfang → Ende (SF)'};let PROJ=false;
+const istBand=t=>{const y=TY[t]||{};return y.band!=null?!!y.band:t==='phase'};
+function projektVorbereiten(daten){const RT=daten.relTypes||{},leben=daten.zeitArt==='leben',iso=t=>new Date(t).toISOString().slice(0,10);
+ E.forEach(k=>{const e=k.e,rt=RT[e.type]||{};k.kind=String(e.kind||'').toUpperCase();k.lag=+e.lag||0;k.dep=rt.dependency!=null?!!rt.dependency:e.type==='folgt';k.lief=rt.deliverable!=null?!!rt.deliverable:e.type==='liefert';k.zuw=rt.assign!=null?!!rt.assign:e.type==='zuweisung';
+  if(rt.hierarchy!=null)k.hier=!!rt.hierarchy;k.pm=k.dep?Object.assign({Art:ART[k.kind]||ART.FS},k.lag?{Versatz:(k.lag>0?'+':'')+k.lag+' Tage'}:{},e.meta):null});
+ if(!leben)N.forEach(n=>{if(n.ts==null&&n.pg==null)return;const m=Object.assign({},n.o.meta),set=(k,v)=>{if(m[k]==null)m[k]=v};
+  if(n.ts!=null){if(n.te-n.ts>=TAG/2){set('Start',iso(n.ts));set('Ende',iso(n.te));set('Dauer',Math.round((n.te-n.ts)/TAG)+' Tage')}else set('Termin',iso(n.ts))}if(n.pg!=null)set('Fortschritt',Math.round(n.pg)+' %');n.o.meta=m});
+ PROJ=!leben&&N.some(n=>n.ts!=null)&&E.some(k=>k.dep);kritischRechnen(leben)}
+// ---------- Version 59: Projektregeln wie 3Deep (handlung, Darstellung 93/96/98): Handlungsliste (Projekt) mit Belastbarkeit, Gate-Reife, Engpass Person ----------
+// Die Regeln sind unverändert aus 3Deep übernommen und laufen auf einer 3Deep-Sicht der Daten (PJ: Knoten mit Index i, Name n, Typ t, Reifegrad state, meta, adj; Kanten mit Indizes a/b).
+// Ergebnis: Punkte in der bestehenden Handlungsliste (daten.massnahmen, Quelle „Projekt“, P1 = rot, P2 = orange, P3 = gelb/grau), Attribute Belastbarkeit, Handlungsbedarf, Gate-Reife, Auslastung.
+let PJ=null,HL=[],RANG=[];const HL_TAGE=30,HL_GATE=60;
+const zust=s=>{const k=String(s||'').toLowerCase().replace(/[^a-zäöü]/g,'');return /^(inwork|inarbeit|work|active|inprogress|inverhandlung|läuft|laeuft|inumsetzung|inbearbeitung)$/.test(k)?'work':/^(frozen|eingefroren|review|inreview|gekündigt|gekuendigt|läuftaus|ruhend)$/.test(k)?'frozen':/^(released|freigegeben|complete|completed|done|erledigt|aktiv|gültig|abgeschlossen|imverkauf)$/.test(k)?'released':/^(obsolete|veraltet|abgelaufen|beendet|abgekündigt|abgekuendigt)$/.test(k)?'obsolete':/^(todo|offen|angebot|create|assign|notstarted|geplant)$/.test(k)?'todo':null};
+const deD=t=>{const d=new Date(t);return String(d.getUTCDate()).padStart(2,'0')+'.'+String(d.getUTCMonth()+1).padStart(2,'0')+'.'+d.getUTCFullYear()};
+function pjSicht(){const TT={};N.forEach(n=>{if(!TT[n.ty]){const y=TY[n.ty]||{};TT[n.ty]={l:y.label||n.ty,band:istBand(n.ty),shape:y.shape}}});
+ const NN=N.map(n=>({i:n.i,n:n.name,t:n.ty,key:n.id,ts:n.ts,te:n.te,pg:n.pg,state:zust(n.o.state),stateL:n.o.state||'',meta:Object.assign({},n.o.meta),krit:!!n.krit,adj:[],src:n}));
+ const EE=E.filter(k=>!k.syn).map(k=>({a:k.a.i,b:k.b.i,dep:!!k.dep,hier:!!k.hier,lief:!!k.lief,zuw:!!k.zuw,lag:k.lag||0,kind:k.kind,src:k}));
+ EE.forEach(e=>{NN[e.a].adj.push({e,o:e.b});NN[e.b].adj.push({e,o:e.a})});return{N:NN,E:EE,T:TT,h:HEUTE}}
+function handlung(daten){try{if(AUS){AUS=null;if(ausGeist){scene.remove(ausGeist);ausGeist.dispose();ausGeist=null}}}catch(_){}HL=[];RANG=[];PJ=null;try{MAS_K=null;if(!DM.on)DM.pfad=null}catch(_){}N.forEach(n=>{n.reife=null});if(daten.massnahmen)daten.massnahmen=daten.massnahmen.filter(m=>m.quelle!=='Projekt');
+ if(!PROJ||daten.zeitArt==='leben')return;
+ // nur echte Projektdaten: Abhängigkeit ausdrücklich als relType dependency oder Phasen als Band (sonst z. B. „Produktentwicklung“: Meilensteine „folgt“ → lauter Scheinpunkte)
+ if(!Object.values(daten.relTypes||{}).some(r=>r&&r.dependency===true)&&!Object.values(daten.types||{}).some(t=>t&&t.band===true))return;PJ=pjSicht();const {N:NN,E:EE,T:TT,h}=PJ,N_=NN,E_=EE;
+ const kind=n=>n.adj.some(a=>a.e.hier&&a.e.b===n.i),C=N_.filter(n=>n.ts!=null&&!(TT[n.t]||{}).band&&!kind(n));
+ if(!C.length||!E_.some(e=>e.dep||e.hier))return;
+ const fertig=n=>n.state==='released'||n.pg>=100,termin=n=>n.te-n.ts<TAG/2,vor=n=>n.adj.filter(a=>a.e.dep&&a.e.b===n.i),lief=n=>n.adj.filter(a=>a.e.lief),pers=n=>n.adj.filter(a=>a.e.zuw),pz=n=>n.pg==null?'kein Fortschritt':Math.round(n.pg)+' %',tg=k=>k===1?'1 Tag':k+' Tagen';
+ const istGate=n=>/gate/i.test(n.t+' '+TT[n.t].l)||TT[n.t].shape==='octagon';
+ const reifeVon=n=>{const pf=new Map([[n.i,{n:[n.i],e:[]}]]),q=[n.i],stop=x=>x!==n&&termin(x)&&(istGate(n)?istGate(x):true);
+  for(let k=0;k<q.length&&k<400;k++){const x=N_[q[k]],p0=pf.get(x.i);if(stop(x))continue;x.adj.forEach(a=>{if(pf.has(a.o))return;const o=N_[a.o];
+   if((a.e.dep&&a.e.b===x.i)||(a.e.hier&&a.e.b===x.i&&x!==n&&o.ts!=null)){pf.set(a.o,{n:p0.n.concat(a.o),e:p0.e.concat(a.e)});q.push(a.o)}})}
+  if(q.length===1){const el=n.adj.find(a=>a.e.hier&&a.e.a===n.i);if(el)N_[el.o].adj.forEach(a=>{const o=N_[a.o];if(a.e.hier&&a.e.b===el.o&&o!==n&&o.ts!=null&&!termin(o)&&o.te<=n.te+TAG/2&&!pf.has(o.i))pf.set(o.i,{n:[n.i,el.o,o.i],e:[n.adj.find(b=>b.o===el.o).e,a.e]})})}
+  const D_=new Map();pf.forEach((p,i)=>{const x=N_[i];if(i!==n.i&&stop(x))return;x.adj.forEach(a=>{const d=N_[a.o];if(a.e.lief&&d.ts==null&&d.state&&!D_.has(d.i))D_.set(d.i,{n:p.n.concat(d.i),e:p.e.concat(a.e)})})});
+  const L=[...D_.keys()].map(i=>N_[i]),rel=L.filter(d=>d.state==='released').length,frz=L.filter(d=>d.state==='frozen').length;return{L,tot:L.length,rel,frz,pfad:D_}};
+ const reifeTx=R=>R.rel+' von '+R.tot+' Deliverables freigegeben'+(R.frz?', '+R.frz+' eingefroren':'')+(R.tot-R.rel-R.frz?', '+(R.tot-R.rel-R.frz)+' in Arbeit oder offen':'');
+ const B={belegt:0,'widersprüchlich':0,'nicht prüfbar':0},np=[],op=[],hatZuw=E_.some(e=>e.zuw);
+ C.forEach(n=>{const f=fertig(n),R=termin(n)?reifeVon(n):null,L=R?R.L:lief(n).map(a=>N_[a.o]),Lk=L.filter(d=>d.state),rel=Lk.filter(d=>d.state==='released').length,fest=Lk.filter(d=>d.state==='released'||d.state==='frozen').length;let b='nicht prüfbar',it=null;
+  if(Lk.length){b='belegt';
+   if(f&&rel<Lk.length){b='widersprüchlich';HL.push({n,kat:'Widerspruch',st:3,sc:180,reife:!!R,tx:R?'als bestanden gemeldet, aber '+(Lk.length-rel)+' von '+Lk.length+' Deliverables davor nicht freigegeben':'als erledigt gemeldet, aber '+(Lk.length-rel)+' von '+Lk.length+' Deliverables nicht freigegeben'})}
+   else if(R);
+   else if(!f&&n.pg>=80&&!fest){b='widersprüchlich';HL.push({n,kat:'Widerspruch',st:2,sc:110,tx:Math.round(n.pg)+' % gemeldet, aber noch kein Deliverable eingefroren oder freigegeben'})}
+   else if(!f&&n.ts<h&&(n.pg||0)<50&&rel===Lk.length){b='widersprüchlich';HL.push({n,kat:'Widerspruch',st:1,sc:40,tx:'alle Deliverables freigegeben, aber erst '+pz(n)+' gemeldet (Fortschritt nachziehen?)'})}}
+  if(R&&R.tot){n.reife=R;const k=istGate(n)?'Gate-Reife':'Reife';if(n.meta[k]==null)n.meta=Object.assign({},n.meta,{[k]:R.rel+' von '+R.tot+' Deliverables freigegeben ('+Math.round(R.rel/R.tot*100)+' %)'})}
+  B[b]++;if(n.meta.Belastbarkeit==null)n.meta=Object.assign({},n.meta,{Belastbarkeit:b+(b==='nicht prüfbar'?' (kein Deliverable)':'')});if(b==='nicht prüfbar')np.push(n);
+  if(f)return;if(hatZuw&&!pers(n).length&&n.ts<=h+HL_TAGE*TAG)op.push(n);
+  const V_=vor(n),bis=Math.round((n.ts-h)/TAG),spaet=Math.round((h-n.te)/TAG),hinten=x=>x.te<h||x.te>n.ts+TAG/2||(x.ts<h&&(x.pg===0||(x.pg!=null&&x.te-x.ts>=2*TAG&&(h-x.ts)/(x.te-x.ts)-x.pg/100>=.25))),off=V_.filter(a=>!fertig(N_[a.o])&&(bis<=0||hinten(N_[a.o])));
+  if(termin(n)&&off.length&&bis<=HL_TAGE){const ub=off.filter(a=>N_[a.o].te<h).length;it={kat:TT[n.t].l+' gefährdet',gate:off,st:bis<=7||ub?3:2,sc:300-Math.max(-60,bis),tx:(bis>=0?(bis?'in '+tg(bis):'heute fällig'):'seit '+tg(-bis)+' fällig')+': '+off.length+' von '+V_.length+' Vorgängern '+(bis<=0?'nicht fertig':'in Verzug')+(ub?', davon '+ub+' überfällig':'')+(R&&R.tot?'; Reife: '+R.rel+' von '+R.tot+' Deliverables freigegeben':''),reife:!!(R&&R.tot)};if(R&&R.tot&&R.rel/R.tot<.7)it.st=3}
+  else if(termin(n)&&R&&R.tot&&R.rel<R.tot&&bis<=HL_GATE){const q=R.rel/R.tot;it={kat:(istGate(n)?'Gate':TT[n.t].l)+'-Reife',reife:true,st:q<.7?(bis<=14?3:2):1,sc:260-Math.max(-60,bis)-q*40,tx:(bis>=0?(bis?'in '+tg(bis):'heute fällig'):'seit '+tg(-bis)+' fällig')+': '+reifeTx(R)}}
+  else if(n.te<h)it={kat:'Überfällig',st:3,sc:200+Math.min(99,spaet),tx:'seit '+tg(spaet)+' fällig, '+pz(n)+' gemeldet'};
+  else if(n.ts<h){const seit=Math.round((h-n.ts)/TAG),v=(h-n.ts)/Math.max(TAG,n.te-n.ts);
+   if(n.pg===0||(n.pg==null&&n.state==='todo'))it={kat:'Nicht begonnen',st:2,sc:150+Math.min(49,seit),tx:'Start vor '+tg(seit)+' geplant, '+(n.pg===0?'0 %':'noch nichts')+' gemeldet'};
+   else if(n.pg!=null&&n.te-n.ts>=2*TAG&&v-n.pg/100>=.25)it={kat:'Hinter dem Zeitplan',st:2,sc:120+Math.round((v-n.pg/100)*50),tx:Math.round(v*100)+' % der Zeit verbraucht, '+Math.round(n.pg)+' % gemeldet'}}
+  if(!it)return;it.n=n;if(n.krit&&!it.gate&&!it.reife){it.tx=it.kat+': '+it.tx;it.kat='Kritischer Pfad verspätet';it.st=3;it.sc+=100}
+  HL.push(it)});
+ const PZ=new Map(),PA=new Set();C.forEach(n=>{if(fertig(n))return;pers(n).forEach(a=>{PA.add(a.o);if(termin(n))return;if(!PZ.has(a.o))PZ.set(a.o,[]);PZ.get(a.o).push(n)})});
+ PZ.forEach((L,pi)=>{const p=N_[pi],g=engpass(L,h);p.meta=Object.assign({},p.meta,{Auslastung:g.max?g.max+(g.max===1?' Task':' Tasks')+' gleichzeitig (nächste '+HL_GATE+' Tage), '+L.length+' offen':'keine offenen Tasks in den nächsten '+HL_GATE+' Tagen, '+L.length+' offen'});
+  if(g.max>=3||(g.max>=2&&g.krit>=2))HL.push({n:p,kat:'Engpass Person',st:g.krit?3:2,sc:170+g.max*5+g.krit,eng:g.L,tx:g.max+' offene Tasks gleichzeitig vom '+deD(g.u)+' bis '+deD(g.v)+(g.krit?', davon '+g.krit+' auf dem kritischen Pfad':'')})});
+ RANG=[...PA].map(pi=>ausfallRechnen(pi,14)).filter(r=>r.d.size).sort((x,y)=>y.ende-x.ende||y.term.length-x.term.length||y.d.size-x.d.size||(x.p.n<y.p.n?-1:1));
+ HL.forEach(it=>{const m=it.n.meta;it.n.meta=Object.assign({},m,{Handlungsbedarf:(m.Handlungsbedarf?m.Handlungsbedarf+'; ':'')+it.kat+': '+it.tx})});
+ const einzel=HL.length;
+ if(op.length)HL.push({sam:op,kat:'Niemand zuständig',st:1,sc:60,tx:op.length+(op.length===1?' offener Task':' offene Tasks')+' ohne zugewiesene Person (laufend oder Start in den nächsten '+HL_TAGE+' Tagen)'});
+ if(np.length){const o=np.filter(n=>!fertig(n)).length;HL.push({sam:np,kat:'Nicht prüfbar',st:0,sc:10,tx:np.length+' von '+C.length+' Tasks ohne Deliverable: gemeldeter Fortschritt nicht prüfbar'+(o?' ('+o+' davon offen)':'')})}
+ HL.sort((a,b)=>b.st-a.st||b.sc-a.sc);
+ // zurück in 4Deep: Attribute, Gate-Reife am Objekt, Punkte der Handlungsliste
+ N_.forEach(x=>{x.src.o.meta=x.meta;x.src.reife=x.reife?{rel:x.reife.rel,tot:x.reife.tot}:null});
+ PJ.B=B;PJ.einzel=einzel;PJ.info='Stand '+deD(h)+': '+einzel+(einzel===1?' Punkt':' Punkte')+' zum Eingreifen'+(HL.length>einzel?', '+(HL.length-einzel)+' Sammelhinweis'+(HL.length-einzel>1?'e':''):'')+' · Belastbarkeit der Meldungen: '+B.belegt+' belegt · '+B['widersprüchlich']+' widersprüchlich · '+B['nicht prüfbar']+' nicht prüfbar';
+ const M=HL.map((it,k)=>({prio:it.st>=3?1:it.st===2?2:3,quelle:'Projekt',rolle:'Projektleitung',signal:it.kat,text:it.sam?it.tx:it.n.n+': '+it.tx,ids:it.sam?it.sam.map(x=>x.key):[it.n.key],hl:k,
+  pfade:it.sam?null:hlPfade(it).map(p=>p.n.map(i=>N_[i].src))}));
+ daten.massnahmen=(daten.massnahmen||[]).concat(M);if(!daten.massnahmenStand||daten.massnahmenStandPJ){daten.massnahmenStand=PJ.info;daten.massnahmenStandPJ=true}}
+function hlPfade(it){const {N:N_,T:TT}=PJ,n=it.n,P=[],add=(ns,es)=>{if(P.length<60)P.push({n:ns,e:es})},leute=(x,ns,es)=>x.adj.filter(a=>a.e.zuw).forEach(a=>add(ns.concat(a.o),es.concat(a.e)));
+ if(it.eng){it.eng.forEach(x=>{const z=n.adj.find(a=>a.o===x.i&&a.e.zuw);if(!z)return;const nx=x.adj.filter(a=>a.e.dep&&a.e.a===x.i);if(!nx.length)add([n.i,x.i],[z.e]);nx.forEach(a=>add([n.i,x.i,a.o],[z.e,a.e]))});return P}
+ if(it.gate||it.reife){if(it.gate)it.gate.forEach(a=>{add([n.i,a.o],[a.e]);leute(N_[a.o],[n.i,a.o],[a.e])});
+  if(n.reife)n.reife.pfad.forEach((p,i)=>{if(N_[i].state==='released')return;add(p.n,p.e);N_[i].adj.forEach(b=>{const o=N_[b.o];if(/issue/i.test(o.t+' '+TT[o.t].l)&&o.state!=='released'&&!p.n.includes(b.o))add(p.n.concat(b.o),p.e.concat(b.e))})})}
+ else{const dfs=(x,ns,es)=>{const nx=x.adj.filter(a=>a.e.dep&&a.e.a===x.i&&!ns.includes(a.o));if(x!==n&&(x.te-x.ts<TAG/2||!nx.length||ns.length>8)){add(ns.slice(),es.slice());return}nx.forEach(a=>dfs(N_[a.o],ns.concat(a.o),es.concat(a.e)))};if(n.adj.some(a=>a.e.dep&&a.e.a===n.i))dfs(n,[n.i],[])}
+ n.adj.filter(a=>a.e.lief).forEach(a=>{add([n.i,a.o],[a.e]);N_[a.o].adj.forEach(b=>{const o=N_[b.o];if(b.o!==n.i&&/issue/i.test(o.t+' '+TT[o.t].l)&&o.state!=='released')add([n.i,a.o,b.o],[a.e,b.e])})});
+ leute(n,[n.i],[]);return P}
+// Engpass Person und Ausfall (3Deep Darstellung 98): Gleichzeitigkeit offener Tasks im Fenster [heute, heute+60 Tage]; Ausfall ab heute (Anzeige folgt in V60)
+function engpass(L,h){const a=h,b=h+HL_GATE*TAG,iv=L.map(n=>({n,s:Math.max(n.ts,a),e:Math.max(n.te,a+7*TAG)})).filter(x=>x.s<b&&x.e>x.s),pts=[...new Set(iv.flatMap(x=>[x.s,x.e]))].sort((x,y)=>x-y);let max=0,u=0,v=0,M=[],key='';
+ for(let k=0;k<pts.length-1&&pts[k]<b;k++){const t0=pts[k],on=iv.filter(x=>x.s<=t0&&x.e>t0),ky=on.map(x=>x.n.i).join();if(on.length>max){max=on.length;u=t0;v=pts[k+1];M=on.map(x=>x.n);key=ky}else if(max&&ky===key&&t0===v)v=pts[k+1]}
+ return{max,u,v:Math.min(v,b),L:M,krit:M.filter(n=>n.krit).length}}
+function ausfallRechnen(pi,tage){const {N:N_,E:E_,T:TT,h}=PJ,a=h,D_=tage*TAG,b=a+D_,S=new Map(),F=new Map(),p=N_[pi],fertig=n=>n.state==='released'||n.pg>=100,eps=TAG/48,eigen=[],vertr=[];
+ N_.forEach(n=>{if(n.ts!=null&&!(TT[n.t]||{}).band){S.set(n.i,n.ts);F.set(n.i,n.te)}});
+ p.adj.forEach(x=>{if(!x.e.zuw)return;const n=N_[x.o];if(!S.has(n.i)||fertig(n)||eigen.includes(n)||vertr.includes(n))return;if(n.adj.some(y=>y.e.zuw&&y.o!==pi)){vertr.push(n);return}
+  if(n.ts<a){F.set(n.i,Math.max(n.te,a)+D_);eigen.push(n)}else if(n.ts<b){S.set(n.i,b);F.set(n.i,b+n.te-n.ts);eigen.push(n)}});
+ const dep=E_.filter(e=>e.dep&&S.has(e.a)&&S.has(e.b)),hier=E_.filter(e=>e.hier&&S.has(e.a)&&S.has(e.b));
+ for(let r=0;r<400;r++){let mv=false;
+  dep.forEach(e=>{if(fertig(N_[e.b]))return;const lg=e.lag*TAG,k=e.kind,ds=k==='SS'?S.get(e.a)+lg-S.get(e.b):k==='FF'?F.get(e.a)+lg-F.get(e.b):k==='SF'?S.get(e.a)+lg-F.get(e.b):F.get(e.a)+lg-S.get(e.b);
+   if(ds>eps){S.set(e.b,S.get(e.b)+ds);F.set(e.b,F.get(e.b)+ds);mv=true}});
+  hier.forEach(e=>{if(F.get(e.a)>F.get(e.b)+eps){F.set(e.b,F.get(e.a));mv=true}});if(!mv)break}
+ const d=new Map();S.forEach((s,i)=>{const n=N_[i],ds=s-n.ts,df=F.get(i)-n.te;if(ds>TAG/2||df>TAG/2)d.set(i,{s,f:F.get(i),dt:Math.round(Math.max(ds,df)/TAG)})});
+ const blatt=[...S.keys()].map(i=>N_[i]).filter(n=>!n.adj.some(x=>x.e.hier&&x.e.b===n.i)),alt=Math.max(...blatt.map(n=>n.te)),neu_=Math.max(...blatt.map(n=>F.get(n.i))),
+  letzt=blatt.filter(n=>n.te-n.ts<TAG/2).sort((x,y)=>y.te-x.te)[0]||null,term=[...d.keys()].map(i=>N_[i]).filter(n=>n.te-n.ts<TAG/2).sort((x,y)=>x.te-y.te).map(n=>({n,dt:d.get(n.i).dt}));
+ return{p,tage,d,eigen,vertr,term,ende:Math.max(0,Math.round((neu_-alt)/TAG)),letzt}}
+// ---------- Version 60: Ausfall durchspielen und „Wer darf nicht ausfallen?“ (wie 3Deep Darstellung 98, Rechnung ausfallRechnen) ----------
+// 4D-Mehrwert: die verschobenen Balken und Termine gleiten im Projektplan in ca. 3 s an ihren neuen Platz, der alte Stand bleibt als blasser Geisterbalken stehen.
+// AUS = Ergebnis von ausfallRechnen + Wochen; AUS.f = Stand der Animation (0 = Plan, 1 = mit Ausfall), AUS.ziel = 1 (an) bzw. 0 (Aufheben, danach aufgeräumt).
+let AUS=null,ausGeist=null;const AUS_DAUER=3;
+const tgT=k=>k===1?'1 Tag':k+' Tage';
+function ausfallAn(n,wo){if(!PJ||!n)return;const pi=n.i;if(AUS)ausAufraeumen();if(layout!=='plan'&&PROJ){$('ly').value='plan';setzeLayout('plan',false)}
+ const A=ausfallRechnen(pi,wo*7);A.wo=wo;A.f=0;A.ziel=1;AUS=A;
+ A.d.forEach((x,i)=>{const m=N[i];m.ausS=x.s-m.ts;m.ausF=x.f-m.te;m.ausX0=m.ziel.x});
+ const p=N[pi];p.o.meta=Object.assign({},p.o.meta,{Ausfall:wo+' Wochen ab heute: Projektende '+(A.ende?'+'+tgT(A.ende):'unverändert')+', '+A.term.length+' Termine später'});
+ // Kette Person → ruhende Tasks → verschobene Nachfolger mit Lichtpunkten
+ const M=new Set([pi,...A.d.keys()]),seg=[];E.forEach(k=>{if(k.syn)return;const a=k.a.i,b=k.b.i;if((k.dep&&M.has(a)&&M.has(b)&&A.d.has(b))||(k.zuw&&(a===pi||b===pi)&&A.d.has(a===pi?b:a)))seg.push(k.zuw&&b===pi?[k.b,k.a]:[k.a,k.b])});
+ try{MAS_K=null}catch(_){}if(!DM.on||DM.intern)DM.pfad=seg.length?seg:null;
+ ausGeistBauen();waehle(pi);if(!DM.on){nutzerSteuert();const z=heimZiel([...A.d.keys()].map(i=>N[i]));if(z){K.zZiel.copy(z.c);K.zDist=z.d;K.flug=true}}
+ ausAnzeigen();neu()}
+function ausfallAus(sofort){if(!AUS)return;const m=Object.assign({},AUS.p.src.o.meta);delete m.Ausfall;AUS.p.src.o.meta=m;if(sofort){AUS.f=0;ausTick(0);ausAufraeumen()}else AUS.ziel=0;if(!DM.on||DM.intern)DM.pfad=null;ausAnzeigen();neu()}
+function ausAufraeumen(){if(!AUS)return;AUS.d.forEach((x,i)=>{const m=N[i];if(m.ausX0!=null&&PLAN)m.ziel.x=m.ausX0;m.ausS=m.ausF=m.ausX0=null});AUS=null;if(ausGeist){scene.remove(ausGeist);ausGeist.dispose();ausGeist=null}matAlle=true;ausAnzeigen();neu()}
+// Geisterbalken: alter Stand der verschobenen Objekte (Termine als kurzer Block)
+function ausGeistBauen(){if(ausGeist){scene.remove(ausGeist);ausGeist.dispose();ausGeist=null}if(!AUS||!PLAN||!zeitX)return;const L=[...AUS.d.keys()].map(i=>N[i]);if(!L.length)return;
+ ausGeist=new T.InstancedMesh(BALKEN,new T.MeshBasicMaterial({color:0x8a94a6,transparent:true,opacity:.3,depthWrite:false}),L.length);ausGeist.frustumCulled=false;ausGeist.renderOrder=2;
+ L.forEach((n,k)=>{const kurz=n.te-n.ts<TAG/2,x0=kurz?zeitX(n.ts)-PLAN.row*.18:zeitX(n.ts),w=kurz?PLAN.row*.36:Math.max(PLAN.row*.1,zeitX(n.te)-zeitX(n.ts)),hh=n.r*(kurz?1.4:.75);V.set(x0,n.ziel.y,n.ziel.z);SK.set(w,hh,hh);M4.compose(V,Q.identity(),SK);ausGeist.setMatrixAt(k,M4)});
+ ausGeist.instanceMatrix.needsUpdate=true;scene.add(ausGeist)}
+function ausTick(dt){const A=AUS;if(!A)return;if(A.f===A.ziel&&dt)return;const v=dt/AUS_DAUER;A.f=A.ziel>A.f?Math.min(A.ziel,A.f+v):Math.max(A.ziel,A.f-v);
+ const t=A.f,e=t*t*(3-2*t);if(PLAN&&zeitX){const s=PLAN.Lw/Math.max(TAG,PLAN.t1-PLAN.t0);A.d.forEach((x,i)=>{const m=N[i];if(m.ausX0!=null)m.ziel.x=m.ausX0+(m.ausS+m.ausF)/2*s*e})}A.e=e;matAlle=true;neu();
+ if(A.ziel===0&&A.f===0)ausAufraeumen()}
+// Anzeige in der Handlungsliste: Ausfall-Kasten und Rangliste; in der Profilkarte einer Person die Knöpfe
+function ausHtml(){if(!PJ||!RANG.length&&!AUS)return'';let h='';const A=AUS&&AUS.ziel?AUS:null;
+ if(A)h+='<div class="aus"><b>Ausfall '+esc(A.p.n)+' · '+A.wo+' Wochen ab heute</b><br><span class="m">'+A.eigen.length+(A.eigen.length===1?' offener Task ruht':' offene Tasks ruhen')+(A.vertr.length?', '+A.vertr.length+' mit weiteren Zuständigen (nicht verschoben)':'')+'</span><br>'+
+  'Projektende: <b>'+(A.ende?'+'+tgT(A.ende):'unverändert')+'</b>'+(A.ende&&A.letzt?' <span class="m">('+esc(A.letzt.n)+')</span>':'')+'<br>'+
+  (A.term.length?'<span class="m">Später: '+A.term.slice(0,5).map(x=>esc(x.n.n)+' +'+tgT(x.dt)).join(' · ')+(A.term.length>5?' …':'')+'</span><br>':'')+
+  '<span class="m">'+A.d.size+(A.d.size===1?' Objekt':' Objekte')+' verschoben'+(A.d.size?', alter Stand blass im Projektplan':'')+'</span><div style="margin-top:5px">'+[2,4].map(w=>'<button data-aw="'+w+'" data-ap="'+A.p.i+'"'+(w===A.wo?' disabled':'')+'>'+w+' Wochen</button>').join(' ')+' <button data-aw="0">Aufheben</button></div></div>';
+ if(RANG.length)h+='<div class="rang"><b>Wer darf nicht ausfallen?</b> <span class="m">Ausfall von 2 Wochen ab heute, Projektende verschiebt sich um</span>'+RANG.slice(0,5).map(r=>'<div class="ev rg'+(A&&A.p===r.p?' on':'')+'" data-ap="'+r.p.i+'" data-aw="2"><span class="p '+(r.ende?'p1':'p3')+'">'+(r.ende?'+'+r.ende:'0')+'</span><span><b>'+esc(r.p.n)+'</b> · '+(r.ende?'+'+tgT(r.ende):'0 Tage')+' · '+r.term.length+(r.term.length===1?' Termin':' Termine')+' später · '+r.d.size+(r.d.size===1?' Objekt':' Objekte')+' verschoben</span></div>').join('')+'<div class="m" style="margin-top:4px">Klick = Ausfall durchspielen (noch ein Klick hebt auf). Auch über die Profilkarte einer Person.</div></div>';
+ return h}
+function ausAnzeigen(){const el=$('mas');if(el&&el.style.display==='block'&&el.dataset.art==='mas'){const w=$('masaus');if(w)w.innerHTML=ausHtml()}if(prof.i>=0&&N[prof.i]&&PJ&&PJ.N[prof.i].adj.some(a=>a.e.zuw))zeigeProfil(prof.i)}
+function ausKlick(e){const b=e.target.closest('[data-aw]');if(!b||b.disabled)return false;e.stopPropagation();const w=+b.dataset.aw,pi=+b.dataset.ap;
+ if(!w||(b.classList.contains('rg')&&AUS&&AUS.ziel&&AUS.p.i===pi&&AUS.wo===w))ausfallAus(false);else ausfallAn(N[pi],w);return true}
+function ausProfil(n){if(!PJ||!PJ.N[n.i]||!PJ.N[n.i].adj.some(a=>a.e.zuw&&PJ.N[a.o].ts!=null)||!/person|bust|figur/i.test(n.ty+' '+n.form))return'';const A=AUS&&AUS.ziel&&AUS.p.i===n.i?AUS:null;
+ return'<div class="aus"><b>Ausfall durchspielen</b> <span class="m">ab heute: offene Tasks ruhen, Abhängigkeiten ziehen nach</span><div style="margin-top:4px">'+[2,4].map(w=>'<button data-aw="'+w+'" data-ap="'+n.i+'"'+(A&&A.wo===w?' disabled':'')+'>'+w+' Wochen</button>').join(' ')+(A?' <button data-aw="0">Aufheben</button>':'')+'</div>'+
+  (A?'<div style="margin-top:4px">Projektende: <b>'+(A.ende?'+'+tgT(A.ende):'unverändert')+'</b>'+(A.term.length?' · '+A.term.length+' Termine später':'')+'</div>':'')+'</div>'}
+// unverändert aus 3Deep (kritischRechnen): geliefert (critical) oder Rückwärtsrechnung über FS/SS/FF/SF, Puffer unter einem halben Tag = kritisch
+function kritischRechnen(leben){N.forEach(n=>{n.krit=false});E.forEach(e=>{e.kp=false});if(leben)return;
+ const dep=E.filter(e=>e.dep&&e.a.ts!=null&&e.b.ts!=null),gel=N.some(n=>n.kritG!=null);
+ if(gel)N.forEach(n=>{n.krit=!!n.kritG});
+ else if(dep.length){const mit=new Set(),succ=new Map(),LF=new Map();dep.forEach(e=>{mit.add(e.a.i);mit.add(e.b.i);if(!succ.has(e.a.i))succ.set(e.a.i,[]);succ.get(e.a.i).push(e)});const ende=Math.max(...[...mit].map(i=>N[i].te));
+  const lf=(i,st)=>{if(LF.has(i))return LF.get(i);if(st.has(i))return ende;st.add(i);const n=N[i],du=n.te-n.ts;let v=ende;(succ.get(i)||[]).forEach(e=>{const m=e.b,lfm=lf(m.i,st),lsm=lfm-(m.te-m.ts),lg=e.lag*TAG,k=e.kind;v=Math.min(v,k==='SS'?lsm-lg+du:k==='FF'?lfm-lg:k==='SF'?lfm-lg+du:lsm-lg)});st.delete(i);LF.set(i,v);return v};
+  mit.forEach(i=>{if(lf(i,new Set())-N[i].te<TAG*.5)N[i].krit=true})}
+ dep.forEach(e=>{const A=e.a,B=e.b;if(!A.krit||!B.krit)return;if(gel){e.kp=true;return}const lg=e.lag*TAG,k=e.kind,luft=k==='SS'?B.ts-A.ts-lg:k==='FF'?B.te-A.te-lg:k==='SF'?B.te-A.ts-lg:B.ts-A.te-lg;e.kp=luft<TAG*.5});
+ N.forEach(n=>{if(n.krit&&n.ts!=null&&(n.o.meta||{})['Kritischer Pfad']==null)n.o.meta=Object.assign({},n.o.meta,{'Kritischer Pfad':'ja'})})}
 function verzugText(n){return n.verzug?n.verzug+(n.verzug===1?' Tag':' Tage')+' (Termin '+zeitText(n.t1)+', nicht fertig)':''}
 // Startlagen für große Datenmengen: Breitensuche ab gut vernetzten Objekten, Kinder nach außen versetzt,
 // Schrittweite so, dass die Objekte etwa im Endvolumen verteilt sind (sonst rechnet das Kräfte-Layout fast n²)
@@ -565,7 +707,7 @@ function reifeName(st){return REIFE_NAMEN[st]||(st==='normal'?'ohne Reifegrad':S
 function typReihe(){const vorn=(D&&Array.isArray(D.schichtReihe)?D.schichtReihe:[]).filter(t=>N.some(n=>n.ty===t)),k=vorn.concat(Object.keys(TY).filter(t=>!vorn.includes(t)&&N.some(n=>n.ty===t)));   // Version 33: daten.schichtReihe = Typen zuerst (oben)
  N.forEach(n=>{if(!k.includes(n.ty))k.push(n.ty)});return k}
 function setzeLayout(ly,kamera){
- layout=ly;stoppeSim();N.forEach(n=>{if(n.r0!=null)n.r=n.r0});matAlle=true;zeitEbene.visible=false;N.forEach(n=>{n.axAus=false;n.skyAus=false});skyG.visible=false;axLinien.visible=false;AXINFO=null;heuteEbene.visible=false;if(balkenMesh)balkenMesh.visible=false;const L=abstand();
+ layout=ly;stoppeSim();N.forEach(n=>{if(n.r0!=null)n.r=n.r0});matAlle=true;zeitEbene.visible=false;N.forEach(n=>{n.axAus=false;n.skyAus=false});skyG.visible=false;axLinien.visible=false;AXINFO=null;heuteEbene.visible=false;if(balkenMesh)balkenMesh.visible=false;if(PLAN||planG.visible){planLeeren();if(balkenMesh){balkenMesh.userData.liste.forEach((n,i)=>balkenMesh.setColorAt(i,n.col));balkenMesh.instanceColor.needsUpdate=true}}E.forEach(k=>k.planAus=false);const L=abstand();
  if(ly==='netz'||ly==='schichten'||ly==='reife'){
   const reihe=typReihe();
   const rr=reifeReihe();
@@ -573,6 +715,7 @@ function setzeLayout(ly,kamera){
   starteSim(L);
  }else if(ly==='baum'){baum(L)}
  else if(ly==='zeit'){zeitachse(L)}
+ else if(ly==='plan'){planLayout(L);if(kamera){K.gier=0;K.nick=.12}}
  else if(ly==='skyline'){skyline(L);if(kamera){const rw=SKY?SKY.reihen:9;/* Version 50: eine Reihe fast auf Augenhöhe (P3), zwei Reihen halbhoch, viele wie bisher */K.gier=rw<=1?-.15:rw===2?-.3:-.5;K.nick=rw<=1?.04:rw===2?.25:.42}}
  else if(ly==='reise'){reise(L);if(kamera){K.gier=-.35;K.nick=.5}}
  else if(ly==='achsen'){achsenLayout(L);if(kamera){K.gier=-.3;K.nick=.32}}
@@ -678,7 +821,54 @@ function zeitachse(L){
  zeitX=X;
 }
 let zeitX=null;
-function heuteSetzen(){heuteEbene.visible=layout==='zeit'&&!!zeitX&&hatZeit&&HEUTE>=tMin&&HEUTE<=tMax;if(heuteEbene.visible)heuteEbene.position.x=zeitX(HEUTE)}
+// ---------- Version 57: Layout „Projektplan“ wie 3Deep (planLayout, Darstellung 92/94): Zeit nach rechts, je Band (Phase) Zeilen ohne Überlappung,
+// Objekt in der Mitte seines Dauerbalkens, Fortschritt im Balken, kritischer Pfad rot (Röhren, Ringe, Balken), Heute-Ebene; Objekte ohne Zeit dahinter (Tiefe = Links bis zum nächsten Objekt mit Zeit) ----------
+const planG=new T.Group();planG.visible=false;scene.add(planG);let PLAN=null,fortMesh=null,kritMesh=null;
+const KRIT=new T.Color(0xe0282e),RING=new T.TorusGeometry(1,.07,8,40);
+function planLeeren(){if(AUS)ausfallAus(true);planG.children.slice().forEach(c=>{planG.remove(c);c.geometry.dispose();c.material.dispose()});planG.visible=false;PLAN=null;
+ if(fortMesh){scene.remove(fortMesh);fortMesh.dispose();fortMesh=null}if(kritMesh){scene.remove(kritMesh);kritMesh.dispose();kritMesh=null}}
+function planLayout(L){planLeeren();const zt=N.filter(n=>n.ts!=null&&!typAus[n.ty]);if(!zt.length){zeitachse(L);return}
+ const row=L*.8,t0=Math.min(...zt.map(n=>n.ts)),t1=Math.max(...zt.map(n=>n.te)),sp=Math.max(TAG,t1-t0);
+ zt.forEach(n=>{if(!istBand(n.ty))n.r=Math.max(n.r0,row*.3)});   // Version 94 (3Deep): Objekte mit Zeit im Plan größer
+ const par=new Map();E.forEach(e=>{if(e.hier&&!par.has(e.a))par.set(e.a,e.b)});
+ const bandOf=n=>{let m=n;for(let k=0;k<50&&m;k++){if(istBand(m.ty))return m;m=par.get(m)}return null};
+ const grp=new Map();zt.forEach(n=>{const b=bandOf(n);if(!grp.has(b))grp.set(b,[]);grp.get(b).push(n)});
+ const bt=b=>b&&b.ts!=null?b.ts:Math.min(...grp.get(b).map(n=>n.ts)),keys=[...grp.keys()].sort((a,b)=>a===null?-1:b===null?1:bt(a)-bt(b)||a.i-b.i);
+ let Lw=row*Math.max(14,Math.sqrt(zt.length)*6),X,bands,y;const FF=freieFlaeche(),A=Math.max(1,(FF.x1-FF.x0)/Math.max(200,FF.y1-FF.y0)),lab=row*(2+Math.min(14,Math.max(4,...[...grp.keys()].filter(Boolean).map(b=>b.name.length))*.55));   // Version 118 (3Deep): Breite nach dem Seitenverhältnis der freien Fläche
+ for(let lauf=0;lauf<6;lauf++){X=t=>(t-t0)/sp*Lw-Lw/2;bands=[];y=0;
+  keys.forEach(b=>{const ns=grp.get(b).sort((p,q)=>(p===b?-1:q===b?1:0)||p.ts-q.ts||p.te-q.te||p.i-q.i),lanes=[],y0=y;
+   ns.forEach(n=>{const x0=X(n.ts),x1=X(n.te),cx=(x0+x1)/2,hw=Math.max((x1-x0)/2,row*.6);let l=lanes.findIndex(e_=>e_<=cx-hw+1e-6);if(l<0){l=lanes.length;lanes.push(0)}lanes[l]=n===b?Infinity:cx+hw;n.ziel.set(cx,y-l*row,0)});
+   bands.push({b,y0:y0+row/2,y1:y-(lanes.length-1)*row-row/2});y-=lanes.length*row+row*.5});
+  const hh=-y+row*2.6,zi=Math.max(hh*1.2,A*hh*.95-lab);if(Math.abs(zi-Lw)<Lw*.04||lauf===5)break;Lw=zi}
+ // Objekte ohne Zeit: hinter ihrem Bezug, Tiefe = Zahl der Links bis zum nächsten Objekt mit Zeit
+ const dist=new Map(),q=[],dz=row*1.6;zt.forEach(n=>{dist.set(n,0);q.push(n)});
+ for(let h=0;h<q.length;h++)q[h].nb.forEach(m=>{if(!dist.has(m)){dist.set(m,dist.get(q[h])+1);q.push(m)}});
+ const belegt={};let md=0;
+ q.forEach(n=>{const d=dist.get(n);if(!d)return;md=Math.max(md,d);const vor=n.nb.filter(m=>dist.get(m)===d-1);V.set(0,0,0);vor.forEach(m=>V.add(m.ziel));V.multiplyScalar(1/vor.length);
+  const key=d+':'+Math.round(V.x/(row*1.2))+':'+Math.round(V.y/row),k=belegt[key]=(belegt[key]||0)+1;n.ziel.set(V.x+((k-1)%2?1:-1)*Math.ceil((k-1)/2)*row*1.2,V.y,-d*dz)});
+ const rest=N.filter(n=>!dist.has(n));rest.forEach((n,i)=>n.ziel.set(-Lw/2+(i%20)*row*1.5,y-row*(1+Math.floor(i/20)),-(md+1)*dz));
+ zeitX=X;PLAN={X,t0,t1,row,Lw,bands,yU:y,zH:-(md+(rest.length?1:0))*dz};
+ // Bänder (abwechselnd leicht getönt) und Monatsraster
+ const x0=X(t0)-row*.8,x1=X(t1)+row*.8,zB=-row*.7;
+ bands.forEach((bd,k)=>{const c=new T.Color(bd.b?(TY[bd.b.ty]||{}).color||'#6c7fd8':'#27408b'),m=new T.Mesh(new T.PlaneGeometry(1,1),new T.MeshBasicMaterial({color:c,transparent:true,opacity:k%2?.07:.12,side:T.DoubleSide,depthWrite:false}));
+  m.scale.set(x1-x0,bd.y0-bd.y1,1);m.position.set((x0+x1)/2,(bd.y0+bd.y1)/2,zB);planG.add(m)});
+ {const P=[],d=new Date(t0);let t=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),1);const mon=sp/TAG>900?3:1;PLAN.mon=[];
+  while(t<=t1+TAG){if(t>=t0-TAG){const x=X(t);P.push(x,row*.5,zB,x,y+row*.5,zB);PLAN.mon.push(t)}const e=new Date(t);t=Date.UTC(e.getUTCFullYear(),e.getUTCMonth()+mon,1)}
+  const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(P,3));planG.add(new T.LineSegments(g,new T.LineBasicMaterial({color:0x8090a8,transparent:true,opacity:.35,depthWrite:false})))}
+ {const xl=X(t0)-lab,xr=X(t1)+row;PLAN.ecken=[new T.Vector3(xl,row*2.6,0),new T.Vector3(xr,row*2.6,0),new T.Vector3(xl,y,0),new T.Vector3(xr,y,0)]}   // Namen der Bänder links und Heute oben mit in der Startansicht
+ if(HEUTE>=t0&&HEUTE<=t1){const m=new T.Mesh(new T.BoxGeometry(1,1,1),new T.MeshBasicMaterial({color:0xe0282e,transparent:true,opacity:.75}));m.scale.set(row*.06,-y+row*1.6,row*.06);m.position.set(X(HEUTE),(y+row*1.6)/2,row*.4);planG.add(m)}   // Heute-Linie vorn (die Ebene ist von vorn nur eine Kante)
+ planG.visible=true;heuteEbene.scale.set(1,-y+row*2,Math.max(row*4,-PLAN.zH+row*3));
+ // Fortschritt im Balken (deckend, dunkler) und rote Ringe am kritischen Pfad
+ if(balkenMesh){const li=balkenMesh.userData.liste;li.forEach((n,i)=>balkenMesh.setColorAt(i,n.krit?TMP.copy(n.col).lerp(KRIT,.7):n.col));balkenMesh.instanceColor.needsUpdate=true;balkenMesh.visible=true;
+  fortMesh=new T.InstancedMesh(BALKEN,new T.MeshStandardMaterial({color:0xffffff,roughness:.5}),li.length);fortMesh.frustumCulled=false;fortMesh.userData.liste=li;li.forEach((n,i)=>fortMesh.setColorAt(i,TMP.copy(n.krit?KRIT:n.col).multiplyScalar(.75)));scene.add(fortMesh)}
+ const kr=N.filter(n=>n.krit&&n.ts!=null);if(kr.length){kritMesh=new T.InstancedMesh(RING,new T.MeshStandardMaterial({color:KRIT,roughness:.4}),kr.length);kritMesh.frustumCulled=false;kritMesh.userData.liste=kr;scene.add(kritMesh)}
+ E.forEach(k=>{k.planAus=k.hier&&k.a.ts!=null&&k.b.ts!=null})}   // Projektstruktur zwischen Objekten mit Zeit zeigen die Bänder
+function planBeschriften(L){if(!PLAN)return;const P=PLAN,h=Math.max(L*.5,P.row*.55),xl=P.X(P.t0)-P.row*1.2,M=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+ P.bands.forEach(bd=>{if(bd.b)marke(bd.b.name,xl,bd.y0-P.row*.5,0,h*1.15,(TY[bd.b.ty]||{}).color).center.set(1,.5)});
+ P.mon.forEach((t,i)=>{const d=new Date(t),txt=M[d.getUTCMonth()]+(i===0||d.getUTCMonth()===0?' '+d.getUTCFullYear():'');marke(txt,P.X(t)+P.row*.1,P.row*1.1,-P.row*.7,h*.8,'#4a5a75').center.set(0,.5)});
+ N.forEach(n=>{const R=n.reife;if(!R||!R.tot||n.ts==null||n.sZiel<=0)return;const q=R.rel/R.tot;marke(R.rel+'/'+R.tot+' frei',n.ziel.x,n.ziel.y-P.row*.62,n.ziel.z+P.row*.1,h*.62,q>=1?'#16a34a':q>=.7?'#b08900':'#d0302a').center.set(.5,.5)});   // Version 59: Gate-Ampel wie 3Deep (grün 100 %, gelb ab 70 %, rot)
+ if(HEUTE>=P.t0&&HEUTE<=P.t1)marke('Heute · '+zeitText(HEUTE),P.X(HEUTE),P.row*2.1,0,h*1.1,'#d0302a').center.set(.5,.5)}
+function heuteSetzen(){heuteEbene.visible=(layout==='zeit'||layout==='plan'&&!!PLAN)&&!!zeitX&&hatZeit&&HEUTE>=tMin&&HEUTE<=tMax;if(heuteEbene.visible)heuteEbene.position.x=zeitX(HEUTE)}
 const schrift=new T.Group();scene.add(schrift);
 function marke(text,x,y,z,h,farbe){const c=document.createElement('canvas'),g=c.getContext('2d');g.font='600 44px system-ui,sans-serif';const w=Math.ceil(g.measureText(text).width)+16;c.width=w;c.height=60;
  g.font='600 44px system-ui,sans-serif';g.fillStyle=farbe||'#1d2b45';g.textBaseline='middle';g.fillText(text,8,31);const t=new T.CanvasTexture(c);t.encoding=T.sRGBEncoding;
@@ -738,7 +928,10 @@ function achsenLayout(L){
  [0,2].forEach(j=>{if(!ks[j])return;axTicks(AXS.log[j]?Math.pow(10,lo[j]):lo[j],AXS.log[j]?Math.pow(10,hi[j]):hi[j],AXS.log[j],AXK.datum.has(ks[j])).forEach(v=>{const u=(f(j,v)-.5);
   if(j===0)Q.push([u*LEN[0],0,-C],[u*LEN[0],0,C]);else Q.push([-A,0,u*LEN[2]],[A,0,u*LEN[2]])})});
  if(Q.length)linie(Q,0x40567a,.25);axLinien.visible=true}
-function achsenBeschriften(L){const I=AXINFO;if(!I)return;const A=I.LEN[0]/2,B=I.LEN[1],C=I.LEN[2]/2,h=Math.max(L*.5,I.LEN[0]*.02),farben=['#c0281f','#178a52','#2659c4'];
+// Version 58: Gesamtansicht der Kennzahlen umfasst das Achsenkreuz und alle Beschriftungen (vorher nur die Objekte: Kamera zu nah, Schrift ragte aus dem Bild)
+function achsenEcken(){const I=AXINFO,A=I.LEN[0]/2,B=I.LEN[1],C=I.LEN[2]/2,P=[];[-A,A].forEach(x=>[0,B].forEach(y=>[-C,C].forEach(z=>P.push(new T.Vector3(x,y,z)))));
+ schrift.children.forEach(sp=>{const w=sp.scale.x,h=sp.scale.y,x0=sp.position.x-sp.center.x*w,y0=sp.position.y-sp.center.y*h;[[x0,y0],[x0+w,y0],[x0,y0+h],[x0+w,y0+h]].forEach(q=>P.push(new T.Vector3(q[0],q[1],sp.position.z)))});return P}
+function achsenBeschriften(L){const I=AXINFO;if(!I)return;const A=I.LEN[0]/2,B=I.LEN[1],C=I.LEN[2]/2,h=Math.max(L*.4,I.LEN[0]*.015),farben=['#c0281f','#178a52','#2659c4'];   // Version 58: Schrift kleiner (überlappte)
  const f=(j,v)=>{let x=((I.log[j]?Math.log10(v):v)-I.lo[j])/(I.hi[j]-I.lo[j]);return I.inv[j]?1-x:x};
  [0,1,2].forEach(j=>{const k=I.ks[j];if(!k)return;const dat=AXK.datum.has(k),T2=axTicks(I.log[j]?Math.pow(10,I.lo[j]):I.lo[j],I.log[j]?Math.pow(10,I.hi[j]):I.hi[j],I.log[j],dat);
   T2.forEach(v=>{const u=f(j,v);if(u<-.001||u>1.001)return;const t=axText(v,k);
@@ -754,6 +947,7 @@ function beschriften(){legendeOben('');schrift.children.slice().forEach(c=>{schr
  if(layout==='achsen'){achsenBeschriften(L);return}
  if(layout==='skyline'){skyBeschriften();return}
  if(layout==='reise'){reiseBeschriften();return}
+ if(layout==='plan'){planBeschriften(L);return}
  if(layout!=='zeit'&&layout!=='schichten'&&layout!=='reife')return;const reihe=typReihe();const b=new T.Box3();N.forEach(n=>b.expandByPoint(n.ziel));if(b.isEmpty())return;
  const h=Math.max(L*.5,b.getSize(V).length()*.018);
  if(layout==='reife'){const rr=reifeReihe();rr.forEach((st,k)=>marke(reifeName(st),b.min.x-L*1.5,(rr.length-1-k)*reifeAbst(L),0,h,'#1d2b45').center.set(1,.5));return}
@@ -786,7 +980,7 @@ function faerben(){
  const nah=new Set();if(sel>=0){nah.add(N[sel]);N[sel].nb.forEach(m=>nah.add(m))}
  gruppen.forEach(g=>{g.liste.forEach((n,k)=>{TMP.copy(n.col);if(n.blass)TMP.lerp(HELL.set(0x3c4458),.5);if(sel>=0&&!nah.has(n))TMP.multiplyScalar(.28);if(N[sel]===n)TMP.lerp(HELL.set(0xff9f1c),.35);if(hov===n.i)TMP.lerp(HELL.set(0xffffff),.25);g.mesh.setColorAt(k,TMP)});g.mesh.instanceColor.needsUpdate=true});
  const fenK=hatZeit&&isFinite(tCur)?(tMax-tMin)*.04:0;
- if(kantenMesh){const C=kantenLinien?kantenMesh.geometry.attributes.color:null;E.forEach((k,i)=>{TMP.copy(k.col);if(sel>=0)TMP.multiplyScalar(k.a.i===sel||k.b.i===sel?1.6:.2);else if(fenK>0){const t=Math.max(isFinite(k.t0)?k.t0:-Infinity,isFinite(k.a.t0)?k.a.t0:-Infinity,isFinite(k.b.t0)?k.b.t0:-Infinity);if(t<=tCur&&tCur-t<fenK)TMP.lerp(GOLD,.85*(1-(tCur-t)/fenK))}if(C){C.setXYZ(2*i,TMP.r,TMP.g,TMP.b);C.setXYZ(2*i+1,TMP.r,TMP.g,TMP.b)}else{kantenMesh.setColorAt(i,TMP);if(trompMesh&&k.tj!=null)trompMesh.setColorAt(k.tj,TMP)}});if(trompMesh)trompMesh.instanceColor.needsUpdate=true;if(C)C.needsUpdate=true;else kantenMesh.instanceColor.needsUpdate=true}
+ if(kantenMesh){const C=kantenLinien?kantenMesh.geometry.attributes.color:null;E.forEach((k,i)=>{TMP.copy(k.col);if(layout==='plan'&&k.kp)TMP.copy(KRIT);if(sel>=0)TMP.multiplyScalar(k.a.i===sel||k.b.i===sel?1.6:.2);else if(fenK>0){const t=Math.max(isFinite(k.t0)?k.t0:-Infinity,isFinite(k.a.t0)?k.a.t0:-Infinity,isFinite(k.b.t0)?k.b.t0:-Infinity);if(t<=tCur&&tCur-t<fenK)TMP.lerp(GOLD,.85*(1-(tCur-t)/fenK))}if(C){C.setXYZ(2*i,TMP.r,TMP.g,TMP.b);C.setXYZ(2*i+1,TMP.r,TMP.g,TMP.b)}else{kantenMesh.setColorAt(i,TMP);if(trompMesh&&k.tj!=null)trompMesh.setColorAt(k.tj,TMP)}});if(trompMesh)trompMesh.instanceColor.needsUpdate=true;if(C)C.needsUpdate=true;else kantenMesh.instanceColor.needsUpdate=true}
 }
 
 // ---------- Bild je Frame ----------
@@ -801,7 +995,7 @@ function bewegen(dt){
   if(ge)g.mesh.instanceMatrix.needsUpdate=true}
  if(kantenMesh){const zeig=$('kanten').checked&&layout!=='reise';kantenMesh.visible=zeig;if(trompMesh)trompMesh.visible=zeig;if(zeig){let ge=false;
   const A=kantenLinien?kantenMesh.geometry.attributes.position.array:kantenMesh.instanceMatrix.array;
-  for(let i=0;i<E.length;i++){const k=E[i],p=k.a.pos,q=k.b.pos;if(!alle&&!k.a.m&&!k.b.m)continue;ge=true;const vis=k.a.s>.05&&k.b.s>.05&&!k.revAus&&!(GEL&&k.dir)&&!(isFinite(k.t0)&&k.t0>tCur);
+  for(let i=0;i<E.length;i++){const k=E[i],p=k.a.pos,q=k.b.pos;if(!alle&&!k.a.m&&!k.b.m)continue;ge=true;const vis=k.a.s>.05&&k.b.s>.05&&!k.revAus&&!k.planAus&&!(GEL&&k.dir)&&!(isFinite(k.t0)&&k.t0>tCur);
    if(kantenLinien){const o=i*6;A[o]=p.x;A[o+1]=p.y;A[o+2]=p.z;if(vis){A[o+3]=q.x;A[o+4]=q.y;A[o+5]=q.z}else{A[o+3]=p.x;A[o+4]=p.y;A[o+5]=p.z}continue}
    const o=i*16;let ux=q.x-p.x,uy=q.y-p.y,uz=q.z-p.z;const len=Math.sqrt(ux*ux+uy*uy+uz*uz);
    if(!vis||len<1e-3){for(let j=0;j<16;j++)A[o+j]=0;A[o+15]=1;if(k.tj!=null){const B=trompMesh.instanceMatrix.array,ob=k.tj*16;for(let j=0;j<16;j++)B[ob+j]=0;B[ob+15]=1;trompMesh.instanceMatrix.needsUpdate=true}continue}
@@ -814,8 +1008,9 @@ function bewegen(dt){
     const B=trompMesh.instanceMatrix.array,ob=k.tj*16,rk=k.a.r*k.a.s,w1=Math.max(.45,.55*rk),dm=rk*.8,tl=Math.min(Math.max(1.2,rk*1.8),len*.45),w=w1*Math.min(1,k.b.s/Math.max(k.a.s,.05)),sx=p.x+ux*(dm+tl),sy=p.y+uy*(dm+tl),sz=p.z+uz*(dm+tl);
     B[ob]=xx*w;B[ob+1]=xy*w;B[ob+2]=xz*w;B[ob+3]=0;B[ob+4]=-ux*tl;B[ob+5]=-uy*tl;B[ob+6]=-uz*tl;B[ob+7]=0;B[ob+8]=zx*w;B[ob+9]=zy*w;B[ob+10]=zz*w;B[ob+11]=0;B[ob+12]=sx;B[ob+13]=sy;B[ob+14]=sz;B[ob+15]=1;trompMesh.instanceMatrix.needsUpdate=true}}
   if(ge){if(kantenLinien)kantenMesh.geometry.attributes.position.needsUpdate=true;else kantenMesh.instanceMatrix.needsUpdate=true}}}
- if(balkenMesh&&balkenMesh.visible&&zeitX){const li=balkenMesh.userData.liste;for(let i=0;i<li.length;i++){const n=li[i];const x0=zeitX(n.t0),x1=zeitX(Math.min(n.t1,isFinite(tCur)?Math.max(tCur,n.t0):n.t1));
-   const w=Math.max(0,x1-x0)*(n.s>.05?1:0);V.set(x0,n.pos.y,n.pos.z);SK.set(w,n.r*.5,n.r*.5);M4.compose(V,Q.identity(),SK);balkenMesh.setMatrixAt(i,M4)}balkenMesh.instanceMatrix.needsUpdate=true}
+ if(balkenMesh&&balkenMesh.visible&&zeitX){const li=balkenMesh.userData.liste,ae=AUS?AUS.e||0:0;for(let i=0;i<li.length;i++){const n=li[i],sa=n.ausS?n.ausS*ae:0,sf=n.ausF?n.ausF*ae:0;const x0=zeitX(n.t0+sa),x1=zeitX(Math.min(n.t1+sf,isFinite(tCur)?Math.max(tCur,n.t0+sa):n.t1+sf));
+   const w=Math.max(0,x1-x0)*(n.s>.05?1:0);V.set(x0,n.pos.y,n.pos.z);SK.set(w,n.r*(PLAN?.7:.5),n.r*(PLAN?.7:.5));M4.compose(V,Q.identity(),SK);balkenMesh.setMatrixAt(i,M4);if(fortMesh){SK.x=w*((n.pg||0)/100);SK.y*=1.12;SK.z*=1.12;M4.compose(V,Q,SK);fortMesh.setMatrixAt(i,M4)}}balkenMesh.instanceMatrix.needsUpdate=true;if(fortMesh)fortMesh.instanceMatrix.needsUpdate=true}
+ if(kritMesh){const li=kritMesh.userData.liste;for(let i=0;i<li.length;i++){const n=li[i],r=n.r*n.s*1.45;V.copy(n.pos);SK.set(r,r,r);M4.compose(V,Q.identity(),SK);kritMesh.setMatrixAt(i,M4)}kritMesh.instanceMatrix.needsUpdate=true}
  return true;
 }
 function bodenSetzen(){
@@ -838,11 +1033,12 @@ function freieFlaeche(){const W=cv.clientWidth||innerWidth,H=cv.clientHeight||in
  const pn=$('pn'),zt=$('zt');
  if(pn&&W>700){const r=pn.getBoundingClientRect();if(r.width>0&&r.right<W*.4)x0=r.right+8}
  if(zt&&getComputedStyle(zt).display!=='none'){const r=zt.getBoundingClientRect();if(r.top>H*.5)y1=r.top-6}
+ {const ms=$('mas');if(ms&&ms.style.display==='block'&&W>900){const r=ms.getBoundingClientRect();if(r.left>W*.5)x1=Math.min(x1,r.left-8)}}   // Version 59: Handlungsliste rechts freihalten
  {const dc=$('dcap');if(dc&&dc.style.display==='block'){const r=dc.getBoundingClientRect();if(r.bottom>0&&r.bottom<H*.3)y0=Math.max(y0,r.bottom+6)}}   // Version 56: Textkasten der Vorführung
  return{W,H,x0,x1,y0,y1}}
 function heim(){if(sim){heimNachSim=true}const z=heimZiel(null);if(!z)return;K.zZiel.copy(z.c);K.zDist=z.d;K.flug=true;neu()}
 // Version 28: Ziel für eine Liste von Objekten (mit Radius) oder alle sichtbaren samt Punktwolke
-function heimZiel(Z){const P=[];if(!Z&&(layout==='skyline'||layout==='reise')&&SKY)P.push(...SKY.ecken);if(Z){Z.forEach(n=>{const r=n.r*1.2;P.push(n.ziel);[[r,0,0],[-r,0,0],[0,r,0],[0,-r,0],[0,0,r],[0,0,-r]].forEach(d=>P.push(n.ziel.clone().add(V.set(...d))))})}else{N.forEach(n=>{if(n.sZiel>0)P.push(n.ziel)});if(WK.teile.length)P.push(...wkPunkte());if(GEL){const F=FEST_F,G=GEL,x1=(G.x0+(G.nx-1)*G.dx)*F,z1=(G.z0+(G.nz-1)*G.dz)*F;[[G.x0*F,G.z0*F],[x1,G.z0*F],[G.x0*F,z1],[x1,z1]].forEach(q=>P.push(new T.Vector3(q[0],gelH(q[0],q[1]),q[1])))}}if(!P.length)return null;
+function heimZiel(Z){const P=[];if(!Z&&(layout==='skyline'||layout==='reise')&&SKY)P.push(...SKY.ecken);if(!Z&&layout==='plan'&&PLAN)P.push(...PLAN.ecken);if(!Z&&layout==='achsen'&&AXINFO)P.push(...achsenEcken());if(Z){Z.forEach(n=>{const r=n.r*1.2;P.push(n.ziel);[[r,0,0],[-r,0,0],[0,r,0],[0,-r,0],[0,0,r],[0,0,-r]].forEach(d=>P.push(n.ziel.clone().add(V.set(...d))))})}else{N.forEach(n=>{if(n.sZiel>0&&!(layout==='plan'&&PLAN))P.push(n.ziel)});if(WK.teile.length)P.push(...wkPunkte());if(GEL){const F=FEST_F,G=GEL,x1=(G.x0+(G.nx-1)*G.dx)*F,z1=(G.z0+(G.nz-1)*G.dz)*F;[[G.x0*F,G.z0*F],[x1,G.z0*F],[G.x0*F,z1],[x1,z1]].forEach(q=>P.push(new T.Vector3(q[0],gelH(q[0],q[1]),q[1])))}}if(!P.length)return null;
  const cp=Math.cos(K.nick),f=new T.Vector3(cp*Math.sin(K.gier),Math.sin(K.nick),cp*Math.cos(K.gier)),re=new T.Vector3(Math.cos(K.gier),0,-Math.sin(K.gier)),up=new T.Vector3().crossVectors(f,re);
  const st=Math.max(1,Math.floor(P.length/4000));let ax=1e9,bx=-1e9,ay=1e9,by=-1e9,az=1e9,bz=-1e9;
  for(let i=0;i<P.length;i+=st){const p=P[i],x=p.dot(re),y=p.dot(up),z=p.dot(f);if(x<ax)ax=x;if(x>bx)bx=x;if(y<ay)ay=y;if(y>by)by=y;if(z<az)az=z;if(z>bz)bz=z}
@@ -910,7 +1106,7 @@ function trefferK(e){if(!E.length)return null;const r=cv.getBoundingClientRect()
  for(let i=0;i<E.length;i++){const k=E[i];if(!kSicht(k))continue;va.copy(k.a.pos).project(cam);vb.copy(k.b.pos).project(cam);if(va.z>1||vb.z>1||va.z<-1||vb.z<-1)continue;
   const ax=(va.x+1)/2*W,ay=(1-va.y)/2*H,bx=(vb.x+1)/2*W,by=(1-vb.y)/2*H,dx=bx-ax,dy=by-ay,L=dx*dx+dy*dy;let t=L>0?((mx-ax)*dx+(my-ay)*dy)/L:0;t=Math.max(0,Math.min(1,t));const qx=ax+t*dx-mx,qy=ay+t*dy-my,d=qx*qx+qy*qy;if(d<bd){bd=d;best=k}}
  return best}
-function zeigeProfilE(k,x,y){schliesseProfil();const el=$('prof'),A=k.a,B=k.b,tl=n=>(TY[n.ty]||{}).label||n.ty,m=k.e.meta||{};
+function zeigeProfilE(k,x,y){schliesseProfil();const el=$('prof'),A=k.a,B=k.b,tl=n=>(TY[n.ty]||{}).label||n.ty,m=k.pm||k.e.meta||{};
  const R=[['Art',kLabel(k)],[k.dir?'Von':'Zwischen',A.name+' ('+tl(A)+')'],[k.dir?'Nach':'und',B.name+' ('+tl(B)+')'],['Richtung',k.dir?'gerichtet':'ungerichtet']];if(k.e.type&&k.e.type!==kLabel(k))R.push(['Link-Typ',k.e.type]);
  if(isFinite(k.t0))R.push(['Beginn',zeitText(k.t0)]);if(isFinite(k.t1))R.push(['Ende',zeitText(k.t1)]);
  if(isFinite(k.t0)&&isFinite(k.t1)){const d=(k.t1-k.t0)/864e5;R.push(['Dauer',d>=730?Math.round(d/365.25)+' Jahre':d>=60?Math.round(d/30.4)+' Monate':Math.round(d)+' Tage'])}
@@ -949,8 +1145,8 @@ function profilAttr(n){const o=n.o,RT=(D&&D.relTypes)||{},meta=o.meta||{};
 function zeigeProfil(i){prof.i=i;
  const n=N[i],o=n.o,el=$('prof'),A=profilAttr(n);
  el.innerHTML='<span class="x" id="pfx">✕</span><h2><i style="background:#'+n.col.getHexString()+'"></i>'+esc(n.name)+'</h2><div class="ty">Profilkarte · '+esc((TY[n.ty]||{}).label||n.ty)+' · '+A.length+' Attribute</div><table>'+
-  A.map(a=>'<tr><td>'+esc(a[0])+'</td><td>'+esc(a[1])+'</td></tr>').join('')+'</table>'+bezListe(n)+(o.dl&&window.parent!==window?'<button id="pdl">⬇ Datei herunterladen</button>':'');
- el.style.display='block';$('pfx').onclick=()=>{schliesseProfil();waehle(-1)};
+  A.map(a=>'<tr><td>'+esc(a[0])+'</td><td>'+esc(a[1])+'</td></tr>').join('')+'</table>'+bezListe(n)+ausProfil(n)+(o.dl&&window.parent!==window?'<button id="pdl">⬇ Datei herunterladen</button>':'');
+ el.style.display='block';$('pfx').onclick=()=>{schliesseProfil();waehle(-1)};el.onclick=e=>{ausKlick(e)};
  const dz=el.querySelector('details');if(dz)dz.ontoggle=()=>{prof.auf=dz.open;profLage()};
  el.querySelectorAll('.it').forEach(e2=>e2.onclick=()=>{const j=+e2.dataset.i;waehle(j);zeigeProfil(j);nutzerSteuert();K.zZiel.copy(N[j].pos);K.flug=true;neu()});const b=$('pdl');if(b)b.onclick=()=>parent.postMessage({quelle:'3deep',download:o.dl,name:n.name},'*');
  // Vorschaubild bzw. Text (o.img / o.imgText wie 3Deep) schwebt links oben an der Karte
@@ -1002,10 +1198,16 @@ function massnahmenZeigen(){const L=(D&&D.massnahmen||[]).filter(m=>m&&(m.text||
  el.innerHTML='<span class="x" id="masx">✕</span><h2>Handlungsliste'+(FOKUS?' · '+esc(firmenName(FOKUS)):'')+'</h2><select id="masr"><option value="alle">alle Rollen</option>'+rollen.map(r=>'<option'+(r===MAS_R?' selected':'')+'>'+esc(r)+'</option>').join('')+'</select>'+(qn.length>1?' <select id="masq"><option value="alle">alle Quellen</option>'+qn.map(q=>'<option'+(q===MAS_Q?' selected':'')+'>'+esc(q)+'</option>').join('')+'</select>':'')+(D.massnahmenStand?'<div class="m" style="color:var(--mu)">'+esc(D.massnahmenStand)+'</div>':'')+
   '<div class="sum">'+[1,2,3].map(p=>'<span class="p p'+p+'">P'+p+'</span> '+PN[p]+' '+np[p-1]).join(' · ')+'<br><span style="color:var(--mu)">'+esc(D.massnahmenHinweis||'Regelbasiert aus den Daten; vor dem Handeln fachlich prüfen.')+'</span></div>'+
   S.map((m,k)=>{const ids=(m.ids||[]).filter(id=>byId[id]);return'<div class="ev" data-k="'+k+'"><span class="p p'+m.prio+'" title="Priorität '+PN[m.prio]+'">P'+m.prio+'</span><span>'+(m.quelle==='KI'?'<span class="ki" title="vom KI-Agenten – vor dem Handeln prüfen">KI</span> ':'')+(masFirma(m)?'<b class="fi">'+esc(masFirma(m))+'</b> · ':'')+(m.signal?'<b>'+esc(m.signal)+'</b> · ':'')+esc(m.text||'')+'</span>'+(m.beleg?'<span class="e">Beleg: '+esc(m.beleg)+'</span>':'')+(m.fehlt&&m.fehlt.length?'<span class="e nok">nicht gefunden: '+esc(m.fehlt.join(', '))+'</span>':'')+
-   '<span class="w">'+[m.rolle,m.t,ids.length?ids.length+' Objekt'+(ids.length>1?'e':'')+(ids.length>1?' (Klick: nächstes)':''):''].filter(Boolean).map(esc).join(' · ')+'</span></div>'}).join('')+(S.length?'':'<div class="m">keine Maßnahmen</div>');
- el.style.display='block';$('masx').onclick=()=>{el.style.display='none'};$('masr').onchange=ev=>{MAS_R=ev.target.value;massnahmenZeigen()};if($('masq'))$('masq').onchange=ev=>{MAS_Q=ev.target.value;massnahmenZeigen()};
- el.querySelectorAll('.ev').forEach(d=>d.onclick=()=>masSpringen(S[+d.dataset.k]))}
-function masSpringen(m){const ids=(m.ids||[]).filter(id=>byId[id]);if(!ids.length)return;const j=MAS_I[m._i]=((MAS_I[m._i]==null?-1:MAS_I[m._i])+1)%ids.length,n=byId[ids[j]];
+   '<span class="w">'+[m.rolle,m.t,ids.length?ids.length+' Objekt'+(ids.length>1?'e':'')+(ids.length>1?' (Klick: nächstes)':''):''].filter(Boolean).map(esc).join(' · ')+'</span></div>'}).join('')+(S.length?'':'<div class="m">keine Maßnahmen</div>')+'<div id="masaus">'+(L.some(m=>m.quelle==='Projekt')?ausHtml():'')+'</div>';
+ el.style.display='block';$('masx').onclick=()=>{el.style.display='none';masKetteAus()};$('masr').onchange=ev=>{MAS_R=ev.target.value;massnahmenZeigen()};if($('masq'))$('masq').onchange=ev=>{MAS_Q=ev.target.value;massnahmenZeigen()};
+ el.querySelectorAll('.ev[data-k]').forEach(d=>d.onclick=()=>masSpringen(S[+d.dataset.k]));$('masaus').onclick=e=>{ausKlick(e)}}
+// Version 59: Projektpunkt mit Kette (wie 3Deep): Lichtpunkte laufen entlang der Kette, Flug auf die ganze Kette, Objekt gewählt; noch ein Klick hebt auf
+let MAS_K=null;function masKetteAus(){if(MAS_K!=null){MAS_K=null;if(!DM.on||DM.intern)DM.pfad=null}}
+function masSpringen(m){if(m.pfade&&m.pfade.length&&(!DM.on||DM.intern)){if(MAS_K===m._i){masKetteAus();waehle(-1);return}
+  const seg=new Map(),M=new Set();m.pfade.forEach(p=>p.forEach((n,i)=>{M.add(n);if(i)seg.set(p[i-1].i+'-'+n.i,[p[i-1],n])}));MAS_K=m._i;DM.pfad=[...seg.values()];
+  const n=byId[m.ids[0]];if(n&&n.sZiel<=0&&isFinite(n.t0)&&n.t0>tCur){spiel=false;$('zp').textContent='▶';tCur=Infinity;zeitAnwenden()}
+  if(n)waehle(n.i);nutzerSteuert();const z=heimZiel([...M]);if(z){K.zZiel.copy(z.c);K.zDist=z.d*1.35;K.flug=true}neu();return}
+ masKetteAus();const ids=(m.ids||[]).filter(id=>byId[id]);if(!ids.length)return;const j=MAS_I[m._i]=((MAS_I[m._i]==null?-1:MAS_I[m._i])+1)%ids.length,n=byId[ids[j]];
  if(layout==='skyline'){const f=firmaVon(n);if(f&&f!==n){fokusFirma(f,true)}else if(n.skyAus){setzeLayout('netz');$('ly').value='netz'}}else if(n.fokAus){FOKUS=null;N.forEach(x=>x.fokAus=false);$('fokb').style.display='none';zeitAnwenden()}
  if(n.sZiel<=0&&isFinite(n.t0)&&n.t0>tCur){spiel=false;$('zp').textContent='▶';tCur=Math.min(tMax,n.t0+864e5);zeitAnwenden()}
  waehle(n.i);nutzerSteuert();K.zZiel.copy(n.ziel);K.zDist=Math.max(25,n.r*18);K.flug=true;neu()}
@@ -1252,7 +1454,7 @@ $('axp').onchange=e=>{const v=e.target.value;if(v==='eigen'){AXS.p='eigen';axZei
 ['axlx','axly','axlz'].forEach((id,j)=>$(id).onchange=e=>{AXS.log[j]=e.target.checked;axNeu()});
 $('schatten').onchange=$('glanz').onchange=()=>{baueMeshes();faerben();neu()};
 function schemaFarbe(c){const f=FARBSCHEMATA[SCHEMA].farbe||{};if(OBERFLAECHE!=='lack'){c.getHSL(HSL);c.setHSL(HSL.h,HSL.s*.82,HSL.l*.94)}if(f.mix&&f.anteil)c.lerp(new T.Color(f.mix),f.anteil);if(f.sat||f.hell){c.getHSL(HSL);c.setHSL(HSL.h,Math.min(1,HSL.s*(f.sat||1)),Math.min(.85,HSL.l*(f.hell||1)))}return c}
-function schemaAnwenden(k){if(!FARBSCHEMATA[k])k='himmel';SCHEMA=k;const F=FARBSCHEMATA[k];try{localStorage.setItem('4d_farbschema',k)}catch(_){}
+function schemaAnwenden(k){if(!FARBSCHEMATA[k])k='himmel';SCHEMA=k;const F=FARBSCHEMATA[k];if(document.body.dataset.modus!=='arbeit')try{localStorage.setItem('4d_farbschema',k)}catch(_){}
  himmelMalen(F.himmel,F.bokeh);gegen.color.set((F.gegen||['#fff'])[0]);gegen.intensity=F.gegen?F.gegen[1]:0;plattenSetzen(F.platten);renderer.setClearColor(F.nebel,1);scene.fog.color.set(F.nebel);hemi.color.set(F.hemi[0]);hemi.groundColor.set(F.hemi[1]);hemi.intensity=F.hemi[2];sonne.color.set(F.sonne[0]);sonne.intensity=F.sonne[1];renderer.toneMappingExposure=F.belicht;
  const g2=new T.GridHelper(2,40,F.gitter[0],F.gitter[1]);g2.material.transparent=true;g2.material.opacity=.45;g2.position.copy(gitter.position);g2.scale.copy(gitter.scale);g2.visible=gitter.visible;scene.remove(gitter);gitter.geometry.dispose();gitter=g2;scene.add(gitter);
  boden.material.opacity=F.schatten;document.body.dataset.schema=k;$('fs').value=k;
@@ -1356,10 +1558,16 @@ function smReport(e){const id=e.reportId,dv=e.data,L=dv.byteLength,g=o=>dv.getIn
   jetzt.forEach(bit=>{if(SM.btn.has(bit))return;if(SM.learn){SM.map[SM.learn]=bit;SM.learn=null;try{localStorage.setItem('sm_map',JSON.stringify(SM.map))}catch(_){}smUi();smS('Zugeordnet (Taste '+bit+'). Verbunden: '+((SM.dev&&SM.dev.productName)||'SpaceMouse'));return}
    const k=SMK.find(x=>SM.map[x]===bit);if(k)smAktion(k);else smS('Taste '+bit+' gedrückt (nicht zugeordnet)')});SM.btn=jetzt}
  neu()}
+// Version 60: Mehrachsen-Schnittstelle (Usage Page 1, Usage 8) bevorzugen; schon freigegebene Geräte beim Start und beim Einstecken ohne Rückfrage verbinden.
+// Die Freigabe merkt der Browser nur für Webadressen (https, localhost); bei einer lokalen Datei (file://) fragt er nach jedem Neustart erneut.
+const smPasst=x=>(x.vendorId===0x256f||x.vendorId===0x046d)&&(x.collections||[]).some(c=>c.usagePage===1&&c.usage===8);
+async function smAuto(){try{const ds=(await navigator.hid.getDevices()).filter(x=>x.vendorId===0x256f||x.vendorId===0x046d&&smPasst(x));ds.sort((a,b)=>smPasst(b)-smPasst(a));
+ for(const d of ds){if(SM.dev)return;await smOpen(d);if(SM.dev)return}
+ if(!ds.length&&location.protocol==='file:')smS('nicht verbunden · Bei einer lokalen Datei fragt der Browser nach jedem Neustart einmal nach („SpaceMouse verbinden“).')}catch(_){}}
 async function smOpen(d){try{if(!d.opened)await d.open();SM.dev=d;d.oninputreport=smReport;smS('Verbunden: '+(d.productName||'SpaceMouse'));$('smc').textContent='Neu verbinden'}catch(x){smS('Öffnen fehlgeschlagen: '+x.message+' – 3DxWare-Treiber beenden und erneut versuchen.')}}
 $('smc').onclick=async()=>{$('smc').blur();if(!navigator.hid){smS('WebHID wird von diesem Browser nicht unterstützt (Chrome oder Edge verwenden).');return}if(!smErlaubt()){smS(SM_GESPERRT);return}
- try{const ds=await navigator.hid.requestDevice({filters:[{vendorId:0x256f},{vendorId:0x046d,usagePage:1,usage:8}]});if(ds.length)await smOpen(ds[0]);else smS('Kein Gerät ausgewählt.')}catch(x){smS('Fehler: '+x.message+(/permission|policy|secur|allow/i.test(x.message)?' – '+SM_GESPERRT:''))}};
-try{if(!navigator.hid)smS('WebHID nicht verfügbar (Chrome oder Edge verwenden).');else if(!smErlaubt())smS(SM_GESPERRT);else{navigator.hid.getDevices().then(ds=>{const d=ds.find(x=>x.vendorId===0x256f||x.vendorId===0x046d&&x.collections.some(c=>c.usagePage===1&&c.usage===8));if(d)smOpen(d)}).catch(()=>{});
+ try{const ds=await navigator.hid.requestDevice({filters:[{vendorId:0x256f,usagePage:1,usage:8},{vendorId:0x046d,usagePage:1,usage:8}]});if(ds.length)await smOpen(ds.find(smPasst)||ds[0]);else smS('Kein Gerät ausgewählt.')}catch(x){smS('Fehler: '+x.message+(/permission|policy|secur|allow/i.test(x.message)?' – '+SM_GESPERRT:''))}};
+try{if(!navigator.hid)smS('WebHID nicht verfügbar (Chrome oder Edge verwenden).');else if(!smErlaubt())smS(SM_GESPERRT);else{smAuto();navigator.hid.addEventListener('connect',()=>{if(!SM.dev)setTimeout(smAuto,300)});
  navigator.hid.addEventListener('disconnect',e=>{if(e.device===SM.dev){SM.dev=null;SM.v.fill(0);SM.btn.clear();smS('Verbindung getrennt')}})}}catch(_){}
 cv.addEventListener('pointermove',e=>{SM.mx=e.clientX;SM.my=e.clientY;SM.mt=performance.now()});
 // Achsen wie 3Deep: X/Z = verschieben, Y = zoomen (zum Drehpunkt), Rx = neigen, Ry+Rz = drehen um den Drehpunkt (K.ziel)
@@ -1407,7 +1615,7 @@ document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement
 addEventListener('keydown',e=>{const tg=e.target;if(tg.tagName==='TEXTAREA'||(tg.tagName==='INPUT'&&!/range|checkbox|button|file/.test(tg.type)))return;
  // Version 22: Thema „Könige“ nicht mehr im Menü, nur über Strg+Umschalt+4
  if(e.code==='Digit4'&&e.ctrlKey&&e.shiftKey&&!e.altKey&&!e.metaKey){e.preventDefault();e.stopImmediatePropagation();if(!e.repeat){$('ds').value='';waehleRaum('thema:koenige')}return}
- if(e.code==='Digit3'&&e.ctrlKey&&e.shiftKey&&!e.altKey&&!e.metaKey){e.preventDefault();e.stopImmediatePropagation();if(!e.repeat)stereoUmschalten();return}
+ if(e.code==='Digit3'&&e.ctrlKey&&e.shiftKey&&!e.altKey&&!e.metaKey&&document.body.dataset.modus!=='arbeit'){e.preventDefault();e.stopImmediatePropagation();if(!e.repeat)stereoUmschalten();return}
  if(!ST.on||e.ctrlKey||e.altKey||e.metaKey)return;let ok=true;
  if(e.code==='KeyT')ST.tausch=!ST.tausch;else if(e.code==='KeyB')ST.tb=!ST.tb;
  else if(e.key==='Enter'||e.code==='KeyK'){const i=smZiel(true);if(e.code==='KeyK'){if(i>=0&&prof.i!==i){waehle(i);zeigeProfil(i)}else schliesseProfil()}else{waehle(i);if(i<0)schliesseProfil()}NM.neu=true;e.preventDefault();e.stopImmediatePropagation();return}
@@ -1760,6 +1968,7 @@ function waehleRaum(v){if(DM.on)demoStop();eigeneWahl();lauf=null;
  if(v==='demo')laden(demoDaten());
  else if(v==='eauto')laden(elektroautoDaten());   // Version 55: Elektroauto wie in 3Deep, mit Zeitverlauf
  else if(v==='kauf')laden(kaufDaten());   // Version 56: kaufmännischer Datenraum wie in 3Deep
+ else if(v==='projekt')laden(projektDaten());   // Version 57: Projekt wie in 3Deep
  else if(v.startsWith('stress:'))laden(stressDaten(+v.slice(7)));
  else if(v.startsWith('thema:')){const name=v.slice(6);const pfade=['themen/'+name+'.json','3deep-widget/themen/'+name+'.json'];
   ladeKugel(true);const versuch=i=>{if(i>=pfade.length){meld('Thema nicht erreichbar (nur über einen Webserver, nicht per Doppelklick).');return}
@@ -2370,6 +2579,40 @@ function kaufBasis(){const R=n=>Math.floor(rnd3()*n),pk=a=>a[R(a.length)],rr=(a,
   {name:'Wer nutzt das Produkt? (Lizenz → Nutzer → Firma)',start:'produkt',chain:'instanz< zugewiesen> arbeitet>'},{name:'Lizenzen des Nutzers und Produkte',start:'km',chain:'zugewiesen< instanz>'}];
  return{types,relTypes,nodes,edges,chains,axes,layout:'achsen',attr:'Branche',spacing:13,stateTitle:'Vertragsstatus',
   stateNames:{todo:'Angebot',work:'In Verhandlung / läuft',released:'Aktiv / abgeschlossen / im Verkauf',frozen:'Gekündigt (läuft aus)',obsolete:'Abgelaufen / abgekündigt'},maxObjects:nodes.length}}
+// ---------- Version 57: Datenraum „Projekt (fiktiv)“ unverändert aus 3Deep (projektData, Darstellung 148), baut auf eaBasis auf; Termine relativ zu heute ----------
+function projektBasis(){const D=eaBasis(),h0=heuteTag(),tag=k=>new Date(h0+k*864e5).toISOString().slice(0,10),S0=-200,HEUTE_=0;
+ const types={projekt:{color:'#27408b',size:4.2,shape:'box',label:'Projekt'},phase:{color:'#6c7fd8',size:3,shape:'bar',label:'Phase',band:true},task:{color:'#f2c400',size:1.5,shape:'dodecahedron',label:'Task'},meilenstein:{color:'#12b5cb',size:1.9,shape:'diamond',label:'Meilenstein'},gate:{color:'#8e44ad',size:2.5,shape:'octagon',label:'Gate'},risiko:{color:'#ff8c1a',size:1.9,shape:'triangle',label:'Risiko'},asm:D.types.asm,issue:D.types.issue,person:D.types.person};
+ const relTypes={teil:{label:'Projektstruktur (gehört zu)',color:'#2f3f5c',directed:false,hierarchy:true},folgt:{label:'Abhängigkeit (Vorgänger → Nachfolger)',color:'#3d5a80',directed:true,dependency:true},liefert:{label:'Deliverable',color:'#1f8f80',directed:true},risiko:{label:'Risiko für',color:'#d9730d',directed:true},aufgabe:{label:'Task für Issue',color:'#b59500',directed:true},zuweisung:D.relTypes.zuweisung,betrifft:D.relTypes.betrifft,struktur:D.relTypes.struktur};
+ const beh=new Set(D.nodes.filter(n=>n.type==='asm'||n.type==='issue'||n.type==='person').map(n=>n.id)),nodes=D.nodes.filter(n=>beh.has(n.id)),edges=[],elt={};
+ D.edges.forEach(e=>{if(e.type==='struktur'&&!elt[e.from])elt[e.from]=e.to});
+ D.edges.forEach(e=>{if(e.type==='struktur'&&beh.has(e.from)&&beh.has(e.to))edges.push(e);else if(e.type==='betrifft'){const z=beh.has(e.to)?e.to:elt[e.to];if(z&&beh.has(z))edges.push({from:e.from,to:z,type:'betrifft'})}});
+ const asm=nm=>nodes.find(n=>n.type==='asm'&&n.name===nm).id,iss=tx=>nodes.find(n=>n.type==='issue'&&n.meta.Beschreibung.indexOf(tx)===0).id,pers=nodes.filter(n=>n.type==='person').map(n=>n.id);
+ const add=(type,name,o)=>{const n=Object.assign({id:'p'+nodes.length,type,name},o);nodes.push(n);return n},link=(from,to,type,o)=>edges.push(Object.assign({from,to,type},o));
+ const PH=['Konzept','Entwicklung','Prototyp und Erprobung','Industrialisierung','Serienanlauf'];
+ // [Kürzel, Phase (-1 = am Projekt), Art (t Task, m Meilenstein, g Gate), Name, Dauer in Tagen, Vorgänger [Kürzel, Art, Versatz], Zusatz {b Baugruppen, i Issue, e Eltern-Task}]
+ const DEF=[['a1',0,'t','Marktanalyse und Lastenheft',30,[]],['a2',0,'t','Fahrzeugkonzept und Package',40,[['a1','SS',10]],{b:['Fahrwerk','Elektroantrieb','Hochvoltbatterie','Interieur']}],['a3',0,'t','Antriebskonzept E-Motor und Batterie',35,[['a1','FS',0]],{b:['Elektroantrieb','Hochvoltbatterie']}],['a4',0,'t','Wirtschaftlichkeitsrechnung',15,[['a2','FS',0],['a3','FS',0]]],['G1',-1,'g','Gate 1: Konzeptfreigabe',0,[['a4','FS',0]]],
+  ['b1',1,'t','Konstruktion Fahrwerk',0,[],{b:['Fahrwerk']}],['b1a',1,'t','Vorderachse und Bremse',35,[['G1','FS',0]],{e:'b1',b:['Vorderachse']}],['b1b',1,'t','Hinterachse und Lenkung',30,[['b1a','SS',20]],{e:'b1',b:['Hinterachse','Lenkung']}],
+  ['b2',1,'t','Konstruktion Elektroantrieb',70,[['G1','FS',0]],{b:['E-Motor','Leistungselektronik']}],['b3',1,'t','Konstruktion Hochvoltbatterie',75,[['G1','FS',0]],{b:['Hochvoltbatterie']}],['b4',1,'t','Batteriemanagement-Software',60,[['b3','SS',15]],{b:['Batteriemanagement']}],['b5',1,'t','Interieur und Zentraldisplay',55,[['G1','FS',5]],{b:['Interieur','Zentraldisplay'],i:'Sitzverstellung'}],['b6',1,'t','Simulation Thermomanagement',30,[['b3','FF',0]],{b:['Thermomanagement']}],['b7',1,'t','Design-Review und Stücklisten-Freeze',10,[['b2','FS',0],['b3','FS',0],['b5','FS',0],['b1b','FS',0]]],['G2',-1,'g','Gate 2: Design Freeze',0,[['b7','FS',0]]],
+  ['c1',2,'t','Beschaffung Prototypenteile',35,[['b3','SS',40]]],['c2',2,'t','Aufbau Prototyp 1',25,[['G2','FS',0],['c1','FS',0]]],['M1',2,'m','Erster Prototyp fahrbereit',0,[['c2','FS',0]]],['c3',2,'t','Prüfstand Antrieb und EMV',30,[['M1','FS',0]],{b:['Wechselrichter-Modul'],i:'Wechselrichter'}],['c4',2,'t','Wintererprobung',36,[['M1','FS',5]],{i:'Zentraldisplay'}],['c5',2,'t','Schnellladetests Batterie',25,[['M1','FS',0]],{b:['Zellmodule'],i:'Batteriemodul'}],['c6',2,'t','Bremsen- und Fahrdynamiktests',30,[['M1','FS',10]],{b:['Bremsanlage vorn'],i:'Bremsscheibe'}],['M2',2,'m','Wintertest abgeschlossen',0,[['c4','FS',0]]],['c7',2,'t','Auswertung und Änderungsschleife',20,[['c3','FS',0],['c4','FS',0],['c5','FS',0],['c6','FS',0]]],['G3',-1,'g','Gate 3: Erprobungsfreigabe',0,[['c7','FS',0]]],
+  ['d1',3,'t','Lieferantenauswahl Serie',40,[['G2','FS',10]]],['d2',3,'t','Werkzeuge und Vorrichtungen',50,[['d1','FS',0]]],['d3',3,'t','Montagelinie Batterie aufbauen',40,[['G3','FS',0]],{b:['Hochvoltbatterie']}],['d4',3,'t','Montagelinie Fahrzeug anpassen',35,[['G3','FS',5]]],['d5',3,'t','Vorserie (PVS)',20,[['d2','FS',0],['d3','FS',0],['d4','FS',0]]],['G4',-1,'g','Gate 4: Produktionsfreigabe',0,[['d5','FS',0]]],
+  ['e1',4,'t','Schulung Werk und Service',20,[['G4','SS',-10]]],['e2',4,'t','Homologation und Typgenehmigung',30,[['G3','FS',20]]],['e3',4,'t','Nullserie',15,[['G4','FS',0]]],['e4',4,'t','Anlaufkurve hochfahren',20,[['e3','FS',0],['e2','FS',0]]],['M3',4,'m','Start of Production (SOP)',0,[['e4','FS',0],['e1','FS',0]]]];
+ const Z={};DEF.forEach(([k,ph,art,nm,du,vor,o])=>{let a=S0;vor.forEach(([v,ka,lg])=>{const q=Z[v];a=Math.max(a,ka==='SS'?q.a+lg:ka==='FF'?q.b+lg-du:ka==='SF'?q.a+lg-du:q.b+lg)});Z[k]={k,ph,art,nm,a,b:a+du,vor,o:o||{}}});
+ Object.values(Z).forEach(z=>{const ki=Object.values(Z).filter(c=>c.o.e===z.k);if(ki.length){z.a=Math.min(...ki.map(c=>c.a));z.b=Math.max(...ki.map(c=>c.b));z.sum=true}});
+ const ENG={c5:'G. Neumann',c6:'G. Neumann'}; // Version 98: Engpass Person, G. Neumann hat im November drei Erprobungen gleichzeitig
+ const verzug={c5:30,d1:10},offen={b4:95},stand=z=>z.k==='c4'&&z.a<HEUTE_&&z.b>HEUTE_?0:offen[z.k]&&z.b<=HEUTE_?offen[z.k]:z.b<=HEUTE_?100:z.a>=HEUTE_?0:Math.max(5,Math.round((HEUTE_-z.a)/(z.b-z.a)*100)-(verzug[z.k]||0)),zst=p=>p>=100?'Released':p>0?'In Work':'To do';
+ const P=add('projekt','E-Fahrzeug Entwicklung',{meta:{Projektleitung:'A. Bauer',Programm:'Elektromobilität'}}),phN=PH.map((nm,i)=>add('phase','Phase '+(i+1)+': '+nm,{meta:{PSP:String(i+1)}})),psp=PH.map(()=>0);let ti=0;
+ Object.values(Z).forEach(z=>{const pg=z.art==='t'?stand(z):(z.b<=HEUTE_?100:0),el=z.o.e?Z[z.o.e].n:z.ph<0?P:phN[z.ph],n=z.n=add(z.art==='t'?'task':z.art==='m'?'meilenstein':'gate',z.nm,{start:tag(z.a),end:tag(z.b),progress:pg,state:zst(pg),meta:{}});
+  if(z.ph>=0){n.meta.Phase=PH[z.ph];n.meta.PSP=z.o.e?Z[z.o.e].n.meta.PSP+'.'+(++Z[z.o.e].kn||(Z[z.o.e].kn=1)):(z.ph+1)+'.'+(++psp[z.ph])}if(verzug[z.k]&&pg>0&&pg<100)n.meta.Verzug=verzug[z.k]+' % hinter Plan';
+  link(n.id,el.id,'teil');z.vor.forEach(([v,ka,lg])=>link(Z[v].n.id,n.id,'folgt',Object.assign({kind:ka},lg?{lag:lg}:{})));
+  if(!z.sum&&z.k!=='d2'&&z.k!=='c3'){const j=z.art==='g'?0:(ti++*3+1)%pers.length,en=ENG[z.k]&&nodes.find(x=>x.type==='person'&&x.name===ENG[z.k]);link(n.id,en?en.id:pers[j],'zuweisung')}(z.o.b||[]).forEach(b=>link(n.id,asm(b),'liefert'));if(z.o.i)link(n.id,iss(z.o.i),'aufgabe')});
+ Object.values(Z).forEach(z=>{if(z.n.progress>=100)(z.o.b||[]).forEach(b=>{const o=nodes.find(x=>x.id===asm(b));o.state=z.k==='b3'&&b==='Zellmodule'||z.k==='b1a'?'In Work':'Released'})});Object.values(Z).forEach(z=>{if(z.k==='b2'||z.k==='c5')(z.o.b||[]).forEach(b=>{nodes.find(x=>x.id===asm(b)).state='In Work'})});
+ phN.forEach((n,i)=>{const zs=Object.values(Z).filter(z=>z.ph===i&&z.art==='t'&&!z.sum),a=Math.min(...zs.map(z=>z.a)),b=Math.max(...zs.map(z=>z.b)),du=zs.reduce((u,z)=>u+(z.b-z.a),0),pg=Math.round(zs.reduce((u,z)=>u+z.n.progress*(z.b-z.a),0)/du);Object.assign(n,{start:tag(a),end:tag(b),progress:pg,state:zst(pg)});link(n.id,P.id,'teil')});
+ {const zs=Object.values(Z),du=phN.length,pg=Math.round(phN.reduce((u,n)=>u+n.progress,0)/du);Object.assign(P,{start:tag(Math.min(...zs.map(z=>z.a))),end:tag(Math.max(...zs.map(z=>z.b))),progress:pg,state:'In Work'})}
+ Object.values(Z).forEach(z=>{if(z.sum){const ki=Object.values(Z).filter(c=>c.o.e===z.k);z.n.progress=Math.round(ki.reduce((u,c)=>u+c.n.progress,0)/ki.length);z.n.state=zst(z.n.progress)}});
+ [['Zelllieferant: Lieferengpass bei Prototypenzellen','c1','Zellmodule','Hoch','Hoch','Zweitlieferant qualifizieren'],['EMV-Grenzwerte werden nicht erreicht','c3','Wechselrichter-Modul','Mittel','Hoch','Filterkonzept B vorbereiten'],['Zelltemperatur beim Schnellladen zu hoch','c5','Hochvoltbatterie','Hoch','Mittel','Ladekurve anpassen, Kühlung prüfen'],['Wintertest hängt vom Wetter ab','c4',null,'Mittel','Mittel','Klimakammer als Ersatz buchen'],['Werkzeuglieferzeit länger als geplant','d2',null,'Mittel','Hoch','Werkzeuge früher bestellen'],['Typgenehmigung verzögert sich','e2',null,'Niedrig','Hoch','Früh mit der Behörde abstimmen']].forEach(([nm,k,b,w,au,mas],i)=>{
+  const st={Hoch:3,Mittel:2,Niedrig:1},r=add('risiko','Risiko '+(i+1),{state:Z[k].b<=HEUTE_?'Released':Z[k].a<=HEUTE_?'In Work':'To do',imgText:nm,meta:{Beschreibung:nm,Wahrscheinlichkeit:w,Auswirkung:au,Risikozahl:String(st[w]*st[au]),'Maßnahme':mas}});link(r.id,Z[k].n.id,'risiko');if(b)link(r.id,asm(b),'risiko');link(r.id,pers[(i*2)%pers.length],'zuweisung')});
+ return{types,relTypes,nodes,edges,layout:'plan',spacing:9.408,maxObjects:nodes.length,stateTitle:'Status',stateNames:{work:'In Arbeit',frozen:'In Prüfung',released:'Erledigt',obsolete:'Abgebrochen',todo:'Geplant'}}}
+function projektDaten(){const sv=s3;try{return projektBasis()}finally{s3=sv}}
 function kaufDaten(){const sv=s3;s3=23;try{return kaufBasis()}finally{s3=sv}}
 function demoDaten(){
  // Produktentwicklung über 18 Monate: Baugruppen/Bauteile entstehen, Revisionen lösen einander ab, Issues öffnen und schließen sich
@@ -2497,21 +2740,78 @@ const DEMO_EAUTO={titel:'Demo: Elektroauto (fiktiv)',tempo:1.22,stationen:[   //
   {art:'text',ms:1,text:'<b>Teil 2: Kaufmännische Analysen</b><br><span class="m">Gleiches Prinzip, andere Daten: Kunden, Lizenzen, Projekte</span>'},
   {art:'daten',raum:'kauf',blende:true,ms:3500},
   {art:'achsen',vorlage:/^Kundenportfolio:/,gier:-.35,dauer:4,ms:6000,text:'<b>Kundenportfolio</b>: rechts = Umsatz · oben = Marge · vorne = Wachstum<br><span class="m">Jeder Körper ist ein Kunde, die Größe zeigt den Umsatz</span>'},
-  {art:'kennzahl',beste:{'Umsatz 12 Monate':1,'Marge':1,'Wachstum ggü. Vorjahr':.6},merke:'BK',dreh:-.9,ms:5000,text:'Starker Kunde: <b>{BK}</b><br><span class="m">Umsatz {BK.Umsatz 12 Monate} · Marge {BK.Marge} · Wachstum {BK.Wachstum ggü. Vorjahr}</span>'},
-  {art:'kennzahl',beste:{'Umsatz 12 Monate':1,'Marge':-1.2},merke:'RK',dreh:.9,ms:4500,text:'Rechts unten: <b>{RK}</b><br><span class="m">größter Umsatz ({RK.Umsatz 12 Monate}), aber nur {RK.Marge} Marge</span>'},
+  {art:'kennzahl',beste:{'Umsatz 12 Monate':1,'Marge':1,'Wachstum ggü. Vorjahr':.6},merke:'BK',dreh:-.45,ms:5000,text:'Starker Kunde: <b>{BK}</b><br><span class="m">Umsatz {BK.Umsatz 12 Monate} · Marge {BK.Marge} · Wachstum {BK.Wachstum ggü. Vorjahr}</span>'},
+  {art:'kennzahl',beste:{'Umsatz 12 Monate':1,'Marge':-1.2},merke:'RK',dreh:.45,ms:4500,text:'Rechts unten: <b>{RK}</b><br><span class="m">größter Umsatz ({RK.Umsatz 12 Monate}), aber nur {RK.Marge} Marge</span>'},
   {art:'achsen',vorlage:/logarithmisch/,gier:.25,dauer:4,ms:6000,text:'<b>Umsatz auf logarithmischer Skala</b><br><span class="m">Die vielen kleineren Kunden rücken auseinander</span>'},
   {art:'achsen',vorlage:/Verlängerungsradar/,gier:-.15,dauer:4,ms:5500,text:'<b>Lizenz-Verlängerungsradar</b>: rechts = Jahreswert · oben = Auslastung · vorne = läuft bald aus'},
-  {art:'kennzahl',beste:{'Jahreswert':1,'Auslastung':-1,'Restlaufzeit':-1},merke:'LK',dreh:-.9,ms:5000,text:'Kündigungsgefahr: <b>{LK}</b><br><span class="m">Jahreswert {LK.Jahreswert} · nur {LK.Auslastung} genutzt · Restlaufzeit {LK.Restlaufzeit}</span>'},
+  {art:'kennzahl',beste:{'Jahreswert':1,'Auslastung':-1,'Restlaufzeit':-1},merke:'LK',dreh:-.45,ms:5000,text:'Kündigungsgefahr: <b>{LK}</b><br><span class="m">Jahreswert {LK.Jahreswert} · nur {LK.Auslastung} genutzt · Restlaufzeit {LK.Restlaufzeit}</span>'},
   {art:'achsen',vorlage:/Projekt-Ampel/,gier:.3,dauer:4,ms:5500,text:'<b>Projekt-Ampel</b>: rechts = Auftragswert · oben = Marge · vorne = Budget über Plan'},
-  {art:'kennzahl',beste:{'Auftragswert':1,'Budget über Plan':1.2},merke:'PK',dreh:.9,ms:5000,text:'Projekt läuft aus dem Ruder: <b>{PK}</b><br><span class="m">Auftragswert {PK.Auftragswert} · Budget {PK.Budget über Plan} über Plan · Marge {PK.Marge (Projekt)}</span>'}]},
+  {art:'kennzahl',beste:{'Auftragswert':1,'Budget über Plan':1.2},merke:'PK',dreh:.45,ms:5000,text:'Projekt läuft aus dem Ruder: <b>{PK}</b><br><span class="m">Auftragswert {PK.Auftragswert} · Budget {PK.Budget über Plan} über Plan · Marge {PK.Marge (Projekt)}</span>'}]},
  {id:'ausblick',titel:'Ausblick Widget',sprech:'[Blende zurück, Startansicht, Einblendung Widget]',schritte:[
   {art:'profilZu'},
   {art:'text',ms:1,text:'<b>Teil 3: Ausblick</b>'},
   {art:'daten',raum:'eauto',blende:true,ms:1500},
   {art:'text',ms:7500,text:'<b>Als Widget im 3DDashboard</b><br><span class="m">Live mit den Daten der Plattform: Strukturen, Dokumente, Issues, Aufgaben, Personen und alle Beziehungen in Raum und Zeit</span>'},
   {art:'heim',dauer:3,dreh:.8,ms:4500,text:'Ende der Vorführung'}]}]};
+// ---------- Version 61: Vorführung „▶ Demo Projekt“ (wie 3Deep demoProjekt, Sprechtext Teil 4; Ablauf freigegeben 27.11.2026) ----------
+// 4D-Mehrwert: Kamerafahrt entlang der Zeitachse, Heute-Ebene im Raum, Ausfall verschiebt die Balken animiert (alter Stand blass). Texte sind Funktionen des Kontexts C (Werte aus der Rechnung).
+const dmNamen=L=>[...new Set(L.map(n=>n.name))].map(x=>'<b>'+esc(x)+'</b>').join(', ');
+const dmKetteInfo=C=>{const M=[...new Set((C.m&&C.m.pfade||[]).flat())];return{term:M.filter(n=>n!==C.P&&n.ts!=null&&n.te-n.ts<TAG/2),pers:M.filter(n=>n!==C.P&&/person/.test(n.ty)),
+ lief:M.filter(n=>PJ&&PJ.N[n.i].adj.some(a=>a.e.lief)&&n.ts==null),iss:M.filter(n=>/issue/i.test(n.ty)&&zust(n.o.state)!=='released')}};
+const dmFall=C=>'<b>'+esc(C.it.n.n)+'</b> · '+esc(C.it.kat)+'<br><span class="m">'+esc(C.it.tx)+'</span>';
+const DEMO_PROJEKT={titel:'Demo: Projekt (fiktiv)',tempo:1.7,stationen:[   // tempo: Faktor auf alle Wartezeiten (Lesezeit), Gesamtdauer ca. 6 min
+ {id:'einstieg',titel:'Projekt im Raum',sprech:'[Datenraum „Projekt (fiktiv)“, Projektplan]',schritte:[
+  {art:'text',ms:1,text:'<b>Teil 4: Projektmanagement</b><br><span class="m">Ein Projekt, das automatisch analysiert wird</span>'},
+  {art:'daten',raum:'projekt',blende:true,ms:300},
+  {art:'layout',layout:'plan',ms:9000,text:()=>{const z=t=>N.filter(n=>n.ty===t).length;return'<b>Datenraum „Projekt (fiktiv)“</b><br><span class="m">Entwicklung eines Elektroautos: '+z('phase')+' Phasen, '+z('task')+' Tasks, '+z('gate')+' Gates, '+z('meilenstein')+' Meilensteine · Layout „Projektplan“</span>'}}]},
+ {id:'zeitachse',titel:'Zeitachse',sprech:'[Kamerafahrt entlang der Zeitachse]',schritte:[
+  {art:'zeitflug',dauer:22,ms:1500,text:'<b>Zeitachse</b>: Die Zeit läuft nach rechts – Kamerafahrt vom Konzept bis zum Serienanlauf<br><span class="m">Jede Phase ist ein Band, darin die Tasks als Dauerbalken mit ihrem gemeldeten Fortschritt (dunkler Teil)</span>'}]},
+ {id:'heute',titel:'Heute',sprech:'[Heute-Ebene]',schritte:[
+  {art:'heute',ms:9000,text:()=>'Die <b>rote Ebene ist heute</b> ('+deD(HEUTE)+')<br><span class="m">Was links davon endet, sollte erledigt sein; was sie schneidet, läuft gerade</span>'}]},
+ {id:'kritisch',titel:'Kritischer Pfad',sprech:'[kritischer Pfad, Frage an den Projektleiter]',schritte:[
+  {art:'krit',ms:9000,text:()=>'<b>Kritischer Pfad</b> (rot): '+N.filter(n=>n.krit).length+' Objekte ohne Puffer<br><span class="m">Jeder Tag Verzug hier verschiebt das Projektende · im Widget kommen die Daten live aus Project Management</span>'},
+  {art:'alle'},{art:'text',ms:6000,text:'Der Plan sieht ordentlich aus.<br><b>Aber wo muss ich als Projektleiter eingreifen?</b>'}]},
+ {id:'liste',titel:'Handlungsliste',sprech:'[Handlungsliste, Belastbarkeit]',schritte:[
+  {art:'liste',ms:9000,text:()=>'<b>Handlungsliste (Projekt)</b><br><span class="m">Gerechnet aus Terminen, Status, Abhängigkeiten, Zuständigkeiten und dem Reifegrad der Deliverables: '+PJ.einzel+' Punkte zum Eingreifen, nach Dringlichkeit sortiert</span>'},
+  {art:'text',ms:9000,text:()=>'<b>Belastbarkeit</b> jeder Meldung: '+PJ.B.belegt+' belegt · '+PJ.B['widersprüchlich']+' widersprüchlich · '+PJ.B['nicht prüfbar']+' nicht prüfbar<br><span class="m">Passt der gemeldete Fortschritt zum Reifegrad dessen, was der Task liefern soll?</span>'}]},
+ {id:'winter',titel:'Kritischer Pfad verspätet',sprech:'[Wintererprobung, Kette, Profilkarte]',schritte:[
+  {art:'punkt',signal:/Kritischer Pfad/,name:'Wintererprobung',ms:1,text:dmFall},
+  {art:'text',ms:9000,text:C=>{const k=dmKetteInfo(C);return'Klick = Flug zum Task, die <b>Kette</b> leuchtet<br><span class="m">Davon hängt ab: '+(dmNamen(k.term)||'–')+' · zuständig: '+(dmNamen(k.pers)||'niemand')+'</span>'}},
+  {art:'profil',ziel:{merke:'P'},ms:7000,text:'<b>Profilkarte</b>: Termine, Fortschritt und der Handlungsbedarf als Attribut'},{art:'profilZu'}]},
+ {id:'engpass',titel:'Engpass Person',sprech:'[G. Neumann, Engpass, Auslastung]',schritte:[
+  {art:'punkt',signal:/Engpass Person/,name:'G. Neumann',ms:1,text:dmFall},
+  {art:'text',ms:9000,text:C=>'<b>'+esc(C.P.name)+'</b> trägt gerade '+C.it.eng.length+' Tasks gleichzeitig<br><span class="m">'+dmNamen(C.it.eng.map(x=>x.src))+(C.it.eng.some(x=>x.krit)?' · rot: auf dem kritischen Pfad':'')+'</span>'},
+  {art:'profil',ziel:{merke:'P'},ms:7000,text:C=>'Profilkarte: <b>Auslastung</b> '+esc(C.P.o.meta.Auslastung||'')+'<br><span class="m">Unten auf der Karte: „Ausfall durchspielen“</span>'},{art:'profilZu'}]},
+ {id:'ausfall',titel:'Ausfall 4 Wochen',sprech:'[Ausfall vier Wochen, Balken gleiten]',schritte:[
+  {art:'ausfall',person:'G. Neumann',wo:4,ms:12000,text:C=>{const A=AUS;return'Was, wenn <b>'+esc(A.p.n)+'</b> vier Wochen ausfällt?<br><span class="m">Seine offenen Tasks ruhen, die Abhängigkeiten ziehen nach: Die Balken gleiten an ihren neuen Platz, blass bleibt der alte Stand · Projektende <b>'+(A.ende?'+'+A.ende+' Tage':'unverändert')+'</b>'+(A.term.length?' · später: '+A.term.slice(0,4).map(x=>esc(x.n.n)).join(', '):'')+'</span>'}}]},
+ {id:'rang',titel:'Wer darf nicht ausfallen?',sprech:'[Rangliste]',schritte:[
+  {art:'rang',ms:10000,text:()=>{const R0=RANG[0];return'<b>Wer darf nicht ausfallen?</b> Für jede Person ein Ausfall von 2 Wochen<br><span class="m">'+(R0&&R0.ende?'Nur bei <b>'+esc(R0.p.n)+'</b> verschiebt sich das Projektende (+'+R0.ende+' Tage). Hier braucht es eine Vertretung oder Entlastung, bevor es knapp wird':'Bei keiner Person verschiebt sich das Projektende')+'</span>'}},
+  {art:'ausfallAus',ms:3500}]},
+ {id:'gate',titel:'Gate 2: Design Freeze',sprech:'[Gate-Reife, Ampel]',schritte:[
+  {art:'punkt',signal:/Widerspruch/,name:'Gate 2: Design Freeze',ms:1,text:dmFall},
+  {art:'text',ms:9000,text:C=>{const k=dmKetteInfo(C),O=k.lief.filter(d=>zust(d.o.state)!=='released');return'<b>Gate-Reife</b>: der Weg vom Gate zu jedem Deliverable, das noch nicht freigegeben ist<br><span class="m">Offen: '+(O.map(d=>'<b>'+esc(d.name)+'</b> ('+esc(d.o.state||'ohne Reifegrad')+')').join(', ')||'–')+(k.iss.length?' · offene Issues daran: '+dmNamen(k.iss):'')+'</span>'}},
+  {art:'profil',ziel:{merke:'P'},ms:8000,text:C=>{const R=C.P.reife||{};return'Das Gate wurde durchlaufen, obwohl nur <b>'+(R.rel||0)+' von '+(R.tot||0)+' Deliverables</b> freigegeben sind<br><span class="m">Im Projektplan steht die Ampel unter jedem Gate: '+(R.rel||0)+'/'+(R.tot||0)+' frei</span>'}},{art:'profilZu'}]},
+ {id:'faelle',titel:'Weitere Fälle',sprech:'[Batteriemanagement-Software überfällig, Widerspruch Elektroantrieb]',schritte:[
+  {art:'punkt',signal:/Überfällig/,name:'Batteriemanagement-Software',ms:1,text:dmFall},
+  {art:'text',ms:8000,text:'Fast fertig gemeldet, aber seit Wochen über dem Termin<br><span class="m">Die letzten Prozent dauern oft am längsten: nachfragen, was wirklich fehlt</span>'},
+  {art:'punkt',signal:/Widerspruch/,name:'Konstruktion Elektroantrieb',ms:1,text:dmFall},
+  {art:'text',ms:9000,text:C=>{const k=dmKetteInfo(C);return'Gemeldet ist <b>nicht gleich erledigt</b><br><span class="m">Deliverables: '+(k.lief.map(d=>'<b>'+esc(d.name)+'</b> ('+esc(d.o.state||'ohne Reifegrad')+')').join(', ')||'–')+(k.iss.length?' · offene Issues daran: '+dmNamen(k.iss):'')+'</span>'}}]},
+ {id:'schluss',titel:'Schluss',sprech:'[Rundflug, Schluss]',schritte:[
+  {art:'masZu'},
+  {art:'heim',dauer:3.5,dreh:.5,ms:9000,text:'<b>Projektanalyse in Raum und Zeit</b><br><span class="m">Nur aus Daten, die ohnehin da sind: Handlungsliste, Belastbarkeit, Gate-Reife, Engpass und Ausfall – jeder Punkt mit dem Beleg im Raum</span>'},
+  {art:'heim',dauer:3,dreh:-.5,ms:4000,text:'Ende der Vorführung'}]}]};
+// Schritte der Projekt-Demo
+function dmPlanBlick(x,o){const P=PLAN;if(!P)return null;o=o||{};const y=(P.row*2+P.yU)/2;return{ziel:new T.Vector3(x,o.y!=null?o.y:y,o.z||0),dist:o.dist||(P.row*2.6-P.yU)*1.15,gier:o.gier!=null?o.gier:K.gier,nick:o.nick!=null?o.nick:K.nick}}
+function dmMasAuf(){$('chr').style.display='none';if($('mas').style.display!=='block'||$('mas').dataset.art!=='mas')massnahmenZeigen()}
+function dmPunktEl(s){const L=[...document.querySelectorAll('#mas .ev[data-k]')];return L.find(e=>{const t=e.textContent;return t.includes(s.name)&&s.signal.test(t)})||null}
+async function dmPunkt(s,C){dmMasAuf();const el=dmPunktEl(s);if(!el)throw new Error('Demo: Punkt nicht gefunden: '+s.name);const m=D.massnahmen.find(x=>x.quelle==='Projekt'&&x.text.indexOf(s.name+':')===0&&s.signal.test(x.signal));
+ C.m=m;C.it=HL[m.hl];C.P=byId[m.ids[0]];if(MAS_K!=null){DM.intern=true;try{masKetteAus()}finally{DM.intern=false}}
+ el.scrollIntoView({block:'nearest'});el.style.outline='2px solid #ffd166';demoCap(dmText(s.text));await dmW(1500);
+ DM.intern=true;try{DM.fahrt=null;el.click()}finally{DM.intern=false}await dmW(3200);el.style.outline=''}
 const DM={on:false,id:0,paused:false,cap:'',sp:null,ctx:{},fahrt:null,zr:null,dreh:0,pfad:null};
-function demoCap(txt){DM.cap=txt||'';const c=$('dcap'),z=DM.on&&DM.paused;c.style.display=DM.cap||z?'block':'none';
+function demoCap(txt){DM.cap=txt||'';const c=$('dcap'),z=DM.on&&DM.paused;
+ {const ms=$('mas'),pn=$('pn');if(ms.style.display==='block'&&innerWidth>900){const a=pn.getBoundingClientRect().right+10,b=ms.getBoundingClientRect().left-10;c.style.left=a+'px';c.style.transform='none';c.style.width=Math.max(300,b-a)+'px';c.style.minWidth='0'}else{c.style.left=c.style.transform=c.style.width=c.style.minWidth=''}}   // Version 61: Textkasten zwischen Bedienfeld und Handlungsliste
+ c.style.display=DM.cap||z?'block':'none';
  c.innerHTML=DM.cap+(DM.zr?'<div class="m" id="dczr"></div>':'')+(z?(DM.cap?'<br>':'')+'<span style="color:#ffd166;font-weight:700">⏸ Pausiert – P oder „Weiter“ zum Fortsetzen</span>':'');if(DM.zr)dmZrText()}
 // Wartezeit in ms, zählt nur ohne Pause; bricht ab, wenn die Vorführung endet (Test ersetzt dmWarte im Zeitraffer)
 function dmWarte(ms){const id=DM.id;let lt=performance.now(),el=0;return new Promise((ok,no)=>{const tick=()=>{if(!DM.on||DM.id!==id)return no('stop');const t=performance.now();if(!DM.paused)el+=t-lt;lt=t;if(el>=ms)return ok();setTimeout(tick,40)};tick()})}
@@ -2555,14 +2855,14 @@ function dmPunkteTick(dt){const P=dmPunkte,S=DM.pfad;if(!S||!S.length){if(P.p.vi
 // Zeitreise: Zeitregler vom Beginn bis heute, Zähler im Textkasten
 function dmIssues(){let offen=0,zu=0;N.forEach(n=>{if(!/issue/i.test(n.ty)||!(n.t0<=tCur))return;if(isFinite(n.t1)&&n.t1<=tCur)zu++;else offen++});return{offen,zu,objekte:N.filter(n=>n.sZiel>0).length}}
 function dmZrText(){const el=document.getElementById('dczr');if(!el)return;const z=dmIssues(),t=zeitText(Math.min(tCur,tMax)),s='Stand '+t+' · '+z.objekte+' Objekte · '+z.offen+' Issues offen · '+z.zu+' geschlossen';if(el.textContent!==s)el.textContent=s}
-function demoTick(dt){if(!DM.on){dmPunkteTick(dt);return}
- if(!DM.paused){dmFahrtTick(dt);const z=DM.zr;if(z&&z.t<1){z.t=Math.min(1,z.t+dt/z.dauer);tCur=z.von+(z.bis-z.von)*z.t;zeitAnwenden();dmZrText()}if(DM.dreh&&!DM.fahrt){K.gier+=DM.dreh*dt;neu()}}
+function demoTick(dt){ausTick(dt);if(!DM.on){dmPunkteTick(dt);return}
+ if(!DM.paused){dmFahrtTick(dt);const zf=DM.zf;if(zf&&!DM.fahrt&&zf.t<1){zf.t=Math.min(1,zf.t+dt/zf.dauer);const e=zf.t*zf.t*(3-2*zf.t);K.ziel.x=zf.xa+(zf.xb-zf.xa)*e;K.ziel.y=zf.ya+(zf.yb-zf.ya)*e;K.zZiel.copy(K.ziel);neu()}const z=DM.zr;if(z&&z.t<1){z.t=Math.min(1,z.t+dt/z.dauer);tCur=z.von+(z.bis-z.von)*z.t;zeitAnwenden();dmZrText()}if(DM.dreh&&!DM.fahrt){K.gier+=DM.dreh*dt;neu()}}
  dmPunkteTick(dt);if(DM.fahrt)neu()}
 // Ziele und Texte
 function dmKnoten(z){const C=DM.ctx;if(z==null)return null;if(typeof z==='function')return z(C);if(typeof z==='string')return N.find(n=>n.name===z)||null;
  if(z.merke)return C[z.merke]||null;if(z.name instanceof RegExp)return N.find(n=>z.name.test(n.name))||null;
  if(z.nachbar){const a=C[z.nachbar];if(!a)return null;const k=E.find(k=>(k.a===a||k.b===a)&&k.e.type===z.rel);return k?(k.a===a?k.b:k.a):null}return null}
-function dmText(t){if(!t)return'';const C=DM.ctx;return t.replace(/\{([^{}]+)\}/g,(m,p)=>{const [k,...r]=p.split('.'),f=r.join('.');let v=C[k];
+function dmText(t){if(!t)return'';const C=DM.ctx;if(typeof t==='function')t=t(C)||'';return t.replace(/\{([^{}]+)\}/g,(m,p)=>{const [k,...r]=p.split('.'),f=r.join('.');let v=C[k];
  if(v==null)return'';if(Array.isArray(v))return f==='n'?String(v.length):v.map(esc).join(' und ');if(v&&v.o&&v.name!=null)return esc(f?String((v.o.meta||{})[f]==null?'':(v.o.meta||{})[f]):v.name);
  if(v instanceof Set)return String(v.size);return esc(String(v))})}
 // Umfeld (wie 3Deep): Struktur abwärts bis zur untersten Ebene, daran hängende Objekte, Aufgaben der Issues, zugewiesene Personen
@@ -2585,7 +2885,7 @@ function dmBeste(w){const L=N.filter(n=>!n.axAus&&n.sZiel>0),ks=Object.keys(w),v
  const mm=ks.map(k=>{const x=L.map(n=>v(n,k)).filter(isFinite);return[Math.min(...x),Math.max(...x)]});let b=null,bs=-1e9;
  L.forEach(n=>{if(!ks.every(k=>isFinite(v(n,k))))return;const s_=ks.reduce((a,k,j)=>a+w[k]*(v(n,k)-mm[j][0])/((mm[j][1]-mm[j][0])||1),0);if(s_>bs){bs=s_;b=n}});return b}
 async function dmDaten(raum,blende){const f=$('dfade');if(blende){f.style.opacity=1;await dmW(700)}
- DM.intern=true;try{$('ds').value=raum;laden(raum==='kauf'?kaufDaten():raum==='demo'?demoDaten():elektroautoDaten())}finally{DM.intern=false}
+ DM.intern=true;try{$('ds').value=raum;laden(raum==='kauf'?kaufDaten():raum==='projekt'?projektDaten():raum==='demo'?demoDaten():elektroautoDaten())}finally{DM.intern=false}
  DM.pfad=null;await dmSimFertig();const b=dmBlick(null,{});dmFahrt(b,0);if(blende){await dmW(150);f.style.opacity=0}}
 async function dmSchritt(s){const C=DM.ctx,ms=s.ms||0;
  switch(s.art){
@@ -2609,21 +2909,42 @@ async function dmSchritt(s){const C=DM.ctx,ms=s.ms||0;
   case'heim':{if(s.text)demoCap(dmText(s.text));dmFahrt(dmBlick(null,{dreh:s.dreh||0}),s.dauer||3);break}
   case'layout':{DM.pfad=null;demoCap(dmText(s.text));$('ly').value=s.layout;setzeLayout(s.layout,false);
    if(sim)heimSpaeter=true;else dmFahrt(dmBlick(null,{gier:s.gier,nick:s.nick}),s.dauer||3);break}
-  case'achsen':{const i=AXP.findIndex(p=>s.vorlage.test(p.name));schliesseProfil();waehle(-1);if(i>=0){axVorlage(i);$('ly').value='achsen';setzeLayout('achsen',false);dmFahrt(dmBlick(null,{gier:s.gier!=null?s.gier:K.gier,nick:.3}),s.dauer||4)}
+  case'achsen':{const i=AXP.findIndex(p=>s.vorlage.test(p.name));schliesseProfil();waehle(-1);if(i>=0){axVorlage(i);$('ly').value='achsen';setzeLayout('achsen',false);dmFahrt(dmBlick(null,{gier:s.gier!=null?s.gier:K.gier,nick:.22}),s.dauer||4)}
    demoCap(dmText(s.text));break}
-  case'kennzahl':{const n=dmBeste(s.beste);if(!n)break;if(s.merke)C[s.merke]=n;waehle(n.i);demoCap(dmText(s.text));dmFahrt(dmBlick([n],{nah:9,dreh:s.dreh||0}),4.5,.18);await dmW(4700);zeigeProfil(n.i);await dmW(ms);schliesseProfil();waehle(-1);return}
+  case'zeitflug':{if(!PLAN)break;schliesseProfil();waehle(-1);DM.pfad=null;const P=PLAN,xa=P.X(P.t0)+P.row*4,xb=P.X(P.t1)-P.row*4,d=P.row*16,b=dmPlanBlick(xa,{dist:d,gier:-.55,nick:.14});
+   demoCap(dmText(s.text));dmFahrt(b,3);await dmW(3200);const zt=N.filter(n=>n.ts!=null&&!istBand(n.ty)),ym=(u,v)=>{const L=zt.filter(n=>n.ziel.x>=u&&n.ziel.x<=v);return L.length?L.reduce((q,n)=>q+n.ziel.y,0)/L.length:b.ziel.y},w=(xb-xa)*.3;
+   DM.zf={xa,xb,ya:ym(xa-w,xa+w),yb:ym(xb-w,xb+w),t:0,dauer:(s.dauer||20)*((DM.ablauf&&DM.ablauf.tempo)||1)};b.ziel.y=DM.zf.ya;dmFahrt(b,1.2);await dmW(1300);
+   const ok=dmLaeuft();while(DM.zf&&DM.zf.t<1){await new Promise(z=>setTimeout(z,60));ok()}DM.zf=null;break}
+  case'heute':{if(!PLAN)break;demoCap(dmText(s.text));dmFahrt(dmPlanBlick(PLAN.X(HEUTE),{dist:PLAN.row*22,gier:.85,nick:.22}),3.5);break}
+  case'krit':{demoCap(dmText(s.text));dmFahrt(dmBlick(null,{gier:-.12,nick:.08}),3);const seg=E.filter(k=>k.kp).map(k=>[k.a,k.b]);DM.pfad=seg.length?seg:null;break}
+  case'liste':{DM.pfad=null;dmMasAuf();const sm=$('mas').querySelector('.sum');if(sm)sm.style.outline='2px solid #ffd166';demoCap(dmText(s.text));if(ms)await dmW(ms);if(sm)sm.style.outline='';return}
+  case'punkt':await dmPunkt(s,C);break;
+  case'ausfall':{const n=N.find(x=>x.name===s.person);if(!n)throw new Error('Demo: Person nicht gefunden: '+s.person);dmMasAuf();DM.intern=true;try{masKetteAus();ausfallAn(n,s.wo||4)}finally{DM.intern=false}
+   demoCap(dmText(s.text));dmFahrt(dmBlick([...AUS.d.keys()].map(i=>N[i]),{gier:-.1,nick:.08,weit:1.35}),3);const w=$('masaus');if(w)w.scrollIntoView({block:'nearest'});break}
+  case'rang':{dmMasAuf();const g=$('masaus')&&$('masaus').querySelector('.rang');if(g){g.scrollIntoView({block:'nearest'});g.style.outline='2px solid #ffd166'}demoCap(dmText(s.text));if(ms)await dmW(ms);if(g)g.style.outline='';return}
+  case'ausfallAus':{DM.intern=true;try{ausfallAus(false)}finally{DM.intern=false}dmFahrt(dmBlick(null,{gier:-.12,nick:.08}),3);break}
+  case'masZu':{DM.intern=true;try{masKetteAus();if(AUS)ausfallAus(true)}finally{DM.intern=false}$('mas').style.display='none';DM.pfad=null;waehle(-1);break}
+  case'kennzahl':{const n=dmBeste(s.beste);if(!n)break;if(s.merke)C[s.merke]=n;waehle(n.i);demoCap(dmText(s.text));dmFahrt(dmBlick([n],{nah:22,dreh:s.dreh||0}),4.5,.18);await dmW(4700);zeigeProfil(n.i);await dmW(ms);schliesseProfil();waehle(-1);return}
  }
  if(ms)await dmW(ms)}
 async function demoAbspielen(A){if(DM.on)return demoStop();
- DM.on=true;DM.paused=false;DM.id++;DM.ctx={};DM.ablauf=A;DM.station=-1;$('dmb').textContent='■ Demo stoppen';$('dmp').textContent='⏸ Pause (P)';$('dmp').style.display='';
+ DM.on=true;DM.paused=false;DM.id++;DM.ctx={};DM.ablauf=A;DM.station=-1;$('dmb').textContent='■ Demo stoppen';$('dmp').textContent='⏸ Pause (P)';$('dmp').style.display='';$('dmpj').style.display='none';
  if(U)uStop(true);
  try{for(let i=0;i<A.stationen.length;i++){DM.station=i;const st=A.stationen[i];for(const s of st.schritte)await dmSchritt(s)}demoStop()}
  catch(x){if(x!=='stop'){demoStop();meldeFehler(x)}}}
 function meldeFehler(x){console.error(x);const l=$('leer');l.style.display='';l.style.color='#ff6b6b';l.textContent='Fehler in der Vorführung: '+(x&&x.message||x)}
-function demoStop(){if(!DM.on)return;DM.on=false;DM.paused=false;DM.sp=null;DM.id++;DM.fahrt=null;DM.dreh=0;DM.pfad=null;if(DM.zr){DM.zr=null;tCur=Infinity}
+function demoStop(){if(!DM.on)return;const proj=DM.ablauf===DEMO_PROJEKT;DM.zf=null;if(AUS)ausfallAus(true);if(MAS_K!=null)masKetteAus();if(proj)$('mas').style.display='none';DM.on=false;DM.paused=false;DM.sp=null;DM.id++;DM.fahrt=null;DM.dreh=0;DM.pfad=null;if(DM.zr){DM.zr=null;tCur=Infinity}
  N.forEach(n=>n.dmAus=false);if(N.length)zeitAnwenden();$('dfade').style.opacity=0;demoCap('');schliesseProfil();waehle(-1);
- $('dmb').textContent='▶ Demo abspielen';$('dmp').style.display='none'}
-$('dmb').onclick=()=>demoAbspielen(DEMO_EAUTO);$('dmp').onclick=()=>demoPause();
+ $('dmb').textContent='▶ Demo abspielen';$('dmp').style.display='none';$('dmpj').style.display=''}
+$('dmb').onclick=()=>demoAbspielen(DEMO_EAUTO);$('dmpj').onclick=()=>demoAbspielen(DEMO_PROJEKT);
+// Version 59 (Wunsch des Nutzers): Arbeitsmodus / Demo-Modus; vorerst Demo-Modus als Voreinstellung, Wahl im Browser gemerkt (4d_modus)
+// Arbeitsmodus: immer Farbschema „Himmel“ und Oberfläche „Satin“ (nicht gespeichert); zurück im Demo-Modus gelten wieder die gemerkten Werte
+function modusSetzen(m,merken){m=m==='arbeit'?'arbeit':'demo';const vorher=document.body.dataset.modus;document.body.dataset.modus=m;
+ if(m==='arbeit'&&vorher!=='arbeit'){if(ST.on)stereoUmschalten();OBERFLAECHE='satin';$('of').value='satin';schemaAnwenden('himmel')}
+ else if(m==='demo'&&vorher==='arbeit'){let fs='atlas',of='satin';try{fs=localStorage.getItem('4d_farbschema')||fs;of=localStorage.getItem('4d_oberflaeche')||of}catch(_){}OBERFLAECHE=/^(satin|metall|lack|bio)$/.test(of)?of:'satin';$('of').value=OBERFLAECHE;schemaAnwenden(FARBSCHEMATA[fs]?fs:'atlas')}$('moda').classList.toggle('an',m==='arbeit');$('modd').classList.toggle('an',m==='demo');
+ if(merken)try{localStorage.setItem('4d_modus',m)}catch(_){}if(m==='arbeit'&&DM.on)demoStop()}
+$('moda').onclick=()=>{modusSetzen('arbeit',true);$('moda').blur()};$('modd').onclick=()=>{modusSetzen('demo',true);$('modd').blur()};
+{let m='demo';try{m=localStorage.getItem('4d_modus')||'demo'}catch(_){}modusSetzen(m,false)}$('dmp').onclick=()=>demoPause();
 // Eingriffe: Zeiger und Rad überall außer an den Demo-Knöpfen (Erfassungsphase, damit der Stand vor der Änderung gemerkt wird), Tasten, SpaceMouse über nutzerSteuert()
 addEventListener('pointerdown',e=>{if(DM.on&&!e.target.closest('#dmb,#dmp'))demoEingriff()},true);
 addEventListener('wheel',()=>demoEingriff(),{capture:true,passive:true});
