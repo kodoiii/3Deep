@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="72">
+<meta name="4deep-darstellung" content="73">
 <title>4Deep – Datenraum in Raum und Zeit</title>
 <!-- 4Deep – Datenraum in Raum und Zeit (begonnen als Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026; Produkt seit 26.11.2026, Version 55): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -148,7 +148,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 72 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 73 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="chr"></div><div class="pn" id="mas"></div><div class="pn" id="prof"></div><div class="pn" id="dcap"></div><div id="dfade"></div><div id="profb"></div>
@@ -1467,10 +1467,10 @@ function sammelTypen(){return(Array.isArray(D.skyline.sammel)?D.skyline.sammel:[
 var SAMMEL_FORM='stapel';   /* Version 68: Stapel als Standard (Wahl des Nutzers) */
 function kristallMat(col,op){return new T.MeshPhysicalMaterial({color:col,transparent:true,opacity:Math.min(.86,op),roughness:.2,metalness:0,clearcoat:1,clearcoatRoughness:.1,emissive:0xeef5ff,emissiveMap:kristallTex(),emissiveIntensity:.3,sheen:.5,sheenColor:new T.Color(0xeef5ff),sheenRoughness:.5})}
 function kristallUV(geo,fx,fy,fz){const uv=geo.attributes.uv,S=[[fz,fy],[fz,fy],[fx,fz],[fx,fz],[fx,fy],[fx,fy]];for(let gi=0;gi<6;gi++)for(let v=gi*4;v<gi*4+4;v++){uv.setX(v,uv.getX(v)*S[gi][0]);uv.setY(v,uv.getY(v)*S[gi][1])}uv.needsUpdate=true}   /* Facettengröße unabhängig von der Quadergröße */
-function sammelKoerper(x,z,h,col,L,op,anz,k){const F=SAMMEL_FORM,R=L*1.15,add=m=>{m.castShadow=m.receiveShadow=true;skyG.add(m);return m},zf=i=>{const v=Math.sin((i+1)*12.9898+k*78.233)*43758.5453;return v-Math.floor(v)};
+function sammelKoerper(x,z,h,col,L,op,anz,k){let oben=h;const F=SAMMEL_FORM,R=L*1.15,add=m=>{m.castShadow=m.receiveShadow=true;skyG.add(m);return m},zf=i=>{const v=Math.sin((i+1)*12.9898+k*78.233)*43758.5453;return v-Math.floor(v)};
  const glas=()=>new T.MeshPhysicalMaterial({color:col,roughness:.12,metalness:0,clearcoat:1,clearcoatRoughness:.08,transparent:true,opacity:Math.min(.92,op)}),kante=new T.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.85,depthWrite:false});
  const quader=(sx,sy,sz,px,py,pz,ry,mat)=>{const m=add(new T.Mesh(new T.BoxGeometry(sx,sy,sz),mat||glas()));m.position.set(px,py,pz);m.rotation.y=ry||0;const e=new T.LineSegments(new T.EdgesGeometry(m.geometry),kante);m.add(e);return m};
- if(F==='stapel'){const n=Math.max(1,Math.min(14,anz)),d=Math.min(L*.42,Math.max(L*.2,h/n)),KM=kristallMat(col,op),Z=L*.9;for(let i=0;i<n;i++){const b=R*(1.75+.2*zf(i)),bz=b*(.8+.15*zf(i+7)),q=quader(b,d*.9,bz,x+(zf(i+3)-.5)*L*.15,d*(i+.45),z,(zf(i+5)-.5)*.35,KM);kristallUV(q.geometry,b/Z,d*.9/Z,bz/Z)}}   /* Version 69: Stapel in Kristalloptik mit kleinen Facetten */
+ if(F==='stapel'){const n=Math.max(1,Math.min(14,anz)),d=Math.min(L*.42,Math.max(L*.2,h/n)),KM=kristallMat(col,op),Z=L*.9;for(let i=0;i<n;i++){const b=R*(1.75+.2*zf(i)),bz=b*(.8+.15*zf(i+7)),q=quader(b,d*.9,bz,x+(zf(i+3)-.5)*L*.15,d*(i+.45),z,(zf(i+5)-.5)*.35,KM);kristallUV(q.geometry,b/Z,d*.9/Z,bz/Z)}oben=Math.max(h,d*n)}   /* Version 73: Höhe des Stapels für die Beschriftung (stand sonst im Stapel); Version 69: Stapel in Kristalloptik mit kleinen Facetten */
  else if(F==='raster'){const c=L*.66,g=c*1.08,cnt=Math.max(1,Math.min(81,anz)),M=glas();for(let i=0;i<cnt;i++){const e=i%9,l=Math.floor(i/9);quader(c,c,c,x+(e%3-1)*g,c/2+l*g,z+(Math.floor(e/3)-1)*g,0,M)}}
  else if(F==='buendel'){const P=[[0,0]].concat([0,1,2,3,4,5].map(i=>[Math.cos(i*Math.PI/3)*L*.62,Math.sin(i*Math.PI/3)*L*.62])).slice(0,Math.max(1,Math.min(7,anz))),M=glas();P.forEach(([dx,dz],i)=>{const hh=h*(i?.78+.22*zf(i):1);quader(L*.5,hh,L*.5,x+dx,hh/2,z+dz,(zf(i+2)-.5)*.4,M)});
   const gold=new T.MeshStandardMaterial({color:0xd4a017,roughness:.3,metalness:.7});[.3,.68].forEach(f=>{const t=add(new T.Mesh(new T.TorusGeometry(L*.98,L*.06,8,40),gold));t.rotation.x=Math.PI/2;t.position.set(x,h*f*.8,z)})}
@@ -1479,14 +1479,14 @@ function sammelKoerper(x,z,h,col,L,op,anz,k){const F=SAMMEL_FORM,R=L*1.15,add=m=
  else if(F==='ordner'){const n=Math.max(1,Math.min(7,anz)),t=R*2/Math.max(4,n),M=glas(),wm=new T.MeshStandardMaterial({color:0xffffff,roughness:.6});for(let i=0;i<n;i++){const hh=h*(.86+.14*zf(i)),px=x-n*t/2+t*(i+.5);const o=quader(t*.86,hh,R*1.6,px,hh/2,z,0,M);if(i===n-1){o.rotation.z=-.12;o.position.x+=hh*.06}
    const sch=add(new T.Mesh(new T.BoxGeometry(t*.6,Math.min(L*.9,hh*.3),L*.02),wm));sch.position.set(o.position.x,hh*.62,z+R*.8+L*.012);sch.rotation.z=o.rotation.z;const lo=add(new T.Mesh(new T.CylinderGeometry(t*.16,t*.16,L*.03,16),new T.MeshStandardMaterial({color:0x2a3b5c})));lo.rotation.x=Math.PI/2;lo.position.set(o.position.x,hh*.25,z+R*.8+L*.02)}}
  else{const m=add(new T.Mesh(new T.CylinderGeometry(L*1.1,L*1.25,h,28),new T.MeshStandardMaterial({color:col,roughness:.35,metalness:.15,transparent:true,opacity:op})));m.position.set(x,h/2,z);return m}
- const hit=new T.Mesh(new T.CylinderGeometry(R*1.1,R*1.1,h,12),new T.MeshBasicMaterial({visible:false}));hit.position.set(x,h/2,z);skyG.add(hit);return hit}
+ const hit=new T.Mesh(new T.CylinderGeometry(R*1.1,R*1.1,oben,12),new T.MeshBasicMaterial({visible:false}));hit.position.set(x,oben/2,z);hit.userData.oben=oben;skyG.add(hit);return hit}
 function skyBuehne(L,A,z0){const f=SKY_AUF.f,I=SKY.info.find(x=>x.f===f);if(!I)return;const T6=skySammelTypen(f),B=L*5.2,cell=L*.95,cols=Math.max(1,Math.floor(B/cell)),mx=Math.max(1,...T6.map(x=>x.anz));
  const x0=I.x-(T6.length-1)/2*B,feld=skyWert;SKY.buehne={f,x0,z0,B,T6,I};
  // goldene Verbindung vom Turm zur Bühne
  const lg=new T.BufferGeometry().setFromPoints([new T.Vector3(I.x,.05,I.z),new T.Vector3(I.x,.05,z0-L*.8),new T.Vector3(x0-B*.5,.05,z0-L*.8),new T.Vector3(x0+(T6.length-.5)*B,.05,z0-L*.8)]);
  skyG.add(new T.Line(lg,new T.LineBasicMaterial({color:0xd4a017})));
- SKY.reihen=[];T6.forEach((g,k)=>{const x=x0+k*B,h=L*(.5+2.5*Math.sqrt(g.anz/mx)),col=new T.Color(g.farbe||(TY[g.typen[0]]||{}).color||'#8b94a3');
-  const cm=sammelKoerper(x,z0,h,col,L,SKY_AUF.offen.has(g.t)?.55:.9,g.anz,k);
+ SKY.reihen=[];T6.forEach((g,k)=>{const x=x0+k*B;let h=L*(.5+2.5*Math.sqrt(g.anz/mx)),col=new T.Color(g.farbe||(TY[g.typen[0]]||{}).color||'#8b94a3');
+  const cm=sammelKoerper(x,z0,h,col,L,SKY_AUF.offen.has(g.t)?.55:.9,g.anz,k);h=Math.max(h,cm.userData.oben||0);
   const O=N.filter(n=>n!==f&&g.typen.includes(n.ty)&&gehoertZu(n,f)&&!typAus[n.ty]).sort((a,b)=>g.typen.indexOf(a.ty)-g.typen.indexOf(b.ty)||(isFinite(a.t0)?a.t0:0)-(isFinite(b.t0)?b.t0:0));
   const sum=O.reduce((a,n)=>{const v=feld(n);return isFinite(v)?a+v:a},0),hatW=O.some(n=>isFinite(feld(n)));
   SKY.sammel.push({m:cm,f,typ:g.t,anz:g.anz,x,z:z0,h,txt:(g.titel||(TY[g.t]||{}).label||g.t)+' '+g.anz+(g.teile.length>1?' · '+g.teile.filter(t=>t.anz).map(t=>t.name+' '+t.anz).join(' · '):'')+(hatW?' · '+eur(sum):'')});SKY.koerper.push({m:cm,f,typ:g.t});
@@ -1770,7 +1770,7 @@ $('jl').onclick=()=>$('jf').click();
 $('jf').onchange=e=>{const f=e.target.files[0];if(f)leseDatei(f);e.target.value=''};
 addEventListener('dragover',e=>e.preventDefault());
 addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer.files&&e.dataTransfer.files[0];if(f)leseDatei(f)});
-function leseDatei(f){if(DM.on)demoStop();if(/\.zip$/i.test(f.name)){leseZip(f);return}const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);if(istMassnahmenDatei(j)){massnahmenLaden(j);return}if(j&&j.format==='4deep-gebaeude'){j._datei=f.name;gebaeudeLaden([j]);return}   /* Version 63 */eigeneWahl();lauf=null;laden(j.daten&&j.daten.nodes?j.daten:j)}catch(e){meld('Datei ist kein gültiges JSON: '+e.message)}};r.readAsText(f)}
+function leseDatei(f){if(DM.on){DM.vorher=null;demoStop()}if(/\.zip$/i.test(f.name)){leseZip(f);return}const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);if(istMassnahmenDatei(j)){massnahmenLaden(j);return}if(j&&j.format==='4deep-gebaeude'){j._datei=f.name;gebaeudeLaden([j]);return}   /* Version 63 */eigeneWahl();lauf=null;laden(j.daten&&j.daten.nodes?j.daten:j)}catch(e){meld('Datei ist kein gültiges JSON: '+e.message)}};r.readAsText(f)}
 $('ds').onchange=e=>waehleRaum(e.target.value);
 $('ubtn').onclick=()=>{if(U)uBeenden();else uStart(0)};$('wks').onchange=e=>wkWahl(e.target.value);$('fbs').onchange=e=>fbSetzen(e.target.value);
 $('rvr').oninput=e=>{rvStop();rvSetzen(RV.ids[+e.target.value])};$('rvz').onclick=()=>{rvStop();rvSetzen(RV.ids[Math.max(0,RV.ids.indexOf(RV.akt)-1)])};$('rvv').onclick=()=>{rvStop();rvSetzen(RV.ids[Math.min(RV.ids.length-1,RV.ids.indexOf(RV.akt)+1)])};
@@ -2131,7 +2131,7 @@ function konstruktionData(dt){const H5='CATIA V5 (Integration)',HI='Issue',HPe='
  add('iss1','issue','Entformungsschräge im Kopfbereich zu gering',{state:'In Work',imgText:'Entformungsschräge im Kopfbereich zu gering (nach CR-07)',meta:{Beschreibung:'Entformungsschräge im Kopfbereich zu gering',Priorität:'Hoch',Eröffnet:dt(-3),Herkunft:HI}});link('iss1','KE_B','betrifft');link('iss1','p-kon','zuweisung');
  [['a1','Oberteil an Kundenteil Stand C anpassen','In Work',2,'p-kon'],['a2','Haltestift Einleger konstruieren','In Work',3,'p-kon'],['a3','Änderung prüfen und freigeben (C.1)','To do',5,'p-pl'],['a4','CAM Oberteil nach C.1 nachziehen','To do',8,'p-cam']].forEach(([id,nm,st,f,pe])=>{add(id,'task',nm,{state:st,meta:{Fällig:dt(f),Herkunft:HP}});link(id,'iss42','aufgabe');link(id,pe,'zuweisung')});
  return{types,relTypes,nodes,edges,revisionen:R,revStart:'B.1',layout:'baum',spacing:8,maxObjects:nodes.length}}
-function waehleRaum(v){if(DM.on)demoStop();eigeneWahl();lauf=null;
+function waehleRaum(v){if(DM.on){DM.vorher=null;demoStop()}eigeneWahl();lauf=null;
  if(v==='demo')laden(demoDaten());
  else if(v==='eauto')laden(elektroautoDaten());   // Version 55: Elektroauto wie in 3Deep, mit Zeitverlauf
  else if(v==='kauf')laden(kaufDaten());   // Version 56: kaufmännischer Datenraum wie in 3Deep
@@ -3328,6 +3328,7 @@ async function dmSchritt(s){const C=DM.ctx,ms=s.ms||0;if(/^(daten|achsen|heim|fl
  }
  if(ms)await dmW(ms)}
 async function demoAbspielen(A){if(DM.on)return demoStop();
+ DM.vorher=D?{D,ds:$('ds').value,ly:layout,lauf}:null;   /* Version 73 (Wunsch des Nutzers): Daten vor der Vorführung merken (CRM-Datei, Widget), danach wieder zeigen */
  DM.on=true;DM.paused=false;DM.id++;DM.ctx={};DM.ablauf=A;DM.sprung=null;DM.schnell=false;document.body.classList.toggle('dmpj',A===DEMO_PROJEKT);DM.station=-1;$('dmb').textContent='■ Demo stoppen';$('dmp').textContent='⏸ Pause (P)';$('dmp').style.display='';$('dmpj').style.display='none';
  if(U)uStop(true);
  let von=0;
@@ -3343,7 +3344,8 @@ function demoSprung(d){if(!DM.on||!DM.ablauf)return;const A=DM.ablauf,z=(DM.spru
 function meldeFehler(x){console.error(x);const l=$('leer');l.style.display='';l.style.color='#ff6b6b';l.textContent='Fehler in der Vorführung: '+(x&&x.message||x)}
 function demoStop(){if(!DM.on)return;DM.sprung=null;DM.schnell=false;teleSetzen(45);document.body.classList.remove('dmpj');const proj=DM.ablauf===DEMO_PROJEKT;DM.zf=null;if(AUS)ausfallAus(true);if(MAS_K!=null)masKetteAus();if(proj)$('mas').style.display='none';DM.on=false;DM.paused=false;DM.sp=null;DM.id++;DM.fahrt=null;DM.dreh=0;DM.pfad=null;if(DM.zr){DM.zr=null;tCur=Infinity}
  N.forEach(n=>n.dmAus=false);if(N.length)zeitAnwenden();$('dfade').style.opacity=0;demoCap('');schliesseProfil();waehle(-1);
- $('dmb').textContent='▶ Demo abspielen';$('dmp').style.display='none';$('dmpj').style.display=''}
+ $('dmb').textContent='▶ Demo abspielen';$('dmp').style.display='none';$('dmpj').style.display='';
+ const v=DM.vorher;DM.vorher=null;if(v&&D!==v.D){DM.intern=true;try{$('ds').value=v.ds;laden(v.D);lauf=v.lauf;if(v.ly&&v.ly!==layout&&$('ly').querySelector('option[value="'+v.ly+'"]:not([hidden])')){$('ly').value=v.ly;setzeLayout(v.ly,true)}}finally{DM.intern=false}}}
 $('dmb').onclick=()=>demoAbspielen(DEMO_EAUTO);$('dmpj').onclick=()=>demoAbspielen(DEMO_PROJEKT);
 // Version 59 (Wunsch des Nutzers): Arbeitsmodus / Demo-Modus; vorerst Demo-Modus als Voreinstellung, Wahl im Browser gemerkt (4d_modus)
 // Arbeitsmodus: immer Farbschema „Himmel“ und Oberfläche „Satin“ (nicht gespeichert); zurück im Demo-Modus gelten wieder die gemerkten Werte
