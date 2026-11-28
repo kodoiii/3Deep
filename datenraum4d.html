@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="68">
+<meta name="4deep-darstellung" content="69">
 <title>4Deep – Datenraum in Raum und Zeit</title>
 <!-- 4Deep – Datenraum in Raum und Zeit (begonnen als Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026; Produkt seit 26.11.2026, Version 55): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -148,7 +148,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 68 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 69 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="chr"></div><div class="pn" id="mas"></div><div class="pn" id="prof"></div><div class="pn" id="dcap"></div><div id="dfade"></div><div id="profb"></div>
@@ -1440,10 +1440,12 @@ function skySammelTypen(f){const c=D.skyline,zahl={};N.forEach(n=>{if(n!==f&&!ty
 function sammelTypen(){return(Array.isArray(D.skyline.sammel)?D.skyline.sammel:[]).flatMap(e=>typeof e==='string'?[e]:(e.typen||[]))}
 // Version 67 (Vorschläge für den Nutzer): Form der Sammelkörper vorn beim Aufklappen; SAMMEL_FORM zylinder (bisher), stapel, raster, buendel, kiste, ordner
 var SAMMEL_FORM='stapel';   /* Version 68: Stapel als Standard (Wahl des Nutzers) */
+function kristallMat(col,op){return new T.MeshPhysicalMaterial({color:col,transparent:true,opacity:Math.min(.86,op),roughness:.2,metalness:0,clearcoat:1,clearcoatRoughness:.1,emissive:0xeef5ff,emissiveMap:kristallTex(),emissiveIntensity:.3,sheen:.5,sheenColor:new T.Color(0xeef5ff),sheenRoughness:.5})}
+function kristallUV(geo,fx,fy,fz){const uv=geo.attributes.uv,S=[[fz,fy],[fz,fy],[fx,fz],[fx,fz],[fx,fy],[fx,fy]];for(let gi=0;gi<6;gi++)for(let v=gi*4;v<gi*4+4;v++){uv.setX(v,uv.getX(v)*S[gi][0]);uv.setY(v,uv.getY(v)*S[gi][1])}uv.needsUpdate=true}   /* Facettengröße unabhängig von der Quadergröße */
 function sammelKoerper(x,z,h,col,L,op,anz,k){const F=SAMMEL_FORM,R=L*1.15,add=m=>{m.castShadow=m.receiveShadow=true;skyG.add(m);return m},zf=i=>{const v=Math.sin((i+1)*12.9898+k*78.233)*43758.5453;return v-Math.floor(v)};
  const glas=()=>new T.MeshPhysicalMaterial({color:col,roughness:.12,metalness:0,clearcoat:1,clearcoatRoughness:.08,transparent:true,opacity:Math.min(.92,op)}),kante=new T.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.85,depthWrite:false});
  const quader=(sx,sy,sz,px,py,pz,ry,mat)=>{const m=add(new T.Mesh(new T.BoxGeometry(sx,sy,sz),mat||glas()));m.position.set(px,py,pz);m.rotation.y=ry||0;const e=new T.LineSegments(new T.EdgesGeometry(m.geometry),kante);m.add(e);return m};
- if(F==='stapel'){const n=Math.max(1,Math.min(14,anz)),d=Math.min(L*.42,Math.max(L*.2,h/n));for(let i=0;i<n;i++){const b=R*(1.75+.2*zf(i));quader(b,d*.9,b*(.8+.15*zf(i+7)),x+(zf(i+3)-.5)*L*.15,d*(i+.45),z,(zf(i+5)-.5)*.35)}}
+ if(F==='stapel'){const n=Math.max(1,Math.min(14,anz)),d=Math.min(L*.42,Math.max(L*.2,h/n)),KM=kristallMat(col,op),Z=L*.9;for(let i=0;i<n;i++){const b=R*(1.75+.2*zf(i)),bz=b*(.8+.15*zf(i+7)),q=quader(b,d*.9,bz,x+(zf(i+3)-.5)*L*.15,d*(i+.45),z,(zf(i+5)-.5)*.35,KM);kristallUV(q.geometry,b/Z,d*.9/Z,bz/Z)}}   /* Version 69: Stapel in Kristalloptik mit kleinen Facetten */
  else if(F==='raster'){const c=L*.66,g=c*1.08,cnt=Math.max(1,Math.min(81,anz)),M=glas();for(let i=0;i<cnt;i++){const e=i%9,l=Math.floor(i/9);quader(c,c,c,x+(e%3-1)*g,c/2+l*g,z+(Math.floor(e/3)-1)*g,0,M)}}
  else if(F==='buendel'){const P=[[0,0]].concat([0,1,2,3,4,5].map(i=>[Math.cos(i*Math.PI/3)*L*.62,Math.sin(i*Math.PI/3)*L*.62])).slice(0,Math.max(1,Math.min(7,anz))),M=glas();P.forEach(([dx,dz],i)=>{const hh=h*(i?.78+.22*zf(i):1);quader(L*.5,hh,L*.5,x+dx,hh/2,z+dz,(zf(i+2)-.5)*.4,M)});
   const gold=new T.MeshStandardMaterial({color:0xd4a017,roughness:.3,metalness:.7});[.3,.68].forEach(f=>{const t=add(new T.Mesh(new T.TorusGeometry(L*.98,L*.06,8,40),gold));t.rotation.x=Math.PI/2;t.position.set(x,h*f*.8,z)})}
@@ -1482,7 +1484,7 @@ function skyBlock(L,f,x,z){const C=Array.isArray(D.skyline.anteile)?D.skyline.an
    const ym=Math.max(y+h/2,yf+L*1.6);yf=ym;
    if(t.n&&!typAus[t.n.ty]&&t.n.skyAus){const n=t.n;if(n.r0==null)n.r0=n.r;n.r=L*.7;n.skyAus=false;n.ziel.set(x+w/2,ym,z+w/2+L*.9)}
    B.teile.push({y:ym,txt:(t.n?crmKurz(t.n):'weitere ('+t.anz+')')+' · '+t.h.toLocaleString('de-DE',{maximumFractionDigits:1})+' h · '+Math.round(t.h/S*100)+' %'});y+=h});
-  B.top=Math.max(y,yf+L*.7);SKY.ecken.push(new T.Vector3(x-w,0,z-w),new T.Vector3(x+w+L*9,B.top+L*2.5,z+w));xa=x+w+L*15});
+  B.top=Math.max(y,yf+L*.7);SKY.ecken.push(new T.Vector3(x-w,0,z-w),new T.Vector3(x+w+L*9,B.top+L*2.5,z+w));xa=x+w+L*10.5});   /* Version 69 (Wunsch des Nutzers): Aufwandstürme näher zusammen (vorher L*15) */
  SKY.block=SKY.bloecke[0]||null}
 function crmKurz(n){const t=String(n.name||'');return t.includes(' · ')?t.split(' · ').slice(1).join(' · '):t}
 function skyBuehneBeschriften(L,hh){const S=SKY.buehne;if(!S)return;   // Überschrift „Aufgeklappt …“ seit Version 53 in der Legende oben (überlappte Sammelkörper-Beschriftung)
@@ -1497,9 +1499,9 @@ function skyKlick(e,i){if(layout==='reise'&&SKY&&i<0){const sk=skyKoerper(e);if(
  if(!f&&!(sk&&sk.typ))return false;clearTimeout(SKY_KL);
  SKY_KL=setTimeout(()=>{if(geh){$('chr').style.display='none';lageberichtZeigen(f);return}   /* Version 67: Einzelklick auf das Gehry-Gebäude = Lagebericht (Handlungsliste) der Firma, Klick auf den Turm = aufklappen */
   if(f){SKY_AUF=SKY_AUF.f===f?{f:null,offen:new Set()}:{f,offen:new Set()}}else{const o=SKY_AUF.offen;o.has(sk.typ)?o.delete(sk.typ):o.add(sk.typ)}
-  setzeLayout('skyline',false);if(SKY_AUF.f&&SKY.buehne){const P=[];const Ls=abstand();SKY.sammel.forEach(g=>P.push(new T.Vector3(g.x,g.h+Ls,g.z),new T.Vector3(g.x,0,g.z+Ls*1.3),new T.Vector3(g.x-Ls*1.3,0,g.z),new T.Vector3(g.x+Ls*1.3,0,g.z)));N.forEach(n=>{if(!n.skyAus&&!SKY.F.includes(n))P.push(n.ziel)});P.push(new T.Vector3(SKY.buehne.I.x,SKY.buehne.I.h,SKY.buehne.I.z));
+  setzeLayout('skyline',false);if(SKY_AUF.f&&SKY.buehne){const P=[];const Ls=abstand();SKY.sammel.forEach(g=>P.push(new T.Vector3(g.x,g.h+Ls,g.z),new T.Vector3(g.x,0,g.z+Ls*1.3),new T.Vector3(g.x-Ls*1.3,0,g.z),new T.Vector3(g.x+Ls*1.3,0,g.z)));N.forEach(n=>{if(!n.skyAus&&!SKY.F.includes(n))P.push(n.ziel)});P.push(new T.Vector3(SKY.buehne.I.x,SKY.buehne.I.h,SKY.buehne.I.z));(SKY.bloecke||[]).forEach(B=>P.push(new T.Vector3(B.x-B.w,0,B.z),new T.Vector3(B.x+B.w+Ls*7,B.top+Ls*2,B.z)));   /* Version 69: Aufwandstürme rechts mit im Bild */
    // Version 53 (Wunsch des CEO): beim Aufklappen gerade von vorn (Turm hinten, Sammelkörper davor mittig); Drehung auf kürzestem Weg
-   const g0=K.gier,g1=g0-Math.round(g0/(2*Math.PI))*2*Math.PI;K.gier=0;const z=heimZiel(P.map(p=>({ziel:p,r:abstand()})));K.gier=g0;if(z){K.zZiel.copy(z.c);K.zDist=z.d;K.zGier=g0-g1;K.flug=true}}else heim();neu()},260);return true}
+   const GZ=-.32,g0=K.gier,g1=g0-Math.round(g0/(2*Math.PI))*2*Math.PI;K.gier=GZ;const z=heimZiel(P.map(p=>({ziel:p,r:abstand()})));K.gier=g0;if(z){K.zZiel.copy(z.c);K.zDist=z.d;K.zGier=g0-g1+GZ;K.flug=true}   /* Version 69 (Wunsch des Nutzers): leicht schräg statt gerade von vorn */}else heim();neu()},260);return true}
 // ---------- Version 35 (Vorschlag C für den CEO): Kundenreise ----------
 // Layout „Kundenreise“: je Firma eine Bahn über die Zeit (links alt, rechts neu, Quartale). Hinten Säulen = Umsatz je Quartal (Typ daten.skyline.umsatzTyp, Feld „Betrag“),
 // auf der Bahn die Objekte der Firma als Ereignisse an ihrem Datum (eine Spur je Typ), Fähnchen = Punkte der Handlungsliste mit Datum. Mit „Firma öffnen“ nur diese Firma.
