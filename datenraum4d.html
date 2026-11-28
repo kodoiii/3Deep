@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="4deep-darstellung" content="69">
+<meta name="4deep-darstellung" content="71">
 <title>4Deep – Datenraum in Raum und Zeit</title>
 <!-- 4Deep – Datenraum in Raum und Zeit (begonnen als Machbarkeitsstudie, Auftrag des Nutzers 22.11.2026; Produkt seit 26.11.2026, Version 55): zweite Darstellung mit WebGL (three.js r149, Datei three.min.js daneben).
      Gleiches Datenformat und gleiche Nachrichten wie datenraum3d.html ({quelle:'3deep-adapter',daten,lauf,...} / {quelle:'3deep',bereit|download}),
@@ -84,15 +84,15 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  <h1>4Deep</h1><div class="u">Datenraum in Raum und Zeit</div>
  <div id="modw" title="Arbeitsmodus: nur eigene Daten (Datei laden, Widget). Demo-Modus: zusätzlich Beispiel-Datenräume und Vorführungen. Wird im Browser gemerkt."><button id="moda">Arbeitsmodus</button><button id="modd">Demo-Modus</button></div>
  <label class="nurdemo">Datenraum</label>
- <select id="ds" class="nurdemo"><option value="">Datenraum wählen …</option><option value="eauto">Demo: Elektroauto (fiktiv)</option><option value="demo">Produktentwicklung (fiktiv, 18 Monate)</option><option value="kauf">Kaufmännisch (fiktiv)</option><option value="projekt">Projekt (fiktiv)</option>
+ <select id="ds" class="nurdemo"><option value="">Datenraum wählen …</option><option value="eauto">Demo: Elektroauto (fiktiv)</option><option value="demo">Produktentwicklung (fiktiv, 18 Monate)</option><option value="kauf">Kaufmännisch (fiktiv)</option><option value="projekt">Projekt (fiktiv)</option><option value="konstr">Revisionsvergleich: Werkzeug (fiktiv)</option>
   <option value="stress:2000">Leistungstest 2 000 Objekte</option>
   <option value="stress:10000">Leistungstest 10 000 Objekte</option><option value="stress:30000">Leistungstest 30 000 Objekte</option>
   <optgroup label="Unterricht (über Webserver)"><option value="thema:supernova">Supernova Typ Ia</option><option value="thema:hastings">Schlacht von Hastings (1066)</option></optgroup></select>
- <div class="nurdemo" style="display:flex;gap:4px"><button id="dmb" title="Vorführung mit dem Elektroauto (ca. 5 min): Eingriff mit Maus, Taste oder SpaceMouse pausiert, P = Pause/Weiter, Esc = beenden">▶ Demo abspielen</button><button id="dmp" style="display:none;width:auto;white-space:nowrap">⏸ Pause (P)</button></div>
- <button id="dmpj" class="nurdemo" title="Vorführung Projektmanagement (ca. 6 min): Zeitachse, Heute, kritischer Pfad, Handlungsliste mit Belastbarkeit, Fälle per Klick, Engpass und Ausfall, Gate-Reife. Eingriff pausiert, P = Pause/Weiter, Esc = beenden">▶ Demo Projekt</button>
+ <div class="nurdemo" style="display:flex;gap:4px"><button id="dmb" title="Vorführung mit dem Elektroauto (ca. 5 min): Eingriff mit Maus, Taste oder SpaceMouse pausiert, P = Pause/Weiter, ← → = Kapitel zurück/vor, Esc = beenden">▶ Demo abspielen</button><button id="dmp" style="display:none;width:auto;white-space:nowrap">⏸ Pause (P)</button></div>
+ <button id="dmpj" class="nurdemo" title="Vorführung Projektmanagement (ca. 6 min): Zeitachse, Heute, kritischer Pfad, Handlungsliste mit Belastbarkeit, Fälle per Klick, Engpass und Ausfall, Gate-Reife. Eingriff pausiert, P = Pause/Weiter, ← → = Kapitel zurück/vor, Esc = beenden">▶ Demo Projekt</button>
  <button id="jl" title="4Deep-JSON oder CRM-Export als ZIP (wird nur im Browser umgewandelt)">Datei laden (JSON / CRM-ZIP) …</button><input type="file" id="jf" accept=".json,.zip,application/json,application/zip" hidden>
  <button id="ubtn" style="display:none" title="Unterricht: Stationen mit Text, Frage und Antwort (← → wechseln, A = Antwort, Esc = beenden)">▶ Unterricht</button>
- <div id="rvw" style="display:none"><label id="rvl">Ablauf</label><div class="rvz"><button id="rvz">◀</button><input type="range" id="rvr" min="0" max="0" value="0"><button id="rvv">▶</button></div><div id="rvt" class="m"></div></div>
+ <div id="rvw" style="display:none"><label id="rvl">Ablauf</label><div id="rvkopf" style="display:none;margin:2px 0 4px"></div><div class="rvz"><button id="rvz">◀</button><input type="range" id="rvr" min="0" max="0" value="0"><button id="rvv">▶</button></div><div id="rvnam" class="m" style="display:none;justify-content:space-between;font-size:11px"></div><div id="rvt" class="m"></div><div id="rvx" style="display:none"><button id="rvp" title="Revisionen nacheinander zeigen (2,6 s je Revision)">▶ Abspielen</button><div class="cb"><input type="checkbox" id="rvn" checked><span>Änderungen zur nächsten Revision zeigen</span></div><div id="rvinfo" style="margin-top:4px"></div><div id="rvres" style="max-height:30vh;overflow:auto"></div><div class="m" id="rvleg" style="margin-top:4px"><span style="color:#2fbf4a">●</span> neu · <span style="color:#ff9a1a">●</span> Revision geändert · <span style="color:#e0282e">◌</span> entfallen (blass) · <span style="color:#d9b300">●</span> ändert sich in der nächsten Revision. Klick auf einen Eintrag = hinfliegen.</div></div></div>
  <div id="wkw" style="display:none"><label>Punktwolke</label><select id="wks"></select><div id="wkt" class="m"></div></div>
  <div id="fbw" style="display:none"><label>Färbung</label><select id="fbs"></select><div id="fbt" class="m"></div></div>
  <button id="finb" style="display:none" title="Finanzauswertung: Layout „Kennzahlen (Achsen)“ mit der Vorlage „Rechnungen“; weitere Vorlagen darunter (Projekte, Billing Sheets, Kundenportfolio)">Finanzauswertung …</button>
@@ -106,7 +106,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  <div class="cb" id="baew" title="CRM: Zeitnachweise (Batches) einzeln statt je Rechnung bzw. je Billing Sheet und Monat gebündelt"><input type="checkbox" id="bae"><span>Batches einzeln</span></div>
  </details>
  <label>Layout</label>
- <select id="ly"><option value="netz">Netz</option><option value="schichten">Schichten nach Objekttyp</option><option value="skyline" id="lysky" hidden>Firmen-Skyline (Überblick)</option><option value="reise" id="lyreise" hidden>Kundenreise (je Firma über die Zeit)</option><option value="reife">Schichten nach Reifegrad</option><option value="attr" id="lyattr">Gruppiert nach Attribut</option><option value="baum">Baum</option>
+ <select id="ly"><option value="netz">Netz</option><option value="schichten">Schichten nach Objekttyp</option><option value="skyline" id="lysky" hidden>Firmen-Skyline (Überblick)</option><option value="reise" id="lyreise" hidden>Kundenreise (je Firma über die Zeit)</option><option value="reife">Schichten nach Reifegrad</option><option value="attr" id="lyattr">Gruppiert nach Attribut</option><option value="baum">Baum</option><option value="kegel">Baum (Kegeldarstellung)</option>
   <option value="zeit">Zeitachse (Zeit als Raumrichtung)</option><option value="plan" id="lyplan" hidden>Projektplan (Phasen, kritischer Pfad)</option><option value="achsen">Kennzahlen (Achsen)</option><option value="fest">Feste Positionen (aus Daten)</option></select>
  <div id="atw" style="display:none"><label>Attribut</label><select id="at" title="Objekte in Ebenen nach dem Wert dieses Attributs (Metadaten)"></select></div>
  <div id="axui" style="display:none"><label>Kennzahlen-Vorlage</label><select id="axp"></select>
@@ -148,7 +148,7 @@ body.schueler #pn>*:not(#lg):not(#ubtn):not(#rvw):not(#wkw):not(#fbw){display:no
  </details>
  <div id="lg"></div>
  <div id="hint">Mittlere Taste ziehen = Verschieben · Mittlere + rechte Taste = Drehen · Mausrad = Zoomen<br>Linke Taste ziehen = Drehen (+ Umschalt ebenso, + Strg = Verschieben, + Alt = Zoomen)<br>Klick = Auswahl · Rechtsklick = Profilkarte am Objekt · Doppelklick = hinfliegen, ins Leere = Startansicht · Leertaste = Zeit abspielen (Zeitraffer: Gold = neu, Türkis = geändert) · N = Namen · M = Bedienfeld</div>
- <div id="ver">Darstellung 4D Version 69 · three.js r149</div>
+ <div id="ver">Darstellung 4D Version 71 · three.js r149</div>
 </div>
 <div class="pn" id="zt"><canvas id="zk" title="Wachstum: Objekte (Fläche) und Änderungen (Striche) über die Zeit · klicken = Zeitpunkt wählen"></canvas><button id="zp" title="Abspielen (Leertaste)">▶</button><input type="range" id="zr" min="0" max="1000" value="1000"><span id="zjahr"></span><select id="ztempo" title="Dauer des Zeitraffers"><option value="10">10 s</option><option value="20" selected>20 s</option><option value="40">40 s</option><option value="90">90 s</option></select><label class="zr" title="Zeitleiste bleibt linear; beim Abspielen laufen Phasen ohne neue oder geänderte Objekte schneller durch (nicht übersprungen)"><input type="checkbox" id="raffen" checked>Ruhe raffen</label><button id="za" title="Alles zeigen">Alles</button></div>
 <div class="pn" id="chr"></div><div class="pn" id="mas"></div><div class="pn" id="prof"></div><div class="pn" id="dcap"></div><div id="dfade"></div><div id="profb"></div>
@@ -390,6 +390,7 @@ function laden(daten,opt){
  if(!opt.unterricht&&U)uStop(true);if(!opt.sammlung&&!opt.unterricht){SCH=null;document.body.classList.remove('schueler');$('ustart').style.display='none'}
  if(!daten||!Array.isArray(daten.nodes)){meld('Keine Objekte in den Daten.');return}
  const alt={};if(opt.behalten)N.forEach(n=>alt[n.id]=n);
+ if(!opt.unterricht&&!daten.revisionenTitel&&Array.isArray(daten.revisionen)&&daten.revisionen.length>1)daten=rvZusammen(daten);   // Version 70: Revisionsvergleich wie 3Deep
  D=daten;TY=daten.types||{};STUFEN=Object.assign({},STUFEN0,daten.stufenNamen||{});letzteSimDauer=0;const RT=daten.relTypes||{};
  // Größen auf den Median der Typgrößen normieren (Typgrößen sind je Datenquelle verschieden)
  const gr=Object.values(TY).map(t=>+t.size||0).filter(x=>x>0).sort((a,b)=>a-b);const med=gr.length?gr[gr.length>>1]:1;
@@ -399,10 +400,11 @@ function laden(daten,opt){
   if(ty.hidden&&typAus[o.type]===undefined)typAus[o.type]=true;
   const meta=o.meta||{};
   let t0=zeit(o.start);if(!isFinite(t0))t0=zeit(meta.Erstellt);if(!isFinite(t0))t0=zeit(meta['Geändert']);
+  if(o._rv){const ts=Object.values(o._rv).map(m=>{const mm=m.meta||{};let t=zeit(m.start);if(!isFinite(t))t=zeit(mm.Erstellt);return t}).filter(isFinite);if(ts.length)t0=Math.min(...ts)}   // Version 70: zusammengefasste Revisionen ab der ersten
   const t1=zeit(o.end);let tg=zeit(meta['Geändert']!=null?meta['Geändert']:meta.Modified);if(!(tg>t0+864e5))tg=NaN;   // Änderung (Widget-Daten) leuchtet beim Zeitraffer auf
   const sz=(+o.size||+ty.size||med)/med;
   const n={id:o.id,o,ty:o.type,stufe:reifeStufe(o),name:o.name||String(o.id),form:ty.shape||formNachName(ty.label||o.type),col:schemaFarbe(kraeftig(farbe(o.color||ty.color))),_cq:o.color||ty.color,r:1.7*Math.max(.35,Math.min(3.2,Math.sqrt(sz))),
-   t0,t1,tg,pos:new T.Vector3(),ziel:new T.Vector3(),s:0,sZiel:1,i:N.length,nb:[],fest:o.pos,warn:o.warnung?String(o.warnung):''};
+   t0,t1,tg,pos:new T.Vector3(),ziel:new T.Vector3(),s:0,sZiel:1,i:N.length,nb:[],fest:o.pos,warn:o.warnung?String(o.warnung):'',rv:o._rv||null,erb:!!o._erb,o0:o};
   const a=alt[o.id];if(a){n.pos.copy(a.pos);n.s=a.s;n.alt=true}
   {let a=zeit(o.start),b=zeit(o.end);if(isNaN(a))a=b;if(isNaN(b))b=a;if(isFinite(a)){if(b<a){const x=a;a=b;b=x}n.ts=a;n.te=b}const pg=o.progress==null||o.progress===''?NaN:+o.progress;if(isFinite(pg))n.pg=Math.max(0,Math.min(100,pg));if(o.critical!=null)n.kritG=!!o.critical}   // Version 57: Projektfelder wie 3Deep 92
   n.r0=n.r;byId[o.id]=n;N.push(n);
@@ -423,7 +425,7 @@ function laden(daten,opt){
  const hatPos=N.some(n=>n.fest);
  axVorbereiten();$('finb').style.display=daten.crm?'':'none';$('lysky').hidden=!daten.skyline;$('lyplan').hidden=!PROJ;$('lyreise').hidden=!daten.skyline;$('lgbb').style.display=daten.skyline?'':'none';$('crmd').style.display=daten.crm?'':'none';if(daten.crm)$('crmdom').placeholder=daten.eigeneDomain?(daten.eigeneAuto?'automatisch: ':'')+daten.eigeneDomain:'automatisch (keine erkannt)';$('fkw').style.display=daten.fakten?'':'none';{const hm=Array.isArray(daten.massnahmen)&&daten.massnahmen.length;$('masb').style.display=hm?'':'none';if(!hm)$('mas').style.display='none';else if($('mas').style.display==='block')massnahmenZeigen()}$('chrb').style.display=Array.isArray(daten.chronik)&&daten.chronik.length?'':'none';if(!(Array.isArray(daten.chronik)&&daten.chronik.length))$('chr').style.display='none';else if($('chr').style.display==='block')chronikZeigen();
  rvVorbereiten(daten);
- let ly=opt.behalten?layout:(daten.layout==='achsen'&&AXP.length?'achsen':daten.layout==='plan'&&PROJ?'plan':daten.layout==='plan'||daten.zeitArt?'zeit':hatPos?'fest':'netz');
+ let ly=opt.behalten?layout:(daten.layout==='baum'||daten.layout==='kegel'?daten.layout:daten.layout==='achsen'&&AXP.length?'achsen':daten.layout==='plan'&&PROJ?'plan':daten.layout==='plan'||daten.zeitArt?'zeit':hatPos?'fest':'netz');
  if(!opt.behalten&&daten.skyline&&skyFirmen().length)ly='skyline';   // Version 36 (Wunsch des Nutzers): mit Firmen-Kennzahlen immer zuerst die Skyline
  if(!$('ly').querySelector('option[value="'+ly+'"]'))ly='netz';
  $('ly').value=ly;setzeLayout(ly,!opt.behalten);
@@ -733,7 +735,7 @@ function setzeLayout(ly,kamera){
   const rr=reifeReihe(),AR=ly==='attr'?attrReihe(L):null;
   N.forEach(n=>{n.ziel.copy(n.pos);n.yFest=ly==='schichten'?(reihe.length-1-reihe.indexOf(n.ty))*L*2.2:ly==='reife'?(rr.length-1-rr.indexOf(n._rk))*reifeAbst(L):AR?AR.y(AR.val(n)):null;if(n.yFest!=null)n.ziel.y=n.yFest});
   starteSim(L);
- }else if(ly==='baum'){baum(L)}
+ }else if(ly==='baum'||ly==='kegel'){baum(L,ly==='kegel')}
  else if(ly==='zeit'){zeitachse(L)}
  else if(ly==='plan'){planLayout(L);if(kamera){K.gier=0;K.nick=.12}}
  else if(ly==='skyline'){skyline(L);if(kamera){const rw=SKY?SKY.reihen:9;/* Version 50: eine Reihe fast auf Augenhöhe (P3), zwei Reihen halbhoch, viele wie bisher */K.gier=rw<=1?-.15:rw===2?-.3:-.5;K.nick=rw<=1?.04:rw===2?.25:.42}}
@@ -798,7 +800,7 @@ function simSchritt(){   // Ersatz ohne Worker: Schritte im Hauptthread mit Zeit
  while(sim.iter<sim.max&&performance.now()-t<12){kraftSchritt(sim.P,sim.YF,sim.KA,sim.KW,sim.L,kraftTemp(sim.L,sim.iter,sim.max,N.length),sim.A,sim.Q,sim.KL);sim.iter++}
  simUebernehmen(sim.P,sim.iter);
 }
-function baum(L){
+function baum(L,kegel){
  // Wurzeln: Objekte ohne Eltern über Strukturlinks (from = Kind, to = Eltern); sonst je Teilnetz das Objekt mit den meisten Beziehungen
  const kinder=new Map(),hatEltern=new Set();E.forEach(k=>{if(!k.hier)return;(kinder.get(k.b)||kinder.set(k.b,[]).get(k.b)).push(k.a);hatEltern.add(k.a)});
  const besucht=new Set(),wurzeln=[],tiefe=new Map(),kind=new Map();N.forEach(n=>kind.set(n,[]));
@@ -810,6 +812,7 @@ function baum(L){
  while(rest.length&&weiter){weiter=false;rest.forEach(n=>{if(besucht.has(n))return;const m=n.nb.filter(x=>besucht.has(x)).sort((a,b)=>tiefe.get(b)-tiefe.get(a))[0];if(m){besucht.add(n);tiefe.set(n,tiefe.get(m)+1);kind.get(m).push(n);n.eltern=m;weiter=true}});rest=rest.filter(n=>!besucht.has(n))}
  // 3. Teilnetze ohne Struktur: Objekt mit den meisten Beziehungen als Wurzel
  rest.sort((a,b)=>b.nb.length-a.nb.length).forEach(w=>{if(besucht.has(w))return;besucht.add(w);tiefe.set(w,0);wurzeln.push(w);bfs(w,false)});
+ if(!kegel){baumKlassisch(L,wurzeln,kind);return}
  // Kegelbaum (Version 13): je Tiefe ein Ring, bei vielen Objekten in mehreren Reihen (nach außen und leicht nach unten
  // gestaffelt). Reihenfolge im Ring folgt dem Winkel der Eltern, Geschwister liegen beieinander; feste Plätze → keine Überlappung.
  const dy=L*2.4,R0=L*1.6,sp=L*1.15;let x=0;
@@ -826,6 +829,22 @@ function baum(L){
   const rand=Math.max(L,innen);x+=rand;ebenen.flat().forEach(n=>n.ziel.x+=x);x+=rand+L*3});
  const mx=x/2;N.forEach(n=>{n.ziel.x-=mx;n.ziel.y+=L*4});kettenLage(L);
 }
+// Version 70 (Wunsch des Nutzers): klassischer Baum wie 3Deep – jeder Teilbaum hängt unter seinem Elternobjekt, die Kinder im Kranz darum
+// (rekursiv, Platzbedarf je Teilbaum), Geschwister nach Typ und Name sortiert. Mehrere Wurzeln: Bäume nebeneinander in einer Reihe.
+function kranzLage(fs){const k=fs.length;if(k===1)return{o:[[0,0]],rho:0};const tot=fs.reduce((a,b)=>a+b,0),an=[];let acc=0;fs.forEach(f=>{an.push(2*Math.PI*(acc+f/2)/tot);acc+=f});
+ let rho=0;for(let j=0;j<k;j++){const j2=(j+1)%k,dth=((an[j2]-an[j])+4*Math.PI)%(2*Math.PI)||2*Math.PI;rho=Math.max(rho,(fs[j]+fs[j2])/(2*Math.sin(Math.min(dth,2*Math.PI-dth)/2)))}
+ return{o:an.map(a=>[rho*Math.cos(a),rho*Math.sin(a)]),rho}}
+function baumKlassisch(L,wurzeln,kind){const ti=Object.keys(TY),VW={},ch=n=>n===VW?wurzeln:(kind.get(n)||[]);
+ const ord=(a,b)=>{const x=ti.indexOf(a.ty),y=ti.indexOf(b.ty);return(x<0?999:x)-(y<0?999:y)||String(a.name).localeCompare(String(b.name))};
+ kind.forEach(L2=>L2.sort(ord));wurzeln.sort(ord);
+ const h2=L*.6,dy=L*2.1,fp=new Map(),off=new Map();
+ // Platzbedarf von unten nach oben (ohne Rekursion: Reihenfolge der Breitensuche rückwärts)
+ const V=wurzeln.length>1?VW:wurzeln[0];if(!V)return;const folge=[V];for(let h=0;h<folge.length;h++)ch(folge[h]).forEach(c=>folge.push(c));
+ for(let h=folge.length-1;h>=0;h--){const n=folge[h],c=ch(n);if(!c.length){fp.set(n,h2);continue}const fs=c.map(x=>fp.get(x)),k=kranzLage(fs);off.set(n,k.o);fp.set(n,Math.max(h2,k.rho+Math.max(...fs)))}
+ const lage=new Map([[V,[0,0,V===VW?-1:0]]]);let dm=0;
+ if(V===VW){let x=0;const xs=wurzeln.map((w,j)=>{if(j)x+=fp.get(wurzeln[j-1])+fp.get(w)+L;return x});off.set(VW,xs.map(v=>[v-x/2,0]))}   /* mehrere Wurzeln: Bäume nebeneinander in einer Reihe */
+ folge.forEach(n=>{const [x,z,d]=lage.get(n);if(n!==VW){n.ziel.set(x,-d*dy,z);dm=Math.max(dm,d)}const o=off.get(n)||[];ch(n).forEach((c,j)=>lage.set(c,[x+o[j][0],z+o[j][1],d+1]))});
+ N.forEach(n=>{n.ziel.y+=dm*dy/2+L*2})}   /* ohne kettenLage: ältere Revisionen bleiben an ihrem Platz im Baum (nach Name neben der neuesten) */
 const ZEILE=2.3;   // Zeilenabstand der Zeitachse (× Abstand), Version 12: luftiger (vorher 1,6)
 function zeitachse(L){
  const reihe=typReihe();const spanne=tMax-tMin||1,breite=Math.max(80,Math.sqrt(N.length)*L*3.6);
@@ -989,7 +1008,7 @@ function zeitAnwenden(){
   L.forEach((n,i)=>{n.gueltig=i===g;n.revAlt=g>=0&&i<g})});
  verzugN=0;
  N.forEach(n=>{n.verzug=isFinite(n.t1)&&n.t1<ref&&!n.fertig&&!n.revAlt?Math.max(1,Math.round((ref-n.t1)/864e5)):0;const sb=sichtbar(n);if(sb&&n.verzug)verzugN++;
-  const vg=vergangen(n)&&!n.verzug&&!n.gueltig;n.sZiel=sb?(vg?(blass?.55:0):n.revAlt?.7:1):0;n.blass=vg||n.revAlt});
+  const vg=vergangen(n)&&!n.verzug&&!n.gueltig;n.sZiel=sb?(vg?(blass?.55:0):n.revAlt?.7:n.rvBlass?.6:1):0;n.blass=vg||n.revAlt||n.rvBlass});
  markerBauen();const lv=$('lgv');if(lv)lv.textContent=verzugN;
  if(hatZeit){const f=isFinite(tCur)?(tCur-tMin)/(tMax-tMin):1;$('zr').value=Math.round(Math.max(0,Math.min(1,f))*1000);$('zjahr').textContent=isFinite(tCur)?(spiel&&tempoFaktor()>1.5?'⏩ ':'')+'Stand '+zeitText(tCur)+' · '+N.filter(n=>n.sZiel>0).length.toLocaleString('de-DE')+' Obj.':'alle Zeiten'}
  kurveZeichnen();
@@ -1182,7 +1201,7 @@ function zeigeProfil(i){prof.i=i;
 function schliesseProfil(){prof.i=-1;$('prof').style.display='none';$('profb').style.display='none'}
 function profLage(){if(prof.i<0)return;const n=N[prof.i],el=$('prof');if(!n){schliesseProfil();return}const q=proj(n,{}),w=el.offsetWidth||340,h=el.offsetHeight||300;
  const sicht=q.z<1&&q.z>-1&&n.s>.05;el.style.opacity=sicht?1:.35;
- const ra=q.R+12;let x=q.x+ra;if(x+w>innerWidth-8&&q.x-ra-w>=8)x=q.x-ra-w;x=Math.max(8,Math.min(innerWidth-w-8,x));let y=Math.max(8,Math.min(innerHeight-h-8,q.y-20));if(document.body.classList.contains('dmpj')&&innerWidth>900){x=innerWidth-w-8;y=8}   /* Version 65: in der Demo Projekt fest am rechten Rand, die Bildmitte bleibt frei */
+ const ra=q.R+12;let x=q.x+ra;if(x+w>innerWidth-8&&q.x-ra-w>=8)x=q.x-ra-w;x=Math.max(8,Math.min(innerWidth-w-8,x));let y=Math.max(8,Math.min(innerHeight-h-8,q.y-20));if(DM.on&&innerWidth>900){x=innerWidth-w-8;y=8}   /* Version 65: in der Demo Projekt, seit Version 71 in allen Vorführungen fest am rechten Rand, die Bildmitte bleibt frei */
  el.style.left=x+'px';el.style.top=y+'px';
  const pb=$('profb');if(pb.style.display==='block'){const bw=pb.offsetWidth,bh=pb.offsetHeight;let bx=x+18-bw;if(bx<4)bx=Math.min(innerWidth-bw-4,x+w-18);pb.style.left=bx+'px';pb.style.top=Math.max(4,y+34-bh)+'px'}}
 
@@ -1637,11 +1656,11 @@ const marker=(()=>{const g=new T.BufferGeometry(),mat=new T.ShaderMaterial({tran
  fragmentShader:'varying vec3 vF;varying float vP;void main(){float d=length(gl_PointCoord-.5)*2.;if(d>1.)discard;float ring=smoothstep(.6,.7,d)*smoothstep(1.,.9,d);gl_FragColor=vec4(vF,ring*.95+vP*(1.-d)*.18);}'});
  const p=new T.Points(g,mat);p.frustumCulled=false;p.renderOrder=6;p.visible=false;scene.add(p);return{p,g,mat,L:[],n:0,puls:false,pt:0}})();
 const GRUEN=new T.Color(0x1fa463),ROT=new T.Color(0xe0352b);
-function markerBauen(){const M=marker;M.L=N.filter(n=>n.sZiel>0&&(n.verzug||n.warn||(n.gueltig&&n.kette)));const n=M.L.length;
+function markerBauen(){const M=marker;M.L=N.filter(n=>n.sZiel>0&&(n.verzug||n.warn||(n.gueltig&&n.kette)||n.rvC));const n=M.L.length;
  if(M.n<n||!M.g.attributes.position){M.g.dispose();M.g=new T.BufferGeometry();const c=Math.max(16,n*2);
   ['position',3,'gr',1,'puls',1,'farbe',3].reduce((a,x,i,arr)=>{if(i%2===0)M.g.setAttribute(x,new T.BufferAttribute(new Float32Array(c*arr[i+1]),arr[i+1]).setUsage(T.DynamicDrawUsage));return a},0);M.p.geometry=M.g;M.n=c}
  const F=M.g.attributes.farbe.array,U=M.g.attributes.puls.array;M.puls=false;
- M.L.forEach((m,i)=>{const c=m.verzug||m.warn?ROT:GRUEN;F[3*i]=c.r;F[3*i+1]=c.g;F[3*i+2]=c.b;U[i]=m.verzug?1:0;if(m.verzug)M.puls=true});
+ M.L.forEach((m,i)=>{const c=m.verzug||m.warn?ROT:m.rvC?rvFarbe(m.rvC):GRUEN;F[3*i]=c.r;F[3*i+1]=c.g;F[3*i+2]=c.b;const pu=m.verzug||m.rvS==='neu'||m.rvS==='geaendert';U[i]=pu?1:0;if(pu)M.puls=true});
  M.g.setDrawRange(0,n);M.g.attributes.farbe.needsUpdate=M.g.attributes.puls.needsUpdate=true;M.p.visible=n>0;dirty=true}
 function markerSetzen(jetzt){const M=marker;if(!M.p.visible)return;const P=M.g.attributes.position.array,G=M.g.attributes.gr.array;
  M.L.forEach((m,i)=>{P[3*i]=m.pos.x;P[3*i+1]=m.pos.y;P[3*i+2]=m.pos.z;G[i]=m.s>.05?m.r*m.s*3.4:0});
@@ -1748,7 +1767,9 @@ addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer.files&&e.d
 function leseDatei(f){if(DM.on)demoStop();if(/\.zip$/i.test(f.name)){leseZip(f);return}const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);if(istMassnahmenDatei(j)){massnahmenLaden(j);return}if(j&&j.format==='4deep-gebaeude'){j._datei=f.name;gebaeudeLaden([j]);return}   /* Version 63 */eigeneWahl();lauf=null;laden(j.daten&&j.daten.nodes?j.daten:j)}catch(e){meld('Datei ist kein gültiges JSON: '+e.message)}};r.readAsText(f)}
 $('ds').onchange=e=>waehleRaum(e.target.value);
 $('ubtn').onclick=()=>{if(U)uBeenden();else uStart(0)};$('wks').onchange=e=>wkWahl(e.target.value);$('fbs').onchange=e=>fbSetzen(e.target.value);
-$('rvr').oninput=e=>rvSetzen(RV.ids[+e.target.value]);$('rvz').onclick=()=>rvSetzen(RV.ids[Math.max(0,RV.ids.indexOf(RV.akt)-1)]);$('rvv').onclick=()=>rvSetzen(RV.ids[Math.min(RV.ids.length-1,RV.ids.indexOf(RV.akt)+1)]);
+$('rvr').oninput=e=>{rvStop();rvSetzen(RV.ids[+e.target.value])};$('rvz').onclick=()=>{rvStop();rvSetzen(RV.ids[Math.max(0,RV.ids.indexOf(RV.akt)-1)])};$('rvv').onclick=()=>{rvStop();rvSetzen(RV.ids[Math.min(RV.ids.length-1,RV.ids.indexOf(RV.akt)+1)])};
+$('rvn').onchange=()=>{if(RV.vgl)rvAnwenden()};$('rvp').onclick=()=>{if(!RV.vgl)return;if(RV.play){rvStop();return}if(RV.ids.indexOf(RV.akt)>=RV.ids.length-1)rvSetzen(RV.ids[0]);$('rvp').textContent='⏸ Anhalten';
+ RV.play=setInterval(()=>{const j=RV.ids.indexOf(RV.akt);if(j>=RV.ids.length-1){rvStop();return}rvSetzen(RV.ids[j+1])},2600)};
 // ---------- Version 19: CRM-Export (ZIP mit busses/… und rels/…) direkt laden, Umwandlung nur im Browser ----------
 async function zipLesen(buf){
  const dv=new DataView(buf),u8=new Uint8Array(buf);let eocd=-1;
@@ -2080,11 +2101,36 @@ function crmKennzahlen(nodes,edges,byId){const nb=crmNachbarn(edges);
   co._u12=u12;co._uv=uv;co.meta=Object.assign(K,co.meta)})}
 
 document.querySelectorAll('select,input[type=checkbox],input[type=range]').forEach(el=>el.addEventListener('change',()=>el.blur()));
+// ---------- Version 70: Datenraum „Revisionsvergleich: Werkzeug (fiktiv)“, übernommen aus 3Deep (konstruktionData, Version 118) ----------
+function konstruktionDaten(){const h0=new Date(),tg=k=>new Date(h0.getFullYear(),h0.getMonth(),h0.getDate()+k),dt=k=>{const d=tg(k);return String(d.getDate()).padStart(2,'0')+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+d.getFullYear()};return konstruktionData(dt)}
+function konstruktionData(dt){const H5='CATIA V5 (Integration)',HI='Issue',HPe='Person',HP='Project Management';
+ const R=[{id:'A.1',datum:dt(-50),state:'Obsolete',titel:'Erstkonstruktion auf Kundenteil Stand A'},{id:'B.1',datum:dt(-4),state:'Released',titel:'CR-07: Kontur Kopfbereich (Kundenteil Stand B)'},{id:'C.1',datum:dt(0),state:'In Work',titel:'ISS-042: Gewindebuchse versetzt (Kundenteil Stand C)'}];
+ const types={wzb:{color:'#4f8cff',size:3.36,label:'Baugruppe (CATProduct)'},kundenteil:{color:'#1f8f80',size:2.4,label:'Kundenteil (CATPart, Referenz)'},komp:{color:'#2fc4ad',size:1.96,label:'Komponente (CATPart)'},zeichnung:{color:'#8fb3d9',size:1.6,shape:'book',label:'Zeichnung (CATDrawing)'},issue:{color:'#ff4d6d',size:2.2,shape:'torus',label:'Issue'},task:{color:'#f2c400',size:1.5,shape:'dodecahedron',label:'Aufgabe'},person:{color:'#5fcf3f',size:2.2,shape:'bust',label:'Person'}};
+ const relTypes={struktur:{label:'Baugruppenlink (enthält)',color:'#2f3f5c',directed:false},zeichnet:{label:'Zeichnung zu',color:'#5d7ea8',directed:true},betrifft:{label:'Issue betrifft (Affected Item)',color:'#c2255c',directed:true},kontext:{label:'Issue-Kontext (Context)',color:'#2e8fb8',directed:true},aufgabe:{label:'Aufgabe für Issue',color:'#b59500',directed:true},zuweisung:{label:'Zugewiesen an',color:'#3a8f2f',directed:true,assign:true}};
+ // [Familie, Typ, Name, Eltern, [[von, bis, Revision] …], Attribute] – von/bis = Index der Werkzeugrevision
+ const F=[['WZ','wzb','Schäumwerkzeug Rückenlehne',null,[[0,0,'A'],[1,1,'B'],[2,2,'C']],{Werkzeugart:'PU-Schäumwerkzeug, dreiteilig',Konstrukteur:'T. Wagner'}],
+  ['KT','kundenteil','Rückenlehne (Kundenteil)','WZ',[[0,0,'A'],[1,1,'B'],[2,2,'C']],{Kunde:'OEM-Zulieferer (fiktiv)',Hinweis:'Referenzteil im Werkzeug, aus den Kundendaten abgeleitet'}],
+  ['UT','komp','Unterteil (Werkzeughälfte)','WZ',[[0,0,'A'],[1,2,'B']],{Material:'Aluminium (fiktiv)'}],['OT','komp','Oberteil (Werkzeughälfte)','WZ',[[0,0,'A'],[1,1,'B'],[2,2,'C']],{Material:'Aluminium (fiktiv)'}],
+  ['KE','komp','Deckel/Kern','WZ',[[0,0,'A'],[1,2,'B']],{Material:'Aluminium (fiktiv)'}],['EL','komp','Einleger Gewindebuchse M8','WZ',[[0,2,'A']],{Wiederverwendet:'ja'}],['HS','komp','Haltestift Einleger','WZ',[[2,2,'A']],{Grund:'ISS-042'}],
+  ['AW','komp','Auswerfer Kopfbereich','WZ',[[0,0,'A']],{Hinweis:'entfällt mit CR-07'}],['TE','komp','Temperierung','WZ',[[0,2,'A']],{}],['EN','komp','Entlüftung','WZ',[[0,2,'A']],{}],['NO','komp','Normalien-Satz Führungssäulen','WZ',[[0,2,'A']],{Wiederverwendet:'ja'}],
+  ['ZW','zeichnung','Zusammenbauzeichnung Werkzeug','WZ',[[0,0,'A'],[1,1,'B'],[2,2,'C']],{}],['ZO','zeichnung','Zeichnung Oberteil','OT',[[0,0,'A'],[1,1,'B'],[2,2,'C']],{}],['ZU','zeichnung','Zeichnung Unterteil','UT',[[0,0,'A'],[1,2,'B']],{}]];
+ const nodes=[],edges=[],mem=(k,i)=>{const f=F.find(x=>x[0]===k),z=f[4].find(([a,b])=>i>=a&&i<=b);return z?k+'_'+z[2]:null};
+ F.forEach(([k,t,nm,el,Z,m])=>Z.forEach(([a,b,rv],zi)=>{const letzte=zi===Z.length-1,st=!letzte?'Obsolete':a===2&&t!=='kundenteil'?'In Work':'Released';
+  nodes.push({id:k+'_'+rv,familie:k,type:t,name:nm,state:st,revs:R.slice(a,b+1).map(x=>x.id),meta:Object.assign({Revision:rv,Format:t==='wzb'?'CATProduct':t==='zeichnung'?'CATDrawing':'CATPart',Herkunft:H5},m)})}));
+ F.forEach(([k,t,nm,el])=>{if(!el)return;R.forEach((x,i)=>{const c=mem(k,i),p=mem(el,i);if(c&&p)edges.push({from:c,to:p,type:t==='zeichnung'?'zeichnet':'struktur',revs:[x.id]})})});
+ const add=(id,type,name,o)=>{nodes.push(Object.assign({id,type,name},o));return id},link=(from,to,type)=>edges.push({from,to,type});
+ [['p-kon','T. Wagner','Konstruktion (CATIA V5)'],['p-pl','S. Albrecht','Projektleitung und Vertrieb'],['p-cam','L. Brandt','CAM-Programmierung (TEBIS)']].forEach(([id,nm,r])=>add(id,'person',nm,{meta:{Rolle:r,Standort:'Werk 1 (fiktiv)',Herkunft:HPe}}));
+ add('iss42','issue','ISS-042 Gewindebuchse versetzt',{state:'In Work',imgText:'ISS-042: Kundenteil Stand C, Gewindebuchse M8 sitzt 4 mm weiter oben (fiktiv). Oberteil anpassen, Einleger sichern.',meta:{Beschreibung:'Kundenteil Stand C: Gewindebuchse M8 4 mm weiter oben (fiktiv)',Priorität:'Hoch',Eröffnet:dt(0),'Eröffnet von':'S. Albrecht',Herkunft:HI}});
+ link('iss42','OT_B','betrifft');link('iss42','KT_B','kontext');link('iss42','p-kon','zuweisung');
+ add('iss1','issue','Entformungsschräge im Kopfbereich zu gering',{state:'In Work',imgText:'Entformungsschräge im Kopfbereich zu gering (nach CR-07)',meta:{Beschreibung:'Entformungsschräge im Kopfbereich zu gering',Priorität:'Hoch',Eröffnet:dt(-3),Herkunft:HI}});link('iss1','KE_B','betrifft');link('iss1','p-kon','zuweisung');
+ [['a1','Oberteil an Kundenteil Stand C anpassen','In Work',2,'p-kon'],['a2','Haltestift Einleger konstruieren','In Work',3,'p-kon'],['a3','Änderung prüfen und freigeben (C.1)','To do',5,'p-pl'],['a4','CAM Oberteil nach C.1 nachziehen','To do',8,'p-cam']].forEach(([id,nm,st,f,pe])=>{add(id,'task',nm,{state:st,meta:{Fällig:dt(f),Herkunft:HP}});link(id,'iss42','aufgabe');link(id,pe,'zuweisung')});
+ return{types,relTypes,nodes,edges,revisionen:R,revStart:'B.1',layout:'baum',spacing:8,maxObjects:nodes.length}}
 function waehleRaum(v){if(DM.on)demoStop();eigeneWahl();lauf=null;
  if(v==='demo')laden(demoDaten());
  else if(v==='eauto')laden(elektroautoDaten());   // Version 55: Elektroauto wie in 3Deep, mit Zeitverlauf
  else if(v==='kauf')laden(kaufDaten());   // Version 56: kaufmännischer Datenraum wie in 3Deep
- else if(v==='projekt')laden(projektDaten());   // Version 57: Projekt wie in 3Deep
+ else if(v==='projekt')laden(projektDaten());
+ else if(v==='konstr')laden(konstruktionDaten());   // Version 70: Revisionsvergleich wie 3Deep (Werkzeugbau-Konstruktion A.1–C.1)   // Version 57: Projekt wie in 3Deep
  else if(v.startsWith('stress:'))laden(stressDaten(+v.slice(7)));
  else if(v.startsWith('thema:')){const name=v.slice(6);const pfade=['themen/'+name+'.json','3deep-widget/themen/'+name+'.json'];
   ladeKugel(true);const versuch=i=>{if(i>=pfade.length){meld('Thema nicht erreichbar (nur über einen Webserver, nicht per Doppelklick).');return}
@@ -2105,15 +2151,61 @@ function verlauf(F,x){F=F&&F.length?F:['#d7301f','#f2f2f2','#2b6cc4'];x=Math.max
  const p=x*(F.length-1),i=Math.min(F.length-2,Math.floor(p));return new T.Color(F[i]).lerp(new T.Color(F[i+1]),p-i)}
 // Schritte
 function rvVorbereiten(d){const L=Array.isArray(d.revisionen)?d.revisionen.filter(r=>r&&r.id!=null):[];RV.ids=L.map(r=>String(r.id));RV.titel={};L.forEach(r=>RV.titel[String(r.id)]=r.titel||'');
- RV.akt=RV.ids.length?(d.revStart!=null&&RV.ids.includes(String(d.revStart))?String(d.revStart):RV.ids[0]):null;N.forEach(n=>{n.revAus=revAus(n.o.revs)});E.forEach(k=>{k.revAus=revAus(k.e.revs)});rvUi()}
+ RV.akt=RV.ids.length?(d.revStart!=null&&RV.ids.includes(String(d.revStart))?String(d.revStart):RV.ids[0]):null;N.forEach(n=>{n.revAus=revAus(n.o.revs)});E.forEach(k=>{k.revAus=revAus(k.e.revs)});
+ rvStop();RV.L=L.map(r=>Object.assign({},r,{id:String(r.id)}));RV.vgl=!!(d._rvFertig&&RV.ids.length>1);N.forEach(n=>{n.rvS=n.rvC=n.rvN=null;n.rvBlass=false});if(RV.vgl)rvVgl();rvUi()}
 function revAus(rv){return !!(RV.akt!=null&&Array.isArray(rv)&&!rv.map(String).includes(RV.akt))}
 function revPos(o,r){const P=o.posRev;if(!P||r==null||!RV.ids.length)return o.pos;if(P[r])return P[r];const i=RV.ids.indexOf(r);
  for(let j=i-1;j>=0;j--)if(P[RV.ids[j]])return P[RV.ids[j]];for(let j=i+1;j<RV.ids.length;j++)if(P[RV.ids[j]])return P[RV.ids[j]];return o.pos}
 function rvAnwenden(){N.forEach(n=>{n.revAus=revAus(n.o.revs);if(layout==='fest'&&n.o.posRev){const p=revPos(n.o,RV.akt);if(Array.isArray(p))n.ziel.set(+p[0]*FEST_F,+p[1]*FEST_F,+p[2]*FEST_F)}});
- E.forEach(k=>{k.revAus=revAus(k.e.revs)});wkBauen();zeitAnwenden();rvUi();FIG.alle=true;if(WIESE)tagesLicht()}
+ E.forEach(k=>{k.revAus=revAus(k.e.revs)});if(RV.vgl)rvVgl();wkBauen();zeitAnwenden();rvUi();if(RV.vgl&&prof.i>=0)zeigeProfil(prof.i);FIG.alle=true;if(WIESE)tagesLicht()}
 function rvSetzen(r){r=String(r);if(!RV.ids.includes(r)||r===RV.akt)return;RV.akt=r;rvAnwenden()}
 function rvUi(){const an=RV.ids.length>1;$('rvw').style.display=an?'':'none';if(!an)return;const i=RV.ids.indexOf(RV.akt),w=(D&&D.revisionenTitel)||'Revision';
- $('rvl').textContent=D&&D.revisionenTitel?'Ablauf ('+w+' für '+w+')':'Revisionen';$('rvr').max=RV.ids.length-1;$('rvr').value=i;$('rvt').textContent=w+' '+RV.akt+(RV.titel[RV.akt]?': '+RV.titel[RV.akt]:'')}
+ $('rvl').textContent=D&&D.revisionenTitel?'Ablauf ('+w+' für '+w+')':RV.vgl?'Revisionsvergleich':'Revisionen';$('rvr').max=RV.ids.length-1;$('rvr').value=i;$('rvt').textContent=w+' '+RV.akt+(RV.titel[RV.akt]?': '+RV.titel[RV.akt]:'');
+ ['rvkopf','rvx'].forEach(k=>$(k).style.display=RV.vgl?'':'none');$('rvnam').style.display=RV.vgl?'flex':'none';$('rvt').style.display=RV.vgl?'none':'';if(RV.vgl)rvVglUi()}
+// ---------- Version 70 (Wunsch des Nutzers): Revisionsvergleich wie 3Deep (Version 105/106) ----------
+// Datenformat: oben revisionen:[{id,datum,state,titel}] (zeitlich geordnet), revStart; Knoten mit revs (in welchen Revisionen des Hauptobjekts enthalten)
+// und familie (gleiches Teil über Revisionen; fehlt: Typ + meta.Name, sonst id). Jede Familie wird EIN Objekt mit festem Platz; der Regler zeigt die Revision,
+// leuchtende Ringe zeigen die Unterschiede zur vorigen Revision (neu, geändert, entfallen) und optional zur nächsten. Nicht bei revisionenTitel (Unterricht).
+function rvZusammen(d){if(!d||d._rvFertig||!Array.isArray(d.revisionen)||!d.revisionen.length)return d;
+ const R=d.revisionen.map(x=>typeof x==='object'&&x?Object.assign({},x,{id:String(x.id)}):{id:String(x)}).filter(x=>x.id!=='undefined'),RI=new Map(R.map((x,i)=>[x.id,i]));
+ const famK=o=>o.familie!=null?String(o.familie):(o.meta&&o.meta.Name!=null&&o.meta.Name!==''?String(o.type)+'|'+o.meta.Name:String(o.id));
+ /* Objekte ohne revs (Dokumente, Zeichnungen, Issues am Bauteil) gehören zu den Revisionen ihrer Nachbarn mit revs */
+ {const mit=new Map();(d.nodes||[]).forEach(o=>{if(o&&o.id!=null&&Array.isArray(o.revs))mit.set(String(o.id),o.revs.map(String))});const erb=new Map();
+  (d.edges||[]).forEach(e=>{const a=String(e.from),b=String(e.to);[[a,b],[b,a]].forEach(([x,y])=>{if(!mit.has(x)&&mit.has(y)){if(!erb.has(x))erb.set(x,new Set());mit.get(y).forEach(v=>erb.get(x).add(v))}})});
+  if(erb.size)d=Object.assign({},d,{nodes:(d.nodes||[]).map(o=>o&&o.id!=null&&!Array.isArray(o.revs)&&erb.has(String(o.id))?Object.assign({},o,{_erb:true,revs:R.map(x=>x.id).filter(v=>erb.get(String(o.id)).has(v))}):o)})}
+ const F=new Map(),zu={};(d.nodes||[]).forEach(o=>{if(!o||o.id==null)return;const k=famK(o);zu[o.id]=k;if(!F.has(k))F.set(k,[]);F.get(k).push(o)});
+ const nodes=[],NI=new Map();F.forEach((L,k)=>{const rv={};L.forEach(o=>{const rs=Array.isArray(o.revs)?o.revs.map(String):R.map(x=>x.id);rs.forEach(x=>{if(RI.has(x)&&!rv[x])rv[x]=o})});
+  const spaet=R.map(x=>rv[x.id]).filter(Boolean),b=spaet[spaet.length-1]||L[L.length-1],id=L.length>1||b.familie!=null?'fam:'+k:b.id;NI.set(k,id);nodes.push(Object.assign({},b,{id,_rv:rv,revs:undefined}))});
+ const EM=new Map(),edges=[];(d.edges||[]).forEach(e=>{const a=zu[e.from],b=zu[e.to];if(a==null||b==null||a===b)return;const ka=NI.get(a),kb=NI.get(b),key=ka+'|'+kb+'|'+(e.type||'');
+  const rs=Array.isArray(e.revs)?e.revs.map(String):null;if(EM.has(key)){const x=EM.get(key);if(x.revs&&rs)rs.forEach(v=>{if(!x.revs.includes(v))x.revs.push(v)});else x.revs=null;return}
+  const x=Object.assign({},e,{from:ka,to:kb,revs:rs?rs.slice():null});EM.set(key,x);edges.push(x)});
+ edges.forEach(e=>{if(!e.revs)delete e.revs});
+ return Object.assign({},d,{nodes,edges,revisionen:R,_rvFertig:true,layout:d.layout||'baum'})}
+var RVF={neu:'#2fbf4a',geaendert:'#ff9a1a',entfallen:'#e0282e',naechste:'#d9b300'};
+function rvFarbe(c){const M=rvFarbe.m||(rvFarbe.m={});return M[c]||(M[c]=new T.Color(c))}
+function rvTxt(m){return m?String((m.meta&&m.meta.Revision)||m.rev||m.revision||''):''}
+function rvVgl(){const L=RV.L,i=RV.ids.indexOf(RV.akt),r=L[i],p=L[i-1],x=L[i+1],nx=$('rvn').checked,Z={neu:[],geaendert:[],entfallen:[],nn:0,ng:0,ne:0};if(!r)return;
+ N.forEach(n=>{n.rvS=n.rvN=n.rvC=null;n.rvBlass=false;const rv=n.rv;if(!rv){n.revAus=false;return}const c=rv[r.id],v=p?rv[p.id]:null,w=x?rv[x.id]:null,m=c||v;
+  if(!n.erb){if(c&&p&&!v){n.rvS='neu';Z.neu.push(n)}else if(c&&v&&c!==v){n.rvS='geaendert';Z.geaendert.push(n)}else if(!c&&v){n.rvS='entfallen';Z.entfallen.push(n)}
+   if(c&&x){if(!w){n.rvN='entfällt in '+x.id;Z.ne++}else if(w!==c){n.rvN=rvTxt(c)+' → '+rvTxt(w)+' in '+x.id;Z.ng++}}else if(!c&&x&&w&&!v)Z.nn++}
+  n.revAus=!m;n.rvBlass=!c&&!!v;if(!m)return;
+  const gr=[];L.forEach((y,j)=>{const o=rv[y.id];if(!o)return;const g=gr[gr.length-1];if(g&&g.o===o&&g.b===j-1)g.b++;else gr.push({o,a:j,b:j})});
+  const verlauf=gr.map(g=>(rvTxt(g.o)||'–')+' in '+L[g.a].id+(g.b>g.a?'–'+L[g.b].id:'')).join(' · ');
+  const ver=n.rvS==='neu'?'neu in '+r.id:n.rvS==='geaendert'?rvTxt(v)+' → '+rvTxt(c)+' (gegenüber '+p.id+')':n.rvS==='entfallen'?'entfallen in '+r.id+' (war '+rvTxt(v)+' in '+p.id+')':c?(p?'unverändert gegenüber '+p.id:'erste Revision'):'';
+  n.o=Object.assign({},m,{meta:Object.assign({},m.meta||{},n.erb?{Vergleich:'gehört zu '+(c?r.id:p.id)+' (mitgeladen zum Objekt dieser Revision)'}:{Vergleich:ver+(n.rvN?'; nächste: '+n.rvN:''),Revisionsverlauf:verlauf})});
+  n.name=String(m.name!=null?m.name:m.id);n.rvC=n.rvS?RVF[n.rvS]:n.rvN&&nx?RVF.naechste:null});
+ E.forEach(k=>{const A=k.a,B=k.b,an=(n,id)=>!n.rv||!!n.rv[id],inn=id=>!!id&&(Array.isArray(k.e.revs)?k.e.revs.map(String).includes(id):an(A,id)&&an(B,id));k.revAus=!(inn(r.id)||(p&&inn(p.id)))});
+ RV.Z=Z}
+function rvVglUi(){const L=RV.L,i=RV.ids.indexOf(RV.akt),r=L[i],p=L[i-1],x=L[i+1],Z=RV.Z,nx=$('rvn').checked;if(!r||!Z)return;
+ const rr=y=>esc(y.id)+(y.datum?' · '+esc(y.datum):'')+(y.state?' · '+esc(y.state):'');
+ $('rvkopf').innerHTML='<b>Revision '+rr(r)+'</b>'+(r.titel?'<br><span class="m">'+esc(r.titel)+'</span>':'')+'<br><span class="m">'+(i+1)+' von '+L.length+'</span>';
+ $('rvnam').innerHTML=L.map(y=>'<span>'+esc(y.id)+'</span>').join('');
+ const sum=(a,b,c)=>[a?a+' neu':'',b?b+' geändert':'',c?c+' entfallen':''].filter(Boolean).join(', ')||'keine Änderungen';
+ $('rvinfo').innerHTML=(p?'Gegenüber <b>'+esc(p.id)+'</b>: '+sum(Z.neu.length,Z.geaendert.length,Z.entfallen.length):'Erste Revision.')+(x&&nx?'<br><span class="m">Zur nächsten ('+esc(x.id)+'): '+sum(Z.nn,Z.ng,Z.ne)+'</span>':'');
+ const grp=(t,f,Lx)=>Lx.length?'<div class="m" style="margin-top:6px">'+t+'</div>'+Lx.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name))).map(n=>'<div class="it" data-i="'+n.i+'"><span style="color:'+f+'">●</span> '+esc(n.name)+' <span class="m">'+esc((TY[n.ty]||{}).label||n.ty)+(n.rvS==='geaendert'?' · '+esc(rvTxt(n.rv[p.id]))+' → '+esc(rvTxt(n.rv[r.id])):'')+'</span></div>').join(''):'';
+ const res=$('rvres');res.innerHTML=grp('Neu',RVF.neu,Z.neu)+grp('Revision geändert',RVF.geaendert,Z.geaendert)+grp('Entfallen',RVF.entfallen,Z.entfallen);
+ res.querySelectorAll('.it').forEach(e2=>e2.onclick=()=>{const n=N[+e2.dataset.i];if(!n)return;rvStop();waehle(n.i);zeigeProfil(n.i);nutzerSteuert();K.zZiel.copy(n.pos);K.flug=true;neu()})}
+function rvStop(){if(RV.play){clearInterval(RV.play);RV.play=null}const b=$('rvp');if(b)b.textContent='▶ Abspielen'}
 // Punktwolken: je Teil eigene Punkte, in 4Deep verdichtet (mehr, kleinere Punkte) und im Sternenhimmel leuchtend (additiv)
 const wkGrp=new T.Group();scene.add(wkGrp);
 const WK_VS='attribute float gr;attribute float al;attribute vec3 farbe;varying vec3 vF;varying float vA;uniform float sk;void main(){vec4 mv=modelViewMatrix*vec4(position,1.);gl_Position=projectionMatrix*mv;gl_PointSize=max(1.5,gr*sk/-mv.z);vF=farbe;vA=al;}',
@@ -2448,11 +2540,11 @@ function adapterNachricht(m){
 // Gläserne Würfel über spiegelndem Boden, Türme links und rechts, Kamerafahrt 6 s, Schriftzug, Klick oder Esc überspringt, Überblendung 1,4 s in den Datenraum.
 // Szene, Farben und Kamerapfad aus 3Deep übernommen (dort Canvas 2D mit eigener Projektion): Flächen mit Farbverlauf und Helligkeit nach Lage,
 // Kristallflächen und innere Würfel als Linien, Spiegelbild = gespiegelte Kopie unter dem durchscheinenden Boden, Dunst am Horizont als Band um die Kamera.
-// Häkchen „Intro beim Start zeigen“ (localStorage '4d_intro'), „Musik im Intro“ ('4d_introMusik', Voreinstellung aus), Knopf „▶ Intro zeigen“.
+// Häkchen „Intro beim Start zeigen“ (localStorage '4d_intro', seit Version 71 Voreinstellung aus), „Musik im Intro“ ('4d_introMusik', Voreinstellung aus), Knopf „▶ Intro zeigen“.
 // Unter Testautomatisierung (navigator.webdriver) aus; tests/test-intro4d.js startet es gezielt. Adapter-Nachrichten während des Intros werden gesammelt
 // und danach der Reihe nach verarbeitet (wie 3Deep). Der Datenraum dahinter wird erst ab der Überblendung gezeichnet (keine zwei Zeichenflächen gleichzeitig).
 const INTRO_DAUER=6;
-function introAn(){try{return localStorage.getItem('4d_intro')!=='aus'}catch(_){return true}}
+function introAn(){try{return localStorage.getItem('4d_intro')==='an'}catch(_){return false}}   // Version 71 (Wunsch des Nutzers): Intro als Voreinstellung aus
 function musikAn(){try{return localStorage.getItem('4d_introMusik')==='an'}catch(_){return false}}
 $('introan').checked=introAn();$('introan').onchange=e=>{try{localStorage.setItem('4d_intro',e.target.checked?'an':'aus')}catch(_){}};
 $('intromu').checked=musikAn();$('intromu').onchange=e=>{try{localStorage.setItem('4d_introMusik',e.target.checked?'an':'aus')}catch(_){}};
@@ -2891,7 +2983,7 @@ function stressDaten(n){s=777;const T0=Date.UTC(2020,0,1),sp=6*JAHR,nodes=[],edg
  const types={};typen.forEach((t,k)=>types[t]={label:'Typ '+t.toUpperCase(),color:farben[k],shape:formen[k],size:1});return{types,relTypes:{r:{label:'Beziehung',color:'#6f86ab'}},nodes,edges}}
 
 // ---------- Namen am Objekt (Taste N, wie datenraum3d.html: nächste Objekte, ohne Überlappung, nicht unter Bedienfeldern) ----------
-const NM={an:false,max:12,wahl:new Set(),a:new Map(),t:0,sp:[]},nmCv=$('nm'),nmC=nmCv.getContext('2d'),NMFONT='600 14px system-ui,Segoe UI,sans-serif';
+const NM={an:false,max:20,wahl:new Set(),a:new Map(),t:0,sp:[]},nmCv=$('nm'),nmC=nmCv.getContext('2d'),NMFONT='600 14px system-ui,Segoe UI,sans-serif';
 function namenUmschalten(v){NM.an=v==null?!NM.an:!!v;$('namen').checked=NM.an;NM.t=0;neu()}
 $('namen').onchange=e=>namenUmschalten(e.target.checked);
 function namenKurz(n){if(n._nt0!==n.name){n._nt0=n.name;const t=String(n.name||'');n._nt=t.length>42?t.slice(0,40)+'…':t;nmC.font=NMFONT;n._nw=nmC.measureText(n._nt).width}return n._nt}
@@ -3055,11 +3147,11 @@ async function dmPunkt(s,C){dmMasAuf();const el=dmPunktEl(s);if(!el)throw new Er
  DM.intern=true;try{DM.fahrt=null;el.click()}finally{DM.intern=false}await dmW(3200);el.style.outline='';dmMasWeg()}
 const DM={on:false,id:0,paused:false,cap:'',sp:null,ctx:{},fahrt:null,zr:null,dreh:0,pfad:null};
 function demoCap(txt){DM.cap=txt||'';const c=$('dcap'),z=DM.on&&DM.paused;
- {const pf=$('prof'),ms=(document.body.classList.contains('dmpj')&&pf.style.display==='block')?pf:$('mas'),pn=$('pn');if(ms.style.display==='block'&&innerWidth>900){const a=pn.getBoundingClientRect().right+10,b=ms.getBoundingClientRect().left-10;c.style.left=a+'px';c.style.transform='none';c.style.width=Math.max(300,b-a)+'px';c.style.minWidth='0'}else{c.style.left=c.style.transform=c.style.width=c.style.minWidth=''}}   // Version 61: Textkasten zwischen Bedienfeld und Handlungsliste
+ {const pf=$('prof'),ms=(DM.on&&pf.style.display==='block')?pf:$('mas'),pn=$('pn');if(ms.style.display==='block'&&innerWidth>900){const a=pn.getBoundingClientRect().right+10,b=ms.getBoundingClientRect().left-10;c.style.left=a+'px';c.style.transform='none';c.style.width=Math.max(300,b-a)+'px';c.style.minWidth='0'}else{c.style.left=c.style.transform=c.style.width=c.style.minWidth=''}}   // Version 61: Textkasten zwischen Bedienfeld und Handlungsliste
  c.style.display=DM.cap||z?'block':'none';
  c.innerHTML=DM.cap+(DM.zr?'<div class="m" id="dczr"></div>':'')+(z?(DM.cap?'<br>':'')+'<span style="color:#ffd166;font-weight:700">⏸ Pausiert – P oder „Weiter“ zum Fortsetzen</span>':'');if(DM.zr)dmZrText()}
 // Wartezeit in ms, zählt nur ohne Pause; bricht ab, wenn die Vorführung endet (Test ersetzt dmWarte im Zeitraffer)
-function dmWarte(ms){const id=DM.id;let lt=performance.now(),el=0;return new Promise((ok,no)=>{const tick=()=>{if(!DM.on||DM.id!==id)return no('stop');const t=performance.now();if(!DM.paused)el+=t-lt;lt=t;if(el>=ms)return ok();setTimeout(tick,40)};tick()})}
+function dmWarte(ms){const id=DM.id;let lt=performance.now(),el=0;return new Promise((ok,no)=>{const tick=()=>{if(!DM.on||DM.id!==id)return no('stop');if(DM.schnell)return ok();const t=performance.now();if(!DM.paused)el+=t-lt;lt=t;if(el>=ms)return ok();setTimeout(tick,40)};tick()})}
 function dmW(ms){return dmWarte(ms*((DM.ablauf&&DM.ablauf.tempo)||1))}   // Wartezeit mit dem Tempo des Ablaufs
 function dmLaeuft(){const id=DM.id;return()=>{if(!DM.on||DM.id!==id)throw'stop'}}
 async function dmSimFertig(){const ok=dmLaeuft();for(let i=0;i<150&&sim;i++){await new Promise(r=>setTimeout(r,100));ok()}}
@@ -3080,7 +3172,7 @@ function demoPause(an){if(!DM.on)return;const neu_=an==null?!DM.paused:!!an;if(n
 // Weiche Kamerafahrt: Blickpunkt, Abstand (logarithmisch), Drehung und Neigung gemeinsam, sanft an- und abbremsend; bogen = Abstand wächst unterwegs
 function dmBlick(objs,o){o=o||{};const g0=K.gier,n0=K.nick;const gier=o.gier!=null?o.gier:g0+(o.dreh||0),nick=o.nick!=null?o.nick:n0;K.gier=gier;K.nick=nick;
  const z=heimZiel(objs?objs.map(n=>({ziel:n.ziel,r:n.r*(o.nah||1)})):null);K.gier=g0;K.nick=n0;return z?{ziel:z.c,dist:z.d*(o.weit||1),gier,nick}:null}
-function dmFahrt(b,dauer,bogen){if(!b)return;heimSpaeter=false;K.zGier=null;K.flug=false;
+function dmFahrt(b,dauer,bogen){if(!b)return;heimSpaeter=false;K.zGier=null;K.flug=false;if(DM.schnell)dauer=0;
  if(!(dauer>0)){K.ziel.copy(b.ziel);K.dist=b.dist;K.gier=b.gier;K.nick=b.nick;K.zZiel.copy(K.ziel);K.zDist=K.dist;DM.fahrt=null;neu();return}
  DM.fahrt={t:0,dauer,bogen:bogen==null?.12:bogen,a:{ziel:K.ziel.clone(),dist:K.dist,gier:K.gier,nick:K.nick},b,dg:((b.gier-K.gier+Math.PI)%(2*Math.PI)+2*Math.PI)%(2*Math.PI)-Math.PI};neu()}
 function dmFahrtTick(dt){const f=DM.fahrt;if(!f)return;f.t=Math.min(1,f.t+dt/f.dauer);const t=f.t,e=t*t*t*(t*(t*6-15)+10);   // smootherstep
@@ -3201,7 +3293,7 @@ async function dmSchritt(s){const C=DM.ctx,ms=s.ms||0;
   case'zeitflug':{if(!PLAN)break;schliesseProfil();waehle(-1);DM.pfad=null;const P=PLAN,xa=P.X(P.t0)+P.row*4,xb=P.X(P.t1)-P.row*4,d=P.row*16,b=dmPlanBlick(xa,{dist:d,gier:-.55,nick:.14});
    demoCap(dmText(s.text));dmFahrt(b,2.2);await dmW(2300);const zt=N.filter(n=>n.ts!=null&&!istBand(n.ty)),ym=(u,v)=>{const L=zt.filter(n=>n.ziel.x>=u&&n.ziel.x<=v);return L.length?L.reduce((q,n)=>q+n.ziel.y,0)/L.length:b.ziel.y},w=(xb-xa)*.3;
    DM.zf={xa,xb,ya:ym(xa-w,xa+w),yb:ym(xb-w,xb+w),t:0,dauer:(s.dauer||20)*((DM.ablauf&&DM.ablauf.tempo)||1)};b.ziel.y=DM.zf.ya;dmFahrt(b,1.2);await dmW(1300);
-   const ok=dmLaeuft();while(DM.zf&&DM.zf.t<1){await new Promise(z=>setTimeout(z,60));ok()}DM.zf=null;break}
+   const ok=dmLaeuft();if(DM.schnell)DM.zf=null;while(DM.zf&&DM.zf.t<1){await new Promise(z=>setTimeout(z,60));ok()}DM.zf=null;break}
   case'heute':{if(!PLAN)break;demoCap(dmText(s.text));dmFahrt(dmPlanBlick(PLAN.X(HEUTE),{dist:PLAN.row*22,gier:.85,nick:.22}),3.5);break}
   case'krit':{demoCap(dmText(s.text));dmFahrt(dmBlick(null,{gier:-.12,nick:.08}),3);const seg=E.filter(k=>k.kp).map(k=>[k.a,k.b]);DM.pfad=seg.length?seg:null;break}
   case'liste':{DM.pfad=null;dmMasAuf();const sm=$('mas').querySelector('.sum');if(sm)sm.style.outline='2px solid #ffd166';demoCap(dmText(s.text));if(ms)await dmW(ms);if(sm)sm.style.outline='';return}
@@ -3215,12 +3307,20 @@ async function dmSchritt(s){const C=DM.ctx,ms=s.ms||0;
  }
  if(ms)await dmW(ms)}
 async function demoAbspielen(A){if(DM.on)return demoStop();
- DM.on=true;DM.paused=false;DM.id++;DM.ctx={};DM.ablauf=A;document.body.classList.toggle('dmpj',A===DEMO_PROJEKT);DM.station=-1;$('dmb').textContent='■ Demo stoppen';$('dmp').textContent='⏸ Pause (P)';$('dmp').style.display='';$('dmpj').style.display='none';
+ DM.on=true;DM.paused=false;DM.id++;DM.ctx={};DM.ablauf=A;DM.sprung=null;DM.schnell=false;document.body.classList.toggle('dmpj',A===DEMO_PROJEKT);DM.station=-1;$('dmb').textContent='■ Demo stoppen';$('dmp').textContent='⏸ Pause (P)';$('dmp').style.display='';$('dmpj').style.display='none';
  if(U)uStop(true);
- try{for(let i=0;i<A.stationen.length;i++){DM.station=i;const st=A.stationen[i];for(const s of st.schritte)await dmSchritt(s)}demoStop()}
- catch(x){if(x!=='stop'){demoStop();meldeFehler(x)}}}
+ let von=0;
+ for(;;){try{const ab=dmSprungStart(A,von);for(let i=ab;i<A.stationen.length;i++){DM.schnell=i<von;DM.station=i;const st=A.stationen[i];for(const s of st.schritte)await dmSchritt(s)}DM.schnell=false;demoStop();return}
+  catch(x){DM.schnell=false;if(x==='stop'&&DM.on&&DM.sprung!=null){von=DM.sprung;DM.sprung=null;dmAufraeumen();continue}if(x!=='stop'){demoStop();meldeFehler(x)}return}}}
+// Version 71 (Wunsch des Nutzers): Kapitel vor (→) und zurück (←). Der Zustand des Ziel-Kapitels entsteht, indem die Stationen ab dem letzten Datenwechsel
+// (Schritt „daten“) davor ohne Wartezeit und ohne Kamerafahrt nachgeholt werden; ab dem Ziel-Kapitel läuft die Vorführung normal weiter.
+function dmSprungStart(A,von){let ab=0;for(let i=0;i<=von&&i<A.stationen.length;i++)if(A.stationen[i].schritte.some(s=>s.art==='daten'))ab=i;return ab}
+function dmAufraeumen(){DM.zf=null;if(AUS)ausfallAus(true);if(MAS_K!=null)masKetteAus();$('mas').style.display='none';DM.paused=false;DM.sp=null;DM.fahrt=null;DM.dreh=0;DM.pfad=null;DM.ctx={};
+ if(DM.zr){DM.zr=null;tCur=Infinity}spiel=false;N.forEach(n=>n.dmAus=false);if(N.length)zeitAnwenden();$('dfade').style.opacity=0;schliesseProfil();waehle(-1);$('dmp').textContent='⏸ Pause (P)'}
+function demoSprung(d){if(!DM.on||!DM.ablauf)return;const A=DM.ablauf,z=(DM.sprung!=null?DM.sprung:DM.station)+d;if(z>=A.stationen.length){demoStop();return}
+ DM.sprung=Math.max(0,z);DM.id++;demoCap('<span class="m">Kapitel '+(DM.sprung+1)+' von '+A.stationen.length+': '+esc(A.stationen[DM.sprung].titel)+' …</span>')}
 function meldeFehler(x){console.error(x);const l=$('leer');l.style.display='';l.style.color='#ff6b6b';l.textContent='Fehler in der Vorführung: '+(x&&x.message||x)}
-function demoStop(){if(!DM.on)return;document.body.classList.remove('dmpj');const proj=DM.ablauf===DEMO_PROJEKT;DM.zf=null;if(AUS)ausfallAus(true);if(MAS_K!=null)masKetteAus();if(proj)$('mas').style.display='none';DM.on=false;DM.paused=false;DM.sp=null;DM.id++;DM.fahrt=null;DM.dreh=0;DM.pfad=null;if(DM.zr){DM.zr=null;tCur=Infinity}
+function demoStop(){if(!DM.on)return;DM.sprung=null;DM.schnell=false;document.body.classList.remove('dmpj');const proj=DM.ablauf===DEMO_PROJEKT;DM.zf=null;if(AUS)ausfallAus(true);if(MAS_K!=null)masKetteAus();if(proj)$('mas').style.display='none';DM.on=false;DM.paused=false;DM.sp=null;DM.id++;DM.fahrt=null;DM.dreh=0;DM.pfad=null;if(DM.zr){DM.zr=null;tCur=Infinity}
  N.forEach(n=>n.dmAus=false);if(N.length)zeitAnwenden();$('dfade').style.opacity=0;demoCap('');schliesseProfil();waehle(-1);
  $('dmb').textContent='▶ Demo abspielen';$('dmp').style.display='none';$('dmpj').style.display=''}
 $('dmb').onclick=()=>demoAbspielen(DEMO_EAUTO);$('dmpj').onclick=()=>demoAbspielen(DEMO_PROJEKT);
@@ -3238,6 +3338,7 @@ addEventListener('wheel',()=>demoEingriff(),{capture:true,passive:true});
 addEventListener('keydown',e=>{if(!DM.on||e.repeat)return;const tg=e.target;if(tg.tagName==='TEXTAREA'||(tg.tagName==='INPUT'&&!/range|checkbox|button|file/.test(tg.type)))return;
  if(e.code==='KeyP'&&!e.ctrlKey&&!e.altKey&&!e.metaKey){e.preventDefault();e.stopImmediatePropagation();demoPause();return}
  if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();demoStop();return}
+ if((e.key==='ArrowRight'||e.key==='ArrowLeft')&&!e.ctrlKey&&!e.altKey&&!e.metaKey&&!e.shiftKey){e.preventDefault();e.stopImmediatePropagation();demoSprung(e.key==='ArrowRight'?1:-1);return}   // Version 71: Kapitel vor/zurück
  if(!/^(Shift|Control|Alt|Meta|CapsLock)$/.test(e.key))demoEingriff()},true);
 
 // ---------- Hauptschleife ----------
